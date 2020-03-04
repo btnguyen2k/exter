@@ -5,10 +5,13 @@ import (
 	"compress/zlib"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha1"
 	"encoding/hex"
 	"io"
 	"math"
+	"net/http"
 	"runtime"
 	"strconv"
 	"strings"
@@ -20,27 +23,21 @@ import (
 	"github.com/shirou/gopsutil/load"
 	"github.com/shirou/gopsutil/mem"
 
+	"main/src/gvabe/bo/app"
 	"main/src/gvabe/bo/user"
+	"main/src/mico"
 )
 
 const (
+	frontendAppId       = "exter_fe"
+	frontendAppIdPrefix = frontendAppId + ":"
+
 	systemAppId   = "exter"
 	systemAppDesc = "Exter"
 )
 
 const (
-	sessionStatusError        = 0
-	sessionStatusUserNotFound = 404
-	sessionStatusInvalid      = 403
-	sessionStatusExpired      = 410
-	sessionStatusOk           = 200
-
 	apiResultExtraAccessToken = "_access_token_"
-
-	loginAttrUsername  = "u"
-	loginAttrGroupId   = "gid"
-	loginAttrTimestamp = "t"
-	loginAttrExpiry    = "e"
 
 	loginSessionTtl        = 3600 * 8
 	loginSessionNearExpiry = 3600 * 3
@@ -49,7 +46,25 @@ const (
 var (
 	systemAdminId        string
 	enabledLoginChannels = make(map[string]bool)
+
+	appDao  app.AppDao
+	userDao user.UserDao
+
+	rsaPrivKey *rsa.PrivateKey
+	rsaPubKey  *rsa.PublicKey
+
+	sessionCache         mico.ICache
+	preLoginSessionCache mico.ICache
 )
+
+const (
+	loginChannelGoogle   = "google"
+	loginChannelFacebook = "facebook"
+)
+
+func genRsaKey(numBits int) (*rsa.PrivateKey, error) {
+	return rsa.GenerateKey(rand.Reader, numBits)
+}
 
 func encryptPassword(username, rawPassword string) string {
 	saltAndPwd := username + "." + rawPassword
@@ -69,6 +84,9 @@ func padRight(str string, l int) string {
 //
 // IV is put at the beginning of the cipher data.
 func aesEncrypt(key, data []byte) ([]byte, error) {
+	for len(key) < 16 {
+		key = append(key, 0)
+	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -117,63 +135,16 @@ func zlibDecompress(compressedData []byte) ([]byte, error) {
 	return b.Bytes(), err
 }
 
-func genLoginToken(u *user.User) (string, error) {
-	return "", nil
-	// t := time.Now()
-	// data := map[string]interface{}{
-	// 	loginAttrUsername:  u.GetUsername(),
-	// 	loginAttrGroupId:   u.GetGroupId(),
-	// 	loginAttrTimestamp: t.Unix(),
-	// 	loginAttrExpiry:    t.Unix() + loginSessionTtl,
-	// }
-	// if js, err := json.Marshal(data); err != nil {
-	// 	return "", err
-	// } else {
-	// 	zip := zlibCompress(js)
-	// 	if enc, err := aesEncrypt([]byte(u.GetAesKey()), zip); err != nil {
-	// 		return "", err
-	// 	} else {
-	// 		return base64.StdEncoding.EncodeToString(enc), nil
-	// 	}
-	// }
+func zipAndEncrypt(data, aesKey []byte) ([]byte, error) {
+	zip := zlibCompress(data)
+	return aesEncrypt(aesKey, zip)
 }
-
-func decodeLoginToken(username string, loginToken string) (map[string]interface{}, error) {
-	return nil, nil
-	// if user, err := userDao.Get(username); user == nil || err != nil {
-	// 	return nil, err
-	// } else if enc, err := base64.StdEncoding.DecodeString(loginToken); err != nil {
-	// 	return nil, err
-	// } else if zip, err := aesDecrypt([]byte(user.GetAesKey()), enc); err != nil {
-	// 	return nil, err
-	// } else if js, err := zlibDecompress(zip); err != nil {
-	// 	return nil, err
-	// } else {
-	// 	var data map[string]interface{}
-	// 	if err := json.Unmarshal(js, &data); err != nil {
-	// 		return nil, nil
-	// 	}
-	// 	return data, nil
-	// }
-}
-
-func verifyLoginToken(username string, loginToken string) (int, error) {
-	if data, err := decodeLoginToken(username, loginToken); err != nil {
-		return sessionStatusError, err
-	} else if data == nil {
-		return sessionStatusUserNotFound, nil
+func decryptAndUnzip(encdata, aesKey []byte) ([]byte, error) {
+	if zip, err := aesDecrypt(aesKey, encdata); err != nil {
+		return nil, err
 	} else {
-		if u, err := reddo.ToString(data[loginAttrUsername]); err != nil {
-			return sessionStatusError, err
-		} else if u != username {
-			return sessionStatusInvalid, nil
-		} else if expiry, err := reddo.ToInt(data[loginAttrExpiry]); err != nil {
-			return sessionStatusError, err
-		} else if expiry < time.Now().Unix() {
-			return sessionStatusExpired, nil
-		}
+		return zlibDecompress(zip)
 	}
-	return sessionStatusOk, nil
 }
 
 /*----------------------------------------------------------------------*/
@@ -299,4 +270,8 @@ func doUpdateSystemInfo() {
 		systemInfoArr[0] = nil
 		systemInfoArr = systemInfoArr[1:]
 	}
+}
+
+var httpClient = &http.Client{
+	Timeout: time.Second * 30,
 }

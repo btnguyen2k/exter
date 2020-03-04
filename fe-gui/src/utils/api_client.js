@@ -15,7 +15,7 @@ const apiClient = Axios.create({
 
 const headerAppId = appConfig.APP_CONFIG.api_client.header_app_id
 const headerAccessToken = appConfig.APP_CONFIG.api_client.header_access_token
-let appId = appConfig.APP_CONFIG.api_client.app_id
+let appId = appConfig.APP_CONFIG.api_client.app_id + ":" + Math.random()
 
 let apiLogin = "/api/login"
 let apiCheckLoginToken = "/api/checkLoginToken"
@@ -34,12 +34,8 @@ function _apiOnSuccess(resp, apiUri, callbackSuccessful) {
     // }
     if (resp.hasOwnProperty("data") && resp.data.hasOwnProperty("extras") && resp.data.extras.hasOwnProperty("_access_token_")) {
         console.log("Update new access token from API [" + apiUri + "]")
-        let tokens = resp.data.extras._access_token_.split(":")
-        utils.saveLoginSession({
-            uid: tokens[0],
-            token: tokens[1],
-            expiry: parseInt(tokens[2]),
-        })
+        let jwt = utils.parseJwt(resp.data.extras._access_token_)
+        utils.saveLoginSession({uid: jwt.payloadObj.uid, token: resp.data.extras._access_token_})
     }
     if (callbackSuccessful != null) {
         callbackSuccessful(resp.data)
@@ -57,7 +53,7 @@ function apiDoGet(apiUri, callbackSuccessful, callbackError) {
     let session = utils.loadLoginSession()
     const headers = {}
     headers[headerAppId] = appId
-    headers[headerAccessToken] = session != null ? session.uid + ":" + session.token : ""
+    headers[headerAccessToken] = session != null ? session.token : ""
     return apiClient.get(apiUri, {
         headers: headers
     }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
@@ -67,7 +63,7 @@ function apiDoPost(apiUri, data, callbackSuccessful, callbackError) {
     let session = utils.loadLoginSession()
     const headers = {}
     headers[headerAppId] = appId
-    headers[headerAccessToken] = session != null ? session.uid + ":" + session.token : ""
+    headers[headerAccessToken] = session != null ? session.token : ""
     apiClient.post(apiUri, data, {
         headers: headers
     }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
@@ -77,7 +73,7 @@ function apiDoPut(apiUri, data, callbackSuccessful, callbackError) {
     let session = utils.loadLoginSession()
     const headers = {}
     headers[headerAppId] = appId
-    headers[headerAccessToken] = session != null ? session.uid + ":" + session.token : ""
+    headers[headerAccessToken] = session != null ? session.token : ""
     apiClient.put(apiUri, data, {
         headers: headers
     }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
@@ -87,7 +83,7 @@ function apiDoDelete(apiUri, callbackSuccessful, callbackError) {
     let session = utils.loadLoginSession()
     const headers = {}
     headers[headerAppId] = appId
-    headers[headerAccessToken] = session != null ? session.uid + ":" + session.token : ""
+    headers[headerAccessToken] = session != null ? session.token : ""
     apiClient.delete(apiUri, {
         headers: headers
     }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))

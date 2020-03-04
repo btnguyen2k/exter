@@ -7,27 +7,27 @@ Package gvabe provides backend API for GoVueAdmin Frontend.
 package gvabe
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/json"
+	"encoding/pem"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"regexp"
-	"runtime"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/btnguyen2k/consu/reddo"
+	"github.com/btnguyen2k/consu/semita"
 	"github.com/btnguyen2k/prom"
+	"golang.org/x/oauth2/google"
 
 	"main/src/goapi"
 	"main/src/gvabe/bo"
 	"main/src/gvabe/bo/app"
 	"main/src/gvabe/bo/user"
 	"main/src/itineris"
-)
-
-var (
-	appDao  app.AppDao
-	userDao user.UserDao
+	"main/src/mico"
 )
 
 type MyBootstrapper struct {
@@ -46,16 +46,131 @@ Bootstrapper usually does:
 func (b *MyBootstrapper) Bootstrap() error {
 	go startUpdateSystemInfo()
 
+	initRsaKeys()
+	initLoginChannels()
+	initGoogleClientSecret()
+	initCaches()
+	initDaos()
+	initApiHandlers(goapi.ApiRouter)
+	initApiFilters(goapi.ApiRouter)
+	return nil
+}
+
+func initRsaKeys() {
+	rsaPrivKeyFile := goapi.AppConfig.GetString("gvabe.keys.rsa_privkey_file")
+	if rsaPrivKeyFile == "" {
+		log.Println("WARN: no RSA private key file configured at [gvabe.keys.rsa_privkey_file], generating one...")
+		privKey, err := genRsaKey(2048)
+		if err != nil {
+			panic(err)
+		}
+		rsaPrivKey = privKey
+	} else {
+		log.Println(fmt.Sprintf("INFO: loading RSA private key from [%s]...", rsaPrivKeyFile))
+		content, err := ioutil.ReadFile(rsaPrivKeyFile)
+		if err != nil {
+			panic(err)
+		}
+		block, _ := pem.Decode(content)
+		if block == nil {
+			panic(fmt.Sprintf("cannot decode PEM from file [%s]", rsaPrivKeyFile))
+		}
+		var der []byte
+		passphrase := goapi.AppConfig.GetString("gvabe.keys.rsa_privkey_passphrase")
+		if passphrase != "" {
+			log.Println("INFO: RSA private key is pass-phrase protected")
+			if decrypted, err := x509.DecryptPEMBlock(block, []byte(passphrase)); err != nil {
+				panic(err)
+			} else {
+				der = decrypted
+			}
+		} else {
+			der = block.Bytes
+		}
+		if block.Type == "RSA PRIVATE KEY" {
+			if privKey, err := x509.ParsePKCS1PrivateKey(der); err != nil {
+				panic(err)
+			} else {
+				rsaPrivKey = privKey
+			}
+		} else if block.Type == "PRIVATE KEY" {
+			if privKey, err := x509.ParsePKCS8PrivateKey(der); err != nil {
+				panic(err)
+			} else {
+				rsaPrivKey = privKey.(*rsa.PrivateKey)
+			}
+		}
+	}
+
+	rsaPubKey = &rsaPrivKey.PublicKey
+	pubDER := x509.MarshalPKCS1PublicKey(rsaPubKey)
+	pubBlock := pem.Block{
+		Type:    "RSA PUBLIC KEY",
+		Headers: nil,
+		Bytes:   pubDER,
+	}
+	publicPEM := pem.EncodeToMemory(&pubBlock)
+	log.Println(string(publicPEM))
+}
+
+func initCaches() {
+	cacheConfig := &mico.CacheConfig{}
+	sessionCache = mico.NewMemoryCache(cacheConfig)
+	preLoginSessionCache = mico.NewMemoryCache(cacheConfig)
+}
+
+func initLoginChannels() {
 	loginChannels := regexp.MustCompile("[,;\\s]+").Split(goapi.AppConfig.GetString("gvabe.login_channels"), -1)
 	for _, channel := range loginChannels {
 		channel = strings.TrimSpace(strings.ToLower(channel))
 		enabledLoginChannels[channel] = true
 	}
+}
 
-	initDaos()
-	initApiHandlers(goapi.ApiRouter)
-	initApiFilters(goapi.ApiRouter)
-	return nil
+func initGoogleClientSecret() {
+	if !enabledLoginChannels[loginChannelGoogle] {
+		return
+	}
+	clientSecretJson := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.client_secret_json"))
+	if clientSecretJson == "" {
+		log.Println("[INFO] No valid GoogleAPI client secret defined at [gvabe.channels.google.client_secret_json], falling back to {project_id, client_id, client_secret}")
+
+		projectId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.project_id"))
+		if projectId == "" {
+			log.Println("[ERROR] No valid GoogleAPI project id defined at [gvabe.channels.google.project_id]")
+		}
+		clientId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.client_id"))
+		if clientId == "" {
+			log.Println("[ERROR] No valid GoogleAPI client id defined at [gvabe.channels.google.client_id]")
+		}
+		clientSecret := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.client_secret"))
+		if clientSecret == "" {
+			log.Println("[ERROR] No valid GoogleAPI client id defined at [gvabe.channels.google.client_secret]")
+		}
+		clientSecretJson = fmt.Sprintf(`{
+		  "type":"authorized_user",
+		  "web": {
+			"project_id": "%s",
+			"client_id": "%s",
+			"client_secret": "%s",
+			"auth_uri": "https://accounts.google.com/o/oauth2/auth",
+			"token_uri": "https://oauth2.googleapis.com/token",
+			"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+			"redirect_uris": ["http://localhost:8080"],
+			"javascript_origins": ["http://localhost:8080"],
+			"access_type": "offline"
+		  }
+		}`, projectId, clientId, clientSecret)
+	}
+	gClientSecretJson = []byte(clientSecretJson)
+	var err error
+	if gConfig, err = google.ConfigFromJSON([]byte(clientSecretJson)); err != nil {
+		panic(err)
+	}
+	if err = json.Unmarshal([]byte(clientSecretJson), &gClientSecretData); err != nil {
+		panic(err)
+	}
+	sGoogleClientSecret = semita.NewSemita(gClientSecretData)
 }
 
 func createSqlConnect() *prom.SqlConnect {
@@ -188,30 +303,22 @@ type GVAFEAuthenticationFilter struct {
 /*
 Call implements IApiFilter.Call
 
-This function first authenticates API call. If successful and login session is about to expire,
-this function renews the access token by generating a new token and returning it in result's extra field.
-The returned access token is in the following format: "username:login_token:expiry" (without quotes).
+This function first authenticates API call. If successful and login session is about to expire, this function renews the login token and returns it in result's extra field.
 */
 func (f *GVAFEAuthenticationFilter) Call(handler itineris.IApiHandler, ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	authed, username, loginToken := f.authenticate(ctx, auth)
-	if !authed {
-		return itineris.ResultNoPermission
+	sessionClaim, err := f.authenticate(ctx, auth)
+	if err != nil {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	}
 	if f.NextFilter != nil {
 		return f.NextFilter.Call(handler, ctx, auth, params)
 	}
 	result := handler(ctx, auth, params)
-	if username != "" && loginToken != "" {
-		if loginData, err := decodeLoginToken(username, loginToken); err == nil && loginData != nil {
-			if expiry, err := reddo.ToInt(loginData[loginAttrExpiry]); err == nil && expiry-loginSessionNearExpiry < time.Now().Unix() {
-				if user, err := userDao.Get(username); err == nil && user != nil {
-					if loginToken, err := genLoginToken(user); err == nil {
-						expiry := time.Now().Unix() + loginSessionTtl
-						result.AddExtraInfo(apiResultExtraAccessToken, username+":"+loginToken+":"+strconv.FormatInt(expiry, 10))
-					}
-				}
-			}
-		}
+	if sessionClaim != nil && sessionClaim.isGoingExpired(loginSessionNearExpiry) {
+		// extends login session
+		sessionClaim.ExpiresAt = time.Now().Unix() + loginSessionTtl
+		jws, _ := genJws(*sessionClaim)
+		result.AddExtraInfo(apiResultExtraAccessToken, jws)
 	}
 	return result
 }
@@ -219,27 +326,30 @@ func (f *GVAFEAuthenticationFilter) Call(handler itineris.IApiHandler, ctx *itin
 /*
 authenticate authenticates an API call.
 
-This function expects auth.access_token in the following format: "username:login_token" (without quotes).
-
-Upon successful authentication, this function returns (true, username, login_token), where username and login_token were generated by apiLogin.
+This function expects auth.access_token is a JWT.
+Upon successful authentication, this function returns the SessionClaim decoded from JWT; otherwise, error is returned.
 */
-func (f *GVAFEAuthenticationFilter) authenticate(ctx *itineris.ApiContext, auth *itineris.ApiAuth) (bool, string, string) {
-	if "exter_fe" != auth.GetAppId() {
-		return false, "", ""
-	}
-	if ctx.GetApiName() != "info" && ctx.GetApiName() != "login" && ctx.GetApiName() != "getApp" {
-		tokens := strings.SplitN(auth.GetAccessToken(), ":", 2)
-		if len(tokens) != 2 {
-			log.Printf("API authentication failed [API: %s / Token: %s", ctx.GetApiName(), auth.GetAccessToken())
-			return false, "", ""
+func (f *GVAFEAuthenticationFilter) authenticate(ctx *itineris.ApiContext, auth *itineris.ApiAuth) (*SessionClaim, error) {
+	publicApi, ok := publicApis[ctx.GetApiName()]
+	if !ok || !publicApi {
+		// need app-id
+		if !strings.HasPrefix(auth.GetAppId(), frontendAppIdPrefix) {
+			return nil, errorInvalidClient
 		}
-		status, err := verifyLoginToken(tokens[0], tokens[1])
-		if err == nil && status != sessionStatusOk {
-			log.Printf("API authentication failed [API: %s / User: %s / Status: %d", ctx.GetApiName(), tokens[0], status)
-		}
-		return err == nil && status == sessionStatusOk, tokens[0], tokens[1]
 	}
-	return true, "", ""
+	if ok {
+		// for public APIs, there is no access_token required
+		return nil, nil
+	}
+	sessionClaim, err := parseLoginToken(auth.GetAccessToken())
+	if err != nil {
+		log.Printf("Cannot decode JWT [API: %s / Error: %e", ctx.GetApiName(), err)
+		return nil, errorInvalidJwt
+	}
+	if sessionClaim.isExpired() {
+		return nil, errorExpiredJwt
+	}
+	return sessionClaim, nil
 }
 
 /*----------------------------------------------------------------------*/
@@ -250,10 +360,9 @@ Setup API handlers: application register its api-handlers by calling router.SetH
     - api-handler function must has the following signature: func (itineris.ApiContext, itineris.ApiAuth, itineris.ApiParams) *itineris.ApiResult
 */
 func initApiHandlers(router *itineris.ApiRouter) {
-	router.SetHandler("getApp", apiGetApp)
-
 	router.SetHandler("info", apiInfo)
 	router.SetHandler("login", apiLogin)
+	router.SetHandler("getApp", apiGetApp)
 	router.SetHandler("checkLoginToken", apiCheckLoginToken)
 	router.SetHandler("systemInfo", apiSystemInfo)
 
@@ -268,106 +377,6 @@ func initApiHandlers(router *itineris.ApiRouter) {
 	router.SetHandler("createUser", apiCreateUser)
 	router.SetHandler("deleteUser", apiDeleteUser)
 	router.SetHandler("updateUser", apiUpdateUser)
-}
-
-// API handler "info"
-func apiInfo(_ *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	appInfo := map[string]interface{}{
-		"name":        goapi.AppConfig.GetString("app.name"),
-		"shortname":   goapi.AppConfig.GetString("app.shortname"),
-		"version":     goapi.AppConfig.GetString("app.version"),
-		"description": goapi.AppConfig.GetString("app.desc"),
-	}
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	result := map[string]interface{}{
-		"app": appInfo,
-		"memory": map[string]interface{}{
-			"alloc":     m.Alloc,
-			"alloc_str": strconv.FormatFloat(float64(m.Alloc)/1024.0/1024.0, 'f', 1, 64) + " MiB",
-			"sys":       m.Sys,
-			"sys_str":   strconv.FormatFloat(float64(m.Sys)/1024.0/1024.0, 'f', 1, 64) + " MiB",
-			"gc":        m.NumGC,
-		},
-	}
-	return itineris.NewApiResult(itineris.StatusOk).SetData(result)
-}
-
-/*
-apiLogin handles API call "login".
-Upon login successfully, this API returns the following map:
-
-	{
-		"uid": username of logged-in user,
-		"token": login token, used for latter authentication (e.g. apiCheckLoginToken),
-		"expiry": session's expiry, in UNIX timestamp (seconds),
-	}
-*/
-func apiLogin(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("not implemented")
-
-	// username, _ := params.GetParamAsType("username", reddo.TypeString)
-	// if username == nil || username == "" {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("empty username")
-	// }
-	// password, _ := params.GetParamAsType("password", reddo.TypeString)
-	// if password == nil || password == "" {
-	// 	return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("login failed")
-	// }
-	// user, err := userDao.Get(username.(string))
-	// if err != nil {
-	// 	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	// }
-	// if user == nil {
-	// 	return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("login failed")
-	// }
-	// if encryptPassword(user.GetUsername(), password.(string)) != user.GetPassword() {
-	// 	return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("login failed")
-	// }
-	// if token, err := genLoginToken(user); err == nil {
-	// 	t := time.Now()
-	// 	return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{
-	// 		"uid":    user.GetUsername(),
-	// 		"token":  token,
-	// 		"expiry": t.Unix() + loginSessionTtl,
-	// 	}).AddExtraInfo(apiResultExtraAccessToken, user.GetUsername()+":"+token)
-	// } else {
-	// 	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	// }
-}
-
-/*
-apiLogin handles API call "checkLoginToken".
-This API expects an input map:
-
-	{
-		"uid": username of logged-in user (returned by apiLogin),
-		"token": login token (returned by apiLogin),
-	}
-
-Upon successful, this API return itineris.StatusOk
-*/
-func apiCheckLoginToken(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	token, _ := params.GetParamAsType("token", reddo.TypeString)
-	if token == nil || token == "" {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("empty token")
-	}
-	username, _ := params.GetParamAsType("uid", reddo.TypeString)
-	if username == nil || username == "" {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("empty username")
-	}
-	if status, err := verifyLoginToken(username.(string), token.(string)); err != nil {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(err.Error())
-	} else {
-		switch status {
-		case sessionStatusOk:
-			return itineris.NewApiResult(itineris.StatusOk)
-		case sessionStatusInvalid, sessionStatusUserNotFound, sessionStatusExpired:
-			return itineris.NewApiResult(itineris.StatusNoPermission)
-		default:
-			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("Unknown error, status = " + strconv.Itoa(status))
-		}
-	}
 }
 
 // API handler "systemInfo"

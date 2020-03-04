@@ -3,9 +3,11 @@ package user
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"main/src/gvabe/bo"
+	"main/src/utils"
 )
 
 // User is the business object
@@ -13,13 +15,7 @@ import (
 //	- Email address is used to uniquely identify user (e.g. user-id is email address)
 type User struct {
 	*bo.UniversalBo `json:"-"`
-	// Id              string `json:"id"`
-	//
-	//
-	// username string `json:"uname"`
-	// data     string `json:"udata"`
-	// root     interface{}
-	// s        *semita.Semita
+	AesKey          string `json:"aes_key"`
 }
 
 func (user *User) sync() *User {
@@ -36,7 +32,7 @@ func NewUserFromUniversal(ubo *bo.UniversalBo) *User {
 	js := []byte(ubo.DataJson)
 	app := User{}
 	if err := json.Unmarshal(js, &app); err != nil {
-		log.Print(err)
+		log.Print(fmt.Sprintf("[WARN] NewUserFromUniversal - error unmarshalling JSON data: %e", err))
 		return nil
 	}
 	app.UniversalBo = ubo.Clone()
@@ -47,89 +43,10 @@ func NewUserFromUniversal(ubo *bo.UniversalBo) *User {
 func NewUser(appVersion uint64, id string) *User {
 	user := &User{
 		UniversalBo: bo.NewUniversalBo(id, appVersion),
+		AesKey:      utils.RandomString(16),
 	}
 	return user.sync()
 }
-
-// func (u *User) GetUsername() string {
-//	return u.username
-// }
-//
-// func (u *User) SetUsername(username string) *User {
-//	u.username = strings.TrimSpace(strings.ToLower(username))
-//	return u
-// }
-//
-// func (u *User) GetData() string {
-//	return u.data
-// }
-//
-// func (u *User) SetData(data string) *User {
-//	u.data = strings.TrimSpace(data)
-//	var jsData interface{}
-//	if err := json.Unmarshal([]byte(u.data), &jsData); err == nil {
-//		u.root = jsData
-//	} else {
-//		u.root = make(map[string]interface{})
-//	}
-//	u.s = semita.NewSemita(u.root)
-//	return u
-// }
-//
-// func (u *User) setAttr(attr string, value interface{}) *User {
-//	u.s.SetValue(attr, value)
-//	data, _ := json.Marshal(u.s.Unwrap())
-//	return u.SetData(string(data))
-// }
-//
-// func (u *User) GetPassword() string {
-//	if v, e := u.s.GetValueOfType(attrUserPassword, reddo.TypeString); e == nil {
-//		return v.(string)
-//	}
-//	return ""
-// }
-//
-// func (u *User) SetPassword(value string) *User {
-//	return u.setAttr(attrUserPassword, strings.TrimSpace(value))
-// }
-//
-// func (u *User) GetName() string {
-//	if v, e := u.s.GetValueOfType(attrUserName, reddo.TypeString); e == nil {
-//		return v.(string)
-//	}
-//	return ""
-// }
-//
-// func (u *User) SetName(value string) *User {
-//	return u.setAttr(attrUserName, strings.TrimSpace(value))
-// }
-//
-// func (u *User) GetAesKey() string {
-//	if v, e := u.s.GetValueOfType(attrUserAesKey, reddo.TypeString); e == nil {
-//		return v.(string)
-//	}
-//	return ""
-// }
-//
-// func (u *User) SetAesKey(value string) *User {
-//	return u.setAttr(attrUserAesKey, strings.TrimSpace(value))
-// }
-//
-// func (u *User) GetGroupId() string {
-//	if v, e := u.s.GetValueOfType(attrUserGroupId, reddo.TypeString); e == nil {
-//		return v.(string)
-//	}
-//	return ""
-// }
-//
-// func (u *User) SetGroupId(value string) *User {
-//	return u.setAttr(attrUserGroupId, strings.TrimSpace(strings.ToLower(value)))
-// }
-//
-// func NewUserBo(username, data string) *User {
-//	user := &User{}
-//	return user.SetUsername(username).SetData(data)
-// }
 
 // UserDao defines API to access User storage
 type UserDao interface {

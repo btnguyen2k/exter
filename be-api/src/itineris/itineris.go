@@ -290,10 +290,10 @@ ApiResult encapsulates result from an API call.
 */
 type ApiResult struct {
 	Status    int                    `json:"status"`
-	Message   string                 `json:"message"`
-	Data      interface{}            `json:"data"`
-	DebugInfo interface{}            `json:"debug"`
-	Extras    map[string]interface{} `json:"extras"`
+	Message   string                 `json:"message,omitempty"`
+	Data      interface{}            `json:"data,omitempty"`
+	DebugInfo interface{}            `json:"debug,omitempty"`
+	Extras    map[string]interface{} `json:"extras,omitempty"`
 }
 
 /*

@@ -7,15 +7,17 @@
                         <CCardBody>
                             <h1>Login</h1>
                             <p v-if="errorMsg!=''" class="alert alert-danger">{{errorMsg}}</p>
-                            <CForm v-if="errorMsg==''" @submit.prevent="doSubmit" method="post">
-                                <p class="text-muted">Please sign in to continue</p>
+                            <CForm method="post">
+                                <p v-if="infoMsg!=''" class="text-muted">{{infoMsg}}</p>
                                 <CButton v-if="sources.facebook" id="loginFb" type="button" name="facebook"
-                                         color="facebook" class="mb-1" style="width: 100%" @click="funcNotImplemented">
+                                         color="facebook" class="mb-1" style="width: 100%"
+                                         @click="doLoginFacebook">
                                     <CIcon name="cib-facebook"/>
                                     Login with Facebook
                                 </CButton>
                                 <CButton v-if="sources.google" id="loginGoogle" type="button" name="google"
-                                         color="light" class="mb-1" style="width: 100%">
+                                         color="light" class="mb-1" style="width: 100%"
+                                         @click="doLoginGoogle">
                                     <CIcon name="cib-google"/>
                                     Login with Google
                                 </CButton>
@@ -70,89 +72,180 @@
     import utils from "@/utils/app_utils"
     import appConfig from "@/utils/app_config"
 
+    const defaultInfoMsg = "Please sign in to continue"
+    const waitInfoMsg = "Please wait..."
+    const waitLoginInfoMsg = "Logging in, please wait..."
+
     export default {
         name: 'Login',
         data() {
+            this.infoMsg = waitInfoMsg
             clientUtils.apiDoGet(clientUtils.apiApp + "/" + this.$route.query.app,
                 (apiRes) => {
                     if (apiRes.status != 200) {
                         this.errorMsg = apiRes.message
                     } else {
                         this.sources = apiRes.data.config.sources
+                        this.infoMsg = defaultInfoMsg
+                    }
+                },
+                (err) => {
+                    this.errorMsg = err
+                })
+            clientUtils.apiDoGet("/info",
+                (apiRes) => {
+                    if (apiRes.status != 200) {
+                        this.errorMsg = apiRes.message
+                    } else {
+                        this.googleClientId = apiRes.data.google_client_id
+                        this.rsaPublicKeyPEM = apiRes.data.rsa_public_key
                     }
                 },
                 (err) => {
                     this.errorMsg = err
                 })
             return {
+                googleInited: false,
+                googleAuthScope: 'email profile openid',
+                googleClientId: '',
+
+                rsaPublicKeyPEM: '',
+
                 returnUrl: this.$route.query.returnUrl ? this.$route.query.returnUrl : "/",
                 app: this.$route.query.app ? this.$route.query.app : appConfig.APP_NAME,
                 sources: {},
                 pageRegister: Register,
-                form: {username: "", password: ""},
                 errorMsg: "",
+                infoMsg: defaultInfoMsg,
             }
         },
         mounted() {
+            const vue = this
             const scriptSrc = 'https://apis.google.com/js/platform.js'
-            this.$loadScript(scriptSrc)
+            vue.$loadScript(scriptSrc)
                 .then(() => {
                     gapi.load('auth2', () => {
-                        gapi.auth2.init({
-                            client_id: '334322862548-9o5rr6edh0fi64vf1km0i2omtpfno1ph.apps.googleusercontent.com',
-                            scope: 'email profile openid',
-                            cookiepolicy: 'single_host_origin',
-                        }).then((auth) => {
-                                document.addEventListener('click', (e) => {
-                                    let el = document.getElementById('loginGoogle')
-                                    if (el != null && e.target == el) {
-                                        auth.signIn({
-                                            scope: 'email profile openid',
-                                            prompt: 'select_account',
-                                        }).then((gu) => {
-                                            let data = {
-                                                token: gu.getAuthResponse().id_token,
-                                                email: gu.getBasicProfile().getEmail(),
-                                            }
-                                            console.log(gu)
-                                            console.log(data)
-                                        }).catch((err) => {
-                                            //console.error(err)
-                                        })
-                                    }
-                                })
-                            },
-                            () => {
-                                this.$unloadScript(scriptSrc)
-                                this.errorMsg = 'Error initializing GoogleApi auth2'
-                            }
-                        )
+                        //use gapi.auth2.init together with gapi.auth2.getAuthInstance().signIn or gapi.auth2.getAuthInstance().grantOfflineAccess
+                        //if to use gapi.auth2.authorize, do NOT call gapi.auth2.init
+                        // gapi.auth2.init({
+                        //     client_id: vue.googleClientId,
+                        //     scope: vue.googleAuthScope,
+                        // }).then(
+                        //     () => {
+                        //         vue.googleInited = true
+                        //     },
+                        //     () => {
+                        //         vue.$unloadScript(scriptSrc)
+                        //         vue.errorMsg = "Error while initializing Google SDK"
+                        //     }
+                        // )
+                        vue.googleInited = true
                     })
                 })
                 .catch(() => {
-                    this.$unloadScript(scriptSrc)
-                    this.errorMsg = 'Error loading GoogleApi Javascript'
+                    vue.$unloadScript(scriptSrc)
+                    vue.errorMsg = 'Error loading GoogleApi SDK'
                 })
         },
         methods: {
-            funcNotImplemented() {
-                console.log(loginGoogle)
-            },
-            doSubmit(e) {
+            doLoginFacebook(e) {
                 e.preventDefault()
-                let data = {username: this.form.username, password: this.form.password}
+                alert('Please wait, Facebook SDK is being loaded.')
+            },
+            doLoginGoogle(e) {
+                e.preventDefault()
+                if (!this.googleInited) {
+                    alert('Please wait, Google SDK is being loaded.')
+                } else {
+                    this.infoMsg = waitInfoMsg
+                    // gapi.auth2.getAuthInstance().grantOfflineAccess({
+                    //     prompt: "consent",
+                    //     scope: this.googleAuthScope,
+                    // }).then(
+                    //     (resp) => {
+                    //         if (!resp.error) {
+                    //             // const data = {
+                    //             //     source: 'google',
+                    //             //     code: resp.code,
+                    //             // }
+                    //             // this._doLogin(data)
+                    //         }
+                    //     }
+                    // )
+                    gapi.auth2.authorize({
+                        client_id: this.googleClientId,
+                        scope: this.googleAuthScope,
+                        response_type: "code",
+                        prompt: "consent",
+                    }, (resp) => {
+                        this.infoMsg = defaultInfoMsg
+                        if (!resp.error) {
+                            const data = {
+                                source: 'google',
+                                code: resp.code,
+                            }
+                            this._doLogin(data)
+                        }
+                    })
+                    // this.googleAuth.signIn({scope: this.googleAuthScope, prompt: 'consent'})
+                    //     .then((auth) => {
+                    //         const data = {
+                    //             source: 'google',
+                    //             id_token: auth.getAuthResponse().id_token,
+                    //             access_token: auth.getAuthResponse().access_token,
+                    //             email: auth.getBasicProfile().getEmail(),
+                    //         }
+                    //         this._doLogin(data)
+                    //     })
+                    //     .catch((err) => {
+                    //         //this.errorMsg = 'Error while logging with Google account: ' + err
+                    //     })
+                }
+            },
+            _waitPreLogin(token) {
+                this.infoMsg = waitInfoMsg
+                clientUtils.apiDoPost(clientUtils.apiCheckLoginToken, {token: token},
+                    (apiRes) => {
+                        if (300 <= apiRes.status && apiRes.status <= 399) {
+                            console.log("Server is creating login session: " + JSON.stringify(apiRes))
+                            this.infoMsg = waitLoginInfoMsg
+                            setTimeout(() => {
+                                this._waitPreLogin(token)
+                            }, 2000)
+                        } else if (apiRes.status != 200) {
+                            this.errorMsg = apiRes.message
+                        } else {
+                            this._doSaveLoginSessionAndLogin(apiRes.data)
+                        }
+                    },
+                    (err) => {
+                        const msg = "Session verification error, retry in 2 seconds: " + err
+                        console.error(msg)
+                        this.errorMsg = msg
+                        setTimeout(() => {
+                            this._waitPreLogin(token)
+                        }, 2000)
+                    })
+            },
+            _doSaveLoginSessionAndLogin(token) {
+                const jwt = utils.parseJwt(token)
+                utils.saveLoginSession({uid: jwt.payloadObj.uid, token: token})
+                this.$router.push(this.returnUrl != "" ? this.returnUrl : "/")
+            },
+            _doLogin(data) {
+                this.infoMsg = waitInfoMsg
                 clientUtils.apiDoPost(
                     clientUtils.apiLogin, data,
                     (apiRes) => {
                         if (apiRes.status != 200) {
                             this.errorMsg = apiRes.status + ": " + apiRes.message
                         } else {
-                            utils.saveLoginSession({
-                                uid: apiRes.data.uid,
-                                token: apiRes.data.token,
-                                expiry: apiRes.data.expiry,
-                            })
-                            this.$router.push(this.returnUrl != "" ? this.returnUrl : "/")
+                            const jwt = utils.parseJwt(apiRes.data)
+                            if (jwt.payloadObj.type == "pre_login") {
+                                this._waitPreLogin(apiRes.data)
+                            } else {
+                                this._doSaveLoginSessionAndLogin(apiRes.data)
+                            }
                         }
                     },
                     (err) => {

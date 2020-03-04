@@ -1,3 +1,5 @@
+import jsrsasign from 'jsrsasign'
+
 const lskeyLoginSession = "usession"
 const lskeyLoginSessionLastCheck = "usession_lastcheck"
 
@@ -35,6 +37,10 @@ function saveLoginSession(session) {
     localStorageSet(lskeyLoginSession, JSON.stringify(session))
 }
 
+function parseJwt(jwt) {
+    return jsrsasign.KJUR.jws.JWS.parse(jwt)
+}
+
 export default {
     lskeyLoginSession,
     lskeyLoginSessionLastCheck,
@@ -44,5 +50,6 @@ export default {
     localStorageGetAsInt,
     getUnixTimestamp,
     loadLoginSession: getLoginSession,
-    saveLoginSession
+    saveLoginSession,
+    parseJwt
 }
