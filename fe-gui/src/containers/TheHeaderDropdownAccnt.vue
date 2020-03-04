@@ -65,7 +65,7 @@
 
 <script>
     import utils from "@/utils/app_utils"
-
+    import appConfig from "@/utils/app_config"
 
     export default {
         name: 'TheHeaderDropdownAccnt',
@@ -94,7 +94,7 @@
             doLogout() {
                 utils.localStorageSet(utils.lskeyLoginSession, null)
                 utils.localStorageSet(utils.lskeyLoginSessionLastCheck, null)
-                this.$router.push({name: "Login"})
+                this.$router.push({name: "Login", query: {app: appConfig.APP_NAME}})
             }
         }
     }
