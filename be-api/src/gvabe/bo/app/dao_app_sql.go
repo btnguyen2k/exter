@@ -6,12 +6,17 @@ import (
 	"github.com/btnguyen2k/prom"
 
 	"main/src/gvabe/bo"
+	"main/src/gvabe/bo/user"
+)
+
+const (
+	ColApp_UserId = "zuid"
 )
 
 // NewAppDaoSql is helper method to create SQL-implementation of AppDao
 func NewAppDaoSql(sqlc *prom.SqlConnect, tableName string, dbFlavor prom.DbFlavor) AppDao {
 	dao := &AppDaoSql{}
-	dao.UniversalDao = bo.NewUniversalDaoSql(sqlc, tableName, dbFlavor)
+	dao.UniversalDao = bo.NewUniversalDaoSql(sqlc, tableName, dbFlavor, map[string]string{ColApp_UserId: FieldApp_UserId})
 	return dao
 }
 
@@ -24,21 +29,6 @@ type AppDaoSql struct {
 func (dao *AppDaoSql) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
 	return map[string]interface{}{bo.ColId: gbo.GboGetAttrUnsafe(bo.FieldId, reddo.TypeString)}
 }
-
-// // ‭toBo transforms godal.IGenericBo to business object.
-// func (dao *AppDaoSql) toBo(gbo godal.IGenericBo) *App {
-// 	return NewAppFromUniversal(dao.ToUniversalBo(gbo))
-// }
-
-// // toGbo transforms business object to godal.IGenericBo
-// func (dao *AppDaoSql) toGbo(app *App) godal.IGenericBo {
-// 	if app == nil {
-// 		return nil
-// 	}
-// 	js, _ := json.Marshal(app)
-// 	app.UniversalBo.DataJson = string(js)
-// 	return dao.ToGenericBo(app.UniversalBo)
-// }
 
 // Delete implements AppDao.Delete
 func (dao *AppDaoSql) Delete(app *App) (bool, error) {
@@ -76,6 +66,11 @@ func (dao *AppDaoSql) GetN(fromOffset, maxNumRows int) ([]*App, error) {
 // GetAll implements AppDao.GetAll
 func (dao *AppDaoSql) GetAll() ([]*App, error) {
 	return dao.GetN(0, 0)
+}
+
+// GetUserApps implements AppDao.GetUserApps
+func (dao *AppDaoSql) GetUserApps(u user.User) ([]*App, error) {
+	return nil, nil
 }
 
 // Update implements AppDao.Update

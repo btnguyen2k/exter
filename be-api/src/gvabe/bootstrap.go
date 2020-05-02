@@ -214,11 +214,13 @@ func initDaos() {
 	dbtype := strings.ToLower(goapi.AppConfig.GetString("gvabe.db.type"))
 	switch dbtype {
 	case "sqlite":
-		bo.InitSqliteTable(sqlc, bo.TableApp)
-		bo.InitSqliteTable(sqlc, bo.TableUser)
+		bo.InitSqliteTable(sqlc, bo.TableUser, nil)
+		bo.InitSqliteTable(sqlc, bo.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
+		bo.CreateIndex(sqlc, bo.TableApp, false, []string{app.ColApp_UserId})
 	case "pg", "pgsql", "postgres", "postgresql":
-		bo.InitPgsqlTable(sqlc, bo.TableApp)
-		bo.InitPgsqlTable(sqlc, bo.TableUser)
+		bo.InitPgsqlTable(sqlc, bo.TableUser, nil)
+		bo.InitPgsqlTable(sqlc, bo.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
+		bo.CreateIndex(sqlc, bo.TableApp, false, []string{app.ColApp_UserId})
 	}
 
 	systemAdminId = goapi.AppConfig.GetString("gvabe.init.system_admin_id")

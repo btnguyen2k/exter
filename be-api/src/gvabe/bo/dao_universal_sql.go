@@ -10,15 +10,31 @@ import (
 	_ "github.com/lib/pq"
 )
 
+func cloneMap(src map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	for k, v := range src {
+		result[k] = v
+	}
+	return result
+}
+
 // NewUniversalDaoSql is helper method to create SQL-implementation of UniversalDao
-func NewUniversalDaoSql(sqlc *prom.SqlConnect, tableName string, dbFlavor prom.DbFlavor) UniversalDao {
+func NewUniversalDaoSql(sqlc *prom.SqlConnect, tableName string, dbFlavor prom.DbFlavor, mapExtraColNameToField map[string]string) UniversalDao {
 	dao := &UniversalDaoSql{tableName: tableName}
 	dao.GenericDaoSql = sql.NewGenericDaoSql(sqlc, godal.NewAbstractGenericDao(dao))
+	myCols := append([]string{}, cols...)
+	myMapFieldToColName := cloneMap(mapFieldToColName)
+	myMapColNameToField := cloneMap(mapColNameToField)
+	for col, field := range mapExtraColNameToField {
+		myCols = append(myCols, col)
+		myMapColNameToField[col] = field
+		myMapFieldToColName[field] = col
+	}
 	dao.SetRowMapper(&sql.GenericRowMapperSql{
 		NameTransformation:          sql.NameTransfLowerCase,
-		GboFieldToColNameTranslator: map[string]map[string]interface{}{tableName: mapFieldToColName},
-		ColNameToGboFieldTranslator: map[string]map[string]interface{}{tableName: mapColNameToField},
-		ColumnsListMap:              map[string][]string{tableName: cols},
+		GboFieldToColNameTranslator: map[string]map[string]interface{}{tableName: myMapFieldToColName},
+		ColNameToGboFieldTranslator: map[string]map[string]interface{}{tableName: myMapColNameToField},
+		ColumnsListMap:              map[string][]string{tableName: myCols},
 	})
 	dao.SetSqlFlavor(dbFlavor)
 	return dao
@@ -68,12 +84,18 @@ func (dao *UniversalDaoSql) ToUniversalBo(gbo godal.IGenericBo) *UniversalBo {
 	if gbo == nil {
 		return nil
 	}
+	extraFields := make(map[string]interface{})
+	gbo.GboTransferViaJson(&extraFields)
+	for _, field := range allFields {
+		delete(extraFields, field)
+	}
 	return &UniversalBo{
 		Id:          gbo.GboGetAttrUnsafe(FieldId, reddo.TypeString).(string),
 		DataJson:    gbo.GboGetAttrUnsafe(FieldData, reddo.TypeString).(string),
 		TimeCreated: gbo.GboGetAttrUnsafe(FieldTimeCreated, reddo.TypeTime).(time.Time),
 		TimeUpdated: gbo.GboGetAttrUnsafe(FieldTimeUpdated, reddo.TypeTime).(time.Time),
 		AppVersion:  gbo.GboGetAttrUnsafe(FieldAppVersion, reddo.TypeUint).(uint64),
+		extraFields: extraFields,
 	}
 }
 
@@ -88,6 +110,9 @@ func (dao *UniversalDaoSql) ToGenericBo(ubo *UniversalBo) godal.IGenericBo {
 	gbo.GboSetAttr(FieldTimeCreated, ubo.TimeCreated)
 	gbo.GboSetAttr(FieldTimeUpdated, ubo.TimeUpdated)
 	gbo.GboSetAttr(FieldAppVersion, ubo.AppVersion)
+	for k, v := range ubo.extraFields {
+		gbo.GboSetAttr(k, v)
+	}
 	return gbo
 }
 

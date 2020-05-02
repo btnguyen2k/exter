@@ -12,7 +12,7 @@ import (
 // NewUserDaoSql is helper method to create SQL-implementation of UserDao
 func NewUserDaoSql(sqlc *prom.SqlConnect, tableName string, dbFlavor prom.DbFlavor) UserDao {
 	dao := &UserDaoSql{}
-	dao.UniversalDao = bo.NewUniversalDaoSql(sqlc, tableName, dbFlavor)
+	dao.UniversalDao = bo.NewUniversalDaoSql(sqlc, tableName, dbFlavor, nil)
 	return dao
 }
 

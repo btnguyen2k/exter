@@ -1,10 +1,10 @@
 package bo
 
 import (
-	"fmt"
+	"os"
+
 	"github.com/btnguyen2k/prom"
 	_ "github.com/mattn/go-sqlite3"
-	"os"
 )
 
 // NewSqliteConnection creates a new connection pool to SQLite3.
@@ -21,10 +21,19 @@ func NewSqliteConnection(dir, dbName string) *prom.SqlConnect {
 }
 
 // InitSqliteTable initializes database table to store bo
-func InitSqliteTable(sqlc *prom.SqlConnect, tableName string) {
-	sql := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (%s VARCHAR(64), %s VARCHAR(255), %s TIMESTAMP, %s TIMESTAMP, %s BIGINT, PRIMARY KEY (%s))",
-		tableName, ColId, ColData, ColTimeCreated, ColTimeUpdated, ColAppVersion, ColId)
-	if _, err := sqlc.GetDB().Exec(sql); err != nil {
+func InitSqliteTable(sqlc *prom.SqlConnect, tableName string, extraCols map[string]string) {
+	colDef := map[string]string{
+		ColId:          "VARCHAR(64)",
+		ColData:        "VARCHAR(255)",
+		ColTimeCreated: "TIMESTAMP",
+		ColTimeUpdated: "TIMESTAMP",
+		ColAppVersion:  "BIGINT",
+	}
+	for k, v := range extraCols {
+		colDef[k] = v
+	}
+	pk := []string{ColId}
+	if err := CreateTable(sqlc, tableName, true, colDef, pk); err != nil {
 		panic(err)
 	}
 }

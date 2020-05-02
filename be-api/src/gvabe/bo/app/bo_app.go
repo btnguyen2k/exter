@@ -7,6 +7,11 @@ import (
 	"strings"
 
 	"main/src/gvabe/bo"
+	"main/src/gvabe/bo/user"
+)
+
+const (
+	FieldApp_UserId = "uid"
 )
 
 type appConfig struct {
@@ -19,7 +24,7 @@ type appConfig struct {
 //	- App inherits unique id from bo.UniversalBo
 type App struct {
 	*bo.UniversalBo `json:"-"`
-	OwnerId         string     `json:"owner_id"` // user id who owns this app
+	OwnerId         string     `json:"-"` // user id who owns this app
 	Description     string     `json:"desc"`
 	IsActive        bool       `json:"active"` // is this app active or not
 	Config          *appConfig `json:"config"`
@@ -28,6 +33,7 @@ type App struct {
 func (app *App) sync() *App {
 	js, _ := json.Marshal(app)
 	app.UniversalBo.DataJson = string(js)
+	app.SetExtraField(FieldApp_UserId, app.OwnerId)
 	return app
 }
 
@@ -77,6 +83,9 @@ type AppDao interface {
 
 	// GetAll retrieves all available business objects from storage
 	GetAll() ([]*App, error)
+
+	// GetUserApps retrieves all apps belong to a specific user
+	GetUserApps(u user.User) ([]*App, error)
 
 	// Update modifies an existing business object
 	Update(bo *App) (bool, error)
