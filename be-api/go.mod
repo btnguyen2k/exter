@@ -16,6 +16,7 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang/protobuf v1.3.3
 	github.com/google/go-cmp v0.3.0 // indirect
+	github.com/jackc/pgx/v4 v4.6.0
 	github.com/labstack/echo/v4 v4.1.14
 	github.com/lib/pq v1.3.0
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible

@@ -19,13 +19,9 @@ import (
 	"time"
 
 	"github.com/btnguyen2k/consu/semita"
-	"github.com/btnguyen2k/prom"
 	"golang.org/x/oauth2/google"
 
 	"main/src/goapi"
-	"main/src/gvabe/bo"
-	"main/src/gvabe/bo/app"
-	"main/src/gvabe/bo/user"
 	"main/src/itineris"
 	"main/src/mico"
 )
@@ -173,101 +169,6 @@ func initGoogleClientSecret() {
 	sGoogleClientSecret = semita.NewSemita(gClientSecretData)
 }
 
-func createSqlConnect() *prom.SqlConnect {
-	dbtype := strings.ToLower(goapi.AppConfig.GetString("gvabe.db.type"))
-	switch dbtype {
-	case "sqlite":
-		dir := goapi.AppConfig.GetString("gvabe.db.sqlite.directory")
-		dbname := goapi.AppConfig.GetString("gvabe.db.sqlite.dbname")
-		return bo.NewSqliteConnection(dir, dbname)
-	case "pg", "pgsql", "postgres", "postgresql":
-		url := goapi.AppConfig.GetString("gvabe.db.pgsql.url")
-		return bo.NewPgsqlConnection(url, goapi.AppConfig.GetString("timezone"))
-	}
-	panic(fmt.Sprintf("unknown databbase type: %s", dbtype))
-}
-
-func createAppDao(sqlc *prom.SqlConnect) app.AppDao {
-	dbtype := strings.ToLower(goapi.AppConfig.GetString("gvabe.db.type"))
-	switch dbtype {
-	case "sqlite":
-		return app.NewAppDaoSql(sqlc, bo.TableApp, prom.FlavorDefault)
-	case "pg", "pgsql", "postgres", "postgresql":
-		return app.NewAppDaoSql(sqlc, bo.TableApp, prom.FlavorPgSql)
-	}
-	panic(fmt.Sprintf("unknown databbase type: %s", dbtype))
-}
-
-func createUserDao(sqlc *prom.SqlConnect) user.UserDao {
-	dbtype := strings.ToLower(goapi.AppConfig.GetString("gvabe.db.type"))
-	switch dbtype {
-	case "sqlite":
-		return user.NewUserDaoSql(sqlc, bo.TableUser, prom.FlavorDefault)
-	case "pg", "pgsql", "postgres", "postgresql":
-		return user.NewUserDaoSql(sqlc, bo.TableUser, prom.FlavorPgSql)
-	}
-	panic(fmt.Sprintf("unknown databbase type: %s", dbtype))
-}
-
-func initDaos() {
-	sqlc := createSqlConnect()
-	dbtype := strings.ToLower(goapi.AppConfig.GetString("gvabe.db.type"))
-	switch dbtype {
-	case "sqlite":
-		bo.InitSqliteTable(sqlc, bo.TableUser, nil)
-		bo.InitSqliteTable(sqlc, bo.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
-		bo.CreateIndex(sqlc, bo.TableApp, false, []string{app.ColApp_UserId})
-	case "pg", "pgsql", "postgres", "postgresql":
-		bo.InitPgsqlTable(sqlc, bo.TableUser, nil)
-		bo.InitPgsqlTable(sqlc, bo.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
-		bo.CreateIndex(sqlc, bo.TableApp, false, []string{app.ColApp_UserId})
-	}
-
-	systemAdminId = goapi.AppConfig.GetString("gvabe.init.system_admin_id")
-	systemAdminId = strings.ToLower(strings.TrimSpace(systemAdminId))
-	if systemAdminId == "" {
-		panic("system admin user account id is not found at config [gvabe.init.system_admin_id]")
-	}
-	userDao = createUserDao(sqlc)
-	systemAdminUser, err := userDao.Get(systemAdminId)
-	if err != nil {
-		panic("error while getting user [" + systemAdminId + "]: " + err.Error())
-	}
-	if systemAdminUser == nil {
-		log.Printf("System admin user [%s] not found, creating one...", systemAdminId)
-		systemAdminUser = user.NewUser(goapi.AppVersionNumber, systemAdminId)
-		result, err := userDao.Create(systemAdminUser)
-		if err != nil {
-			panic("error while creating user [" + systemAdminId + "]: " + err.Error())
-		}
-		if !result {
-			log.Printf("Cannot create user [%s]", systemAdminId)
-		}
-	}
-
-	appDao = createAppDao(sqlc)
-	systemApp, err := appDao.Get(systemAppId)
-	if err != nil {
-		panic("error while getting app [" + systemAppId + "]: " + err.Error())
-	}
-	if systemApp == nil {
-		log.Printf("System app [%s] not found, creating one...", systemAppId)
-		systemApp = app.NewApp(goapi.AppVersionNumber, systemAppId, systemAdminId, systemAppDesc)
-		systemApp.Config.IdentitySources = enabledLoginChannels
-		systemApp.Config.Tags = []string{systemAppId}
-		fmt.Println(systemApp.Config)
-		fmt.Println(systemApp.Config.IdentitySources)
-		fmt.Println(systemApp.Config.Tags)
-		result, err := appDao.Create(systemApp)
-		if err != nil {
-			panic("error while creating app [" + systemAppId + "]: " + err.Error())
-		}
-		if !result {
-			log.Printf("Cannot create app [%s]", systemAppId)
-		}
-	}
-}
-
 /*
 Setup API filters: application register its api-handlers by calling router.SetHandler(apiName, apiHandlerFunc)
 
@@ -356,31 +257,6 @@ func (f *GVAFEAuthenticationFilter) authenticate(ctx *itineris.ApiContext, auth 
 
 /*----------------------------------------------------------------------*/
 
-/*
-Setup API handlers: application register its api-handlers by calling router.SetHandler(apiName, apiHandlerFunc)
-
-    - api-handler function must has the following signature: func (itineris.ApiContext, itineris.ApiAuth, itineris.ApiParams) *itineris.ApiResult
-*/
-func initApiHandlers(router *itineris.ApiRouter) {
-	router.SetHandler("info", apiInfo)
-	router.SetHandler("login", apiLogin)
-	router.SetHandler("getApp", apiGetApp)
-	router.SetHandler("checkLoginToken", apiCheckLoginToken)
-	router.SetHandler("systemInfo", apiSystemInfo)
-
-	router.SetHandler("groupList", apiGroupList)
-	router.SetHandler("getGroup", apiGetGroup)
-	router.SetHandler("createGroup", apiCreateGroup)
-	router.SetHandler("deleteGroup", apiDeleteGroup)
-	router.SetHandler("updateGroup", apiUpdateGroup)
-
-	router.SetHandler("userList", apiUserList)
-	router.SetHandler("getUser", apiGetUser)
-	router.SetHandler("createUser", apiCreateUser)
-	router.SetHandler("deleteUser", apiDeleteUser)
-	router.SetHandler("updateUser", apiUpdateUser)
-}
-
 // API handler "systemInfo"
 func apiSystemInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiParams) *itineris.ApiResult {
 	data := lastSystemInfo()
@@ -398,7 +274,7 @@ func apiGroupList(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiPa
 	// }
 	// data := make([]map[string]interface{}, 0)
 	// for _, g := range groupList {
-	// 	data = append(data, map[string]interface{}{"id": g.Id, "name": g.Name})
+	// 	data = append(data, map[string]interface{}{"id": g.id, "name": g.Name})
 	// }
 	// return itineris.NewApiResult(itineris.StatusOk).SetData(data)
 }
@@ -415,7 +291,7 @@ func apiGetGroup(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.A
 	// } else if group == nil {
 	// 	return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("Group [%s] not found", id))
 	// } else {
-	// 	return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{"id": group.Id, "name": group.Name})
+	// 	return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{"id": group.id, "name": group.Name})
 	// }
 }
 
@@ -434,8 +310,8 @@ func apiUpdateGroup(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineri
 	// 	// TODO check current user's permission
 	//
 	// 	// FIXME this is for demo purpose only!
-	// 	if group.Id == systemGroupId {
-	// 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Cannot edit system group [%s]", group.Id))
+	// 	if group.id == systemGroupId {
+	// 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Cannot edit system group [%s]", group.id))
 	// 	}
 	//
 	// 	name, _ := params.GetParamAsType("name", reddo.TypeString)
@@ -467,8 +343,8 @@ func apiDeleteGroup(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineri
 	// 	// TODO check current user's permission
 	//
 	// 	// FIXME this is for demo purpose only!
-	// 	if group.Id == systemGroupId {
-	// 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Cannot delete system group [%s]", group.Id))
+	// 	if group.id == systemGroupId {
+	// 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Cannot delete system group [%s]", group.id))
 	// 	}
 	//
 	// 	if ok, err := groupDao.Delete(group); err != nil {
@@ -504,7 +380,7 @@ func apiCreateGroup(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineri
 	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("Group [%s] already existed", id))
 	// }
 	// group := &group.Group{
-	// 	Id:   strings.TrimSpace(strings.ToLower(id.(string))),
+	// 	id:   strings.TrimSpace(strings.ToLower(id.(string))),
 	// 	Name: strings.TrimSpace(name.(string)),
 	// }
 	// if ok, err := groupDao.Create(group); err != nil {

@@ -107,7 +107,7 @@ func goFetchGoogleProfile(jwtToken string) {
 					log.Println(fmt.Sprintf("[WARN] goFetchGoogleProfile - error creating user account from Google userinfo: %e", err))
 				} else {
 					js, _ := json.Marshal(oauth2Token)
-					session.UserId = u.Id
+					session.UserId = u.id
 					session.ExpiredAt = time.Now().Add(3600 * time.Second)
 					session.Data = js
 					if _, err = serializeAndCacheSession(preLoginSessionCache, *session, sessionClaim.CacheKey); err != nil {

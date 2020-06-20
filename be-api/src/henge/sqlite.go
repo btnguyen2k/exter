@@ -1,4 +1,4 @@
-package bo
+package henge
 
 import (
 	"os"
@@ -17,6 +17,7 @@ func NewSqliteConnection(dir, dbName string) *prom.SqlConnect {
 	if err != nil {
 		panic(err)
 	}
+	sqlc.SetDbFlavor(prom.FlavorDefault)
 	return sqlc
 }
 
@@ -25,15 +26,18 @@ func InitSqliteTable(sqlc *prom.SqlConnect, tableName string, extraCols map[stri
 	colDef := map[string]string{
 		ColId:          "VARCHAR(64)",
 		ColData:        "VARCHAR(255)",
+		ColChecksum:    "VARCHAR(32)",
 		ColTimeCreated: "TIMESTAMP",
 		ColTimeUpdated: "TIMESTAMP",
 		ColAppVersion:  "BIGINT",
 	}
+	colNames := []string{ColId, ColData, ColChecksum, ColTimeCreated, ColTimeUpdated, ColAppVersion}
 	for k, v := range extraCols {
 		colDef[k] = v
+		colNames = append(colNames, k)
 	}
 	pk := []string{ColId}
-	if err := CreateTable(sqlc, tableName, true, colDef, pk); err != nil {
+	if err := CreateTable(sqlc, tableName, true, colDef, colNames, pk); err != nil {
 		panic(err)
 	}
 }

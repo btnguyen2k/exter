@@ -1,4 +1,4 @@
-package bo
+package henge
 
 import (
 	"fmt"
@@ -7,16 +7,36 @@ import (
 	"github.com/btnguyen2k/prom"
 )
 
+// // CreateTable generates and executes "CREATE TABLE" statement
+// func CreateTable(sqlc *prom.SqlConnect, tableName string, ifNotExist bool, colDef map[string]string, pk []string) error {
+// 	template := "CREATE TABLE %s %s (%s%s)"
+// 	partIfNotExists := ""
+// 	if ifNotExist {
+// 		partIfNotExists = "IF NOT EXISTS"
+// 	}
+// 	partColDef := make([]string, 0)
+// 	for k, v := range colDef {
+// 		partColDef = append(partColDef, k+" "+v)
+// 	}
+// 	partPk := strings.Join(pk, ",")
+// 	if partPk != "" {
+// 		partPk = ", PRIMARY KEY (" + partPk + ")"
+// 	}
+// 	sql := fmt.Sprintf(template, partIfNotExists, tableName, strings.Join(partColDef, ","), partPk)
+// 	_, err := sqlc.GetDB().Exec(sql)
+// 	return err
+// }
+
 // CreateTable generates and executes "CREATE TABLE" statement
-func CreateTable(sqlc *prom.SqlConnect, tableName string, ifNotExist bool, colDef map[string]string, pk []string) error {
+func CreateTable(sqlc *prom.SqlConnect, tableName string, ifNotExist bool, colDef map[string]string, colNames, pk []string) error {
 	template := "CREATE TABLE %s %s (%s%s)"
 	partIfNotExists := ""
 	if ifNotExist {
 		partIfNotExists = "IF NOT EXISTS"
 	}
 	partColDef := make([]string, 0)
-	for k, v := range colDef {
-		partColDef = append(partColDef, k+" "+v)
+	for _, c := range colNames {
+		partColDef = append(partColDef, c+" "+colDef[c])
 	}
 	partPk := strings.Join(pk, ",")
 	if partPk != "" {
