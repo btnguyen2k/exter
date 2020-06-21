@@ -10,7 +10,7 @@ import utils from "@/utils/app_utils"
 
 const apiClient = Axios.create({
     baseURL: appConfig.APP_CONFIG.api_client.bo_api_base_url,
-    timeout: 10000,
+    timeout: 30000,
 });
 
 const headerAppId = appConfig.APP_CONFIG.api_client.header_app_id
@@ -21,17 +21,18 @@ let apiLogin = "/api/login"
 let apiCheckLoginToken = "/api/checkLoginToken"
 let apiSystemInfo = "/api/systemInfo"
 let apiApp = "/api/app"
+let apiMyAppList = "/api/myapps"
 let apiGroupList = "/api/groups"
 let apiGroup = "/api/group"
 let apiUserList = "/api/users"
 let apiUser = "/api/user"
 
 function _apiOnSuccess(resp, apiUri, callbackSuccessful) {
-    // if (apiUri != apiLogin && apiUri != apiCheckLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
-    //     console.error("Error 403 from API [" + apiUri + "], redirecting to login page...")
-    //     router.push({name: "Login", query: {returnUrl: router.currentRoute.fullPath}})
-    //     return
-    // }
+    if (apiUri != apiLogin && apiUri != apiCheckLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
+        console.error("Error 403 from API [" + apiUri + "], redirecting to login page...")
+        router.push({name: "Login", query: {app: appConfig.APP_NAME, returnUrl: router.currentRoute.fullPath}})
+        return
+    }
     if (resp.hasOwnProperty("data") && resp.data.hasOwnProperty("extras") && resp.data.extras.hasOwnProperty("_access_token_")) {
         console.log("Update new access token from API [" + apiUri + "]")
         let jwt = utils.parseJwt(resp.data.extras._access_token_)
@@ -94,6 +95,7 @@ export default {
     apiApp,
     apiCheckLoginToken,
     apiSystemInfo,
+    apiMyAppList,
     apiGroupList,
     apiGroup,
     apiUserList,

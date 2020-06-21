@@ -2,7 +2,7 @@
     <CHeader fixed with-subheader light>
         <CToggler in-header class="ml-3 d-lg-none" v-c-emit-root-event:toggle-sidebar-mobile/>
         <CToggler in-header class="ml-3 d-md-down-none" v-c-emit-root-event:toggle-sidebar/>
-        <a href="/" class="c-header-brand mx-auto d-lg-none" style="font-weight: bolder; font-size: x-large">GoVueAdmin</a>
+        <a href="/" class="c-header-brand mx-auto d-lg-none" style="font-weight: bolder; font-size: x-large">{{appName}}</a>
         <!--
         <CHeaderBrand
                 class="mx-auto d-lg-none"
@@ -19,6 +19,12 @@
                 </CHeaderNavLink>
             </CHeaderNavItem>
             <CHeaderNavItem class="px-3">
+                <CHeaderNavLink to="/apps" exact>
+                    Apps
+                </CHeaderNavLink>
+            </CHeaderNavItem>
+            <!--
+            <CHeaderNavItem class="px-3">
                 <CHeaderNavLink to="/groups" exact>
                     Groups
                 </CHeaderNavLink>
@@ -28,6 +34,7 @@
                     Users
                 </CHeaderNavLink>
             </CHeaderNavItem>
+            -->
         </CHeaderNav>
         <CHeaderNav class="mr-4">
             <CHeaderNavItem class="d-md-down-none mx-2">
@@ -55,9 +62,14 @@
 
 <script>
     import TheHeaderDropdownAccnt from './TheHeaderDropdownAccnt'
-
+    import cfg from '@/utils/app_config'
     export default {
         name: 'TheHeader',
+        data() {
+            return {
+                appName: cfg.APP_CONFIG.app.name,
+            }
+        },
         components: {
             TheHeaderDropdownAccnt
         }

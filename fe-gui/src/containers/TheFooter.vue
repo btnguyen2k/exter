@@ -1,6 +1,6 @@
 <template>
   <CFooter>
-        <div>© exter version 0.1.0.</div>
+        <div>© {{appName}} version {{appVersion}}.</div>
         <div class="ml-auto">
           <span class="mr-1">Powered by</span><a href="https://github.com/btnguyen2k/govueadmin.g8" target="_blank">GoVueAdmin</a>
           |
@@ -10,7 +10,14 @@
 </template>
 
 <script>
+    import cfg from '@/utils/app_config'
     export default {
-        name: 'TheFooter'
+        name: 'TheFooter',
+        data() {
+            return {
+                appName: cfg.APP_CONFIG.app.name,
+                appVersion: cfg.APP_CONFIG.app.version,
+            }
+        },
     }
 </script>

@@ -1,4 +1,4 @@
-//Not all icons are imported. Mny more free CoreUI icons at https://coreui.io/icons/free/
+//Not all icons are imported. Many more free CoreUI icons at https://coreui.io/icons/free/
 //Fell free to import more icons if needed.
 import {
     cibFacebook,
@@ -36,6 +36,7 @@ import {
 } from '@coreui/icons'
 import {
     cilAddressBook,
+    cilApplications,
     cilArrowCircleLeft,
     cilArrowCircleRight,
     cilArrowLeft,
@@ -95,6 +96,7 @@ export const iconsSet = Object.assign(
     {},
     {
         cilAddressBook,
+        cilApplications,
         cilArrowCircleLeft,
         cilArrowCircleRight,
         cilArrowLeft,
