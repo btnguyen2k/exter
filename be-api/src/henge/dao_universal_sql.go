@@ -7,7 +7,6 @@ import (
 	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/godal/sql"
 	"github.com/btnguyen2k/prom"
-	_ "github.com/lib/pq"
 )
 
 func buildRowMapper(tableName string, extraColNameToFieldMappings map[string]string) *sql.GenericRowMapperSql {

@@ -8,7 +8,10 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
+	"errors"
 	"io"
 	"math"
 	"net/http"
@@ -64,6 +67,24 @@ const (
 
 func genRsaKey(numBits int) (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, numBits)
+}
+
+func parseRsaPublicKeyFromPem(pemStr string) (*rsa.PublicKey, error) {
+	block, _ := pem.Decode([]byte(pemStr))
+	if block == nil {
+		return nil, errors.New("failed to parse PEM block")
+	}
+
+	if pub, err := x509.ParsePKIXPublicKey(block.Bytes); err != nil {
+		return nil, err
+	} else {
+		switch pub := pub.(type) {
+		case *rsa.PublicKey:
+			return pub, nil
+		default:
+			return nil, errors.New("not RSA public key")
+		}
+	}
 }
 
 func encryptPassword(username, rawPassword string) string {

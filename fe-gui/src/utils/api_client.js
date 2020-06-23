@@ -17,6 +17,7 @@ const headerAppId = appConfig.APP_CONFIG.api_client.header_app_id
 const headerAccessToken = appConfig.APP_CONFIG.api_client.header_access_token
 let appId = appConfig.APP_CONFIG.api_client.app_id + ":" + Math.random()
 
+let apiInfo = "/info"
 let apiLogin = "/api/login"
 let apiCheckLoginToken = "/api/checkLoginToken"
 let apiSystemInfo = "/api/systemInfo"
@@ -91,6 +92,7 @@ function apiDoDelete(apiUri, callbackSuccessful, callbackError) {
 }
 
 export default {
+    apiInfo,
     apiLogin,
     apiApp,
     apiCheckLoginToken,

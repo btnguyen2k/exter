@@ -1,0 +1,96 @@
+<template>
+    <CRow>
+        <CCol sm="12">
+            <CCard accent-color="info">
+                <CCardHeader>
+                    <strong>Applications ({{myAppList.data.length}})</strong>
+                    <div class="card-header-actions">
+                        <CButton class="btn-sm btn-primary" @click="clickRegisterApp">
+                            <CIcon name="cil-playlist-add"/>
+                            Register New App
+                        </CButton>
+                    </div>
+                </CCardHeader>
+                <CCardBody>
+                    <p v-if="flashMsg" class="alert alert-success">{{flashMsg}}</p>
+                    <CDataTable :items="myAppList.data" :fields="['#','id','description','sources','tags','actions']">
+                        <template ##="{item}">
+                            <td>
+                                <CIcon name="cil-check" :style="`color: ${item.config.actv?'green':'grey'}`"/>
+                            </td>
+                        </template>
+                        <template #description="{item}">
+                            <td>
+                                {{item.config.desc}}
+                            </td>
+                        </template>
+                        <template #sources="{item}">
+                            <td>
+                                {{item.config.sources}}
+                            </td>
+                        </template>
+                        <template #tags="{item}">
+                            <td>
+                                {{item.config.tags}}
+                            </td>
+                        </template>
+                        <template #actions="{item}">
+                            <td>
+                                <CLink @click="clickEditApp(item.id)" label="Edit" class="btn-sm btn-primary">
+                                    <CIcon name="cil-pencil"/>
+                                </CLink>
+                                &nbsp;
+                                <CLink @click="clickDeleteApp(item.id)" label="Delete"
+                                       class="btn-sm btn-danger">
+                                    <CIcon name="cil-trash"/>
+                                </CLink>
+                            </td>
+                        </template>
+                    </CDataTable>
+                </CCardBody>
+            </CCard>
+        </CCol>
+    </CRow>
+</template>
+
+<script>
+    import clientUtils from "@/utils/api_client"
+    import appUtils from "@/utils/app_utils"
+
+    export default {
+        name: 'Apps',
+        data: () => {
+            let myAppList = {data: []}
+            let session = appUtils.loadLoginSession()
+            if (session != null) {
+                clientUtils.apiDoGet(clientUtils.apiMyAppList + "?token=" + session.token,
+                    (apiRes) => {
+                        if (apiRes.status == 200) {
+                            myAppList.data = apiRes.data
+                            //console.log(myAppList.data)
+                        } else {
+                            console.error("Getting my app list was unsuccessful: " + JSON.stringify(apiRes))
+                        }
+                    },
+                    (err) => {
+                        console.error("Error getting my app list: " + err)
+                    })
+            }
+            return {
+                myAppList: myAppList,
+            }
+        },
+        props: ["flashMsg"],
+        methods: {
+            clickRegisterApp(e) {
+                this.$router.push({name: "RegisterApp"})
+            },
+            clickEditApp(id) {
+                this.$router.push({name: "EditApp", params: {app: id.toString()}})
+            },
+            clickDeleteApp(id) {
+                this.$router.push({name: "DeleteApp", params: {app: id.toString()}})
+            },
+        }
+    }
+</script>

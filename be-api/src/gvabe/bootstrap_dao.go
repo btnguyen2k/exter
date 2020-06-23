@@ -26,24 +26,12 @@ func _createSqlConnect(dbtype string) *prom.SqlConnect {
 	panic(fmt.Sprintf("unknown databbase type: %s", dbtype))
 }
 
-func _createAppDao(sqlc *prom.SqlConnect, dbtype string) app.AppDao {
-	switch dbtype {
-	case "sqlite":
-		return app.NewAppDaoSql(sqlc, henge.TableApp, prom.FlavorDefault)
-	case "pg", "pgsql", "postgres", "postgresql":
-		return app.NewAppDaoSql(sqlc, henge.TableApp, prom.FlavorPgSql)
-	}
-	panic(fmt.Sprintf("unknown databbase type: %s", dbtype))
+func _createAppDao(sqlc *prom.SqlConnect) app.AppDao {
+	return app.NewAppDaoSql(sqlc, app.TableApp)
 }
 
-func _createUserDao(sqlc *prom.SqlConnect, dbtype string) user.UserDao {
-	switch dbtype {
-	case "sqlite":
-		return user.NewUserDaoSql(sqlc, henge.TableUser, prom.FlavorDefault)
-	case "pg", "pgsql", "postgres", "postgresql":
-		return user.NewUserDaoSql(sqlc, henge.TableUser, prom.FlavorPgSql)
-	}
-	panic(fmt.Sprintf("unknown databbase type: %s", dbtype))
+func _createUserDao(sqlc *prom.SqlConnect) user.UserDao {
+	return user.NewUserDaoSql(sqlc, user.TableUser)
 }
 
 func initDaos() {
@@ -51,16 +39,16 @@ func initDaos() {
 	sqlc := _createSqlConnect(dbtype)
 	switch dbtype {
 	case "sqlite":
-		henge.InitSqliteTable(sqlc, henge.TableUser, nil)
-		henge.InitSqliteTable(sqlc, henge.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
-		henge.CreateIndex(sqlc, henge.TableApp, false, []string{app.ColApp_UserId})
+		henge.InitSqliteTable(sqlc, user.TableUser, nil)
+		henge.InitSqliteTable(sqlc, app.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
+		henge.CreateIndex(sqlc, app.TableApp, false, []string{app.ColApp_UserId})
 	case "pg", "pgsql", "postgres", "postgresql":
-		henge.InitPgsqlTable(sqlc, henge.TableUser, nil)
-		henge.InitPgsqlTable(sqlc, henge.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
-		henge.CreateIndex(sqlc, henge.TableApp, false, []string{app.ColApp_UserId})
+		henge.InitPgsqlTable(sqlc, user.TableUser, nil)
+		henge.InitPgsqlTable(sqlc, app.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(64)"})
+		henge.CreateIndex(sqlc, app.TableApp, false, []string{app.ColApp_UserId})
 	}
-	userDao = _createUserDao(sqlc, dbtype)
-	appDao = _createAppDao(sqlc, dbtype)
+	userDao = _createUserDao(sqlc)
+	appDao = _createAppDao(sqlc)
 
 	_initUsers()
 	_initApps()
@@ -97,8 +85,10 @@ func _initApps() {
 	if systemApp == nil {
 		log.Printf("System app [%s] not found, creating one...", systemAppId)
 		systemApp = app.NewApp(goapi.AppVersionNumber, systemAppId, systemAdminId, systemAppDesc)
-		systemApp.config.IdentitySources = enabledLoginChannels
-		systemApp.config.Tags = []string{systemAppId}
+		attrsPublic := systemApp.GetAttrsPublic()
+		attrsPublic.IdentitySources = enabledLoginChannels
+		attrsPublic.Tags = []string{systemAppId}
+		systemApp.SetAttrsPublic(attrsPublic)
 		result, err := appDao.Create(systemApp)
 		if err != nil {
 			panic("error while creating app [" + systemAppId + "]: " + err.Error())

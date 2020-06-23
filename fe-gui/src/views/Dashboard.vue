@@ -55,9 +55,9 @@
             <CCol sm="12">
                 <CCard accent-color="info">
                     <CCardHeader>
-                        <strong>App ({{myAppList.data.length}})</strong>
+                        <strong>Applications ({{myAppList.data.length}})</strong>
                         <div class="card-header-actions">
-                            <CLink class="card-header-action btn-minimize" @click="clickAddGroup">
+                            <CLink class="card-header-action btn-minimize" @click="clickRegisterApp">
                                 <CIcon name="cil-library-add"/>
                             </CLink>
                             <CLink class="card-header-action btn-minimize"
@@ -91,11 +91,11 @@
                                 </template>
                                 <template #actions="{item}">
                                     <td>
-                                        <CLink @click="clickEditGroup(item.id)" label="Edit" class="btn-sm btn-primary">
+                                        <CLink @click="clickEditApp(item.id)" label="Edit" class="btn-sm btn-primary">
                                             <CIcon name="cil-pencil"/>
                                         </CLink>
                                         &nbsp;
-                                        <CLink @click="clickDeleteGroup(item.id)" label="Delete"
+                                        <CLink @click="clickDeleteApp(item.id)" label="Delete"
                                                class="btn-sm btn-danger">
                                             <CIcon name="cil-trash"/>
                                         </CLink>
@@ -135,7 +135,7 @@
                     (apiRes) => {
                         if (apiRes.status == 200) {
                             myAppList.data = apiRes.data
-                            console.log(myAppList.data)
+                            //console.log(myAppList.data)
                         } else {
                             console.error("Getting my app list was unsuccessful: " + JSON.stringify(apiRes))
                         }
@@ -178,23 +178,14 @@
                     }
                 )
             },
-            clickAddGroup(e) {
-                this.$router.push({name: "CreateGroup"})
+            clickRegisterApp(e) {
+                this.$router.push({name: "RegisterApp"})
             },
-            clickEditGroup(id) {
-                this.$router.push({name: "EditGroup", params: {id: id.toString()}})
+            clickEditApp(id) {
+                this.$router.push({name: "EditApp", params: {app: id.toString()}})
             },
-            clickDeleteGroup(id) {
-                this.$router.push({name: "DeleteGroup", params: {id: id.toString()}})
-            },
-            clickAddUser(e) {
-                this.$router.push({name: "CreateUser"})
-            },
-            clickEditUser(username) {
-                this.$router.push({name: "EditUser", params: {username: username.toString()}})
-            },
-            clickDeleteUser(username) {
-                this.$router.push({name: "DeleteUser", params: {username: username.toString()}})
+            clickDeleteApp(id) {
+                this.$router.push({name: "DeleteApp", params: {app: id.toString()}})
             },
         }
     }

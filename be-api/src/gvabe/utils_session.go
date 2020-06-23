@@ -72,7 +72,7 @@ func loadPreLoginSessionFromCache(key string) (*Session, error) {
 	return &session, nil
 }
 
-func createUserAccountFromGoogleProfile(ui *goauthv2.Userinfoplus) (*user.User, error) {
+func createUserAccountFromGoogleProfile(ui *goauthv2.Userinfo) (*user.User, error) {
 	var u *user.User
 	var err error
 	if u, err = userDao.Get(ui.Email); err == nil && u == nil {
@@ -107,7 +107,7 @@ func goFetchGoogleProfile(jwtToken string) {
 					log.Println(fmt.Sprintf("[WARN] goFetchGoogleProfile - error creating user account from Google userinfo: %e", err))
 				} else {
 					js, _ := json.Marshal(oauth2Token)
-					session.UserId = u.id
+					session.UserId = u.GetId()
 					session.ExpiredAt = time.Now().Add(3600 * time.Second)
 					session.Data = js
 					if _, err = serializeAndCacheSession(preLoginSessionCache, *session, sessionClaim.CacheKey); err != nil {
@@ -151,7 +151,7 @@ func genLoginToken(session Session, cacheKey string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	serSesion, err = zipAndEncrypt(serSesion, []byte(u.AesKey))
+	serSesion, err = zipAndEncrypt(serSesion, []byte(u.GetAesKey()))
 	if err != nil {
 		return "", err
 	}
