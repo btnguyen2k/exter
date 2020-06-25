@@ -91,11 +91,11 @@
                                 </template>
                                 <template #actions="{item}">
                                     <td>
-                                        <CLink @click="clickEditApp(item.id)" label="Edit" class="btn-sm btn-primary">
+                                        <CLink @click="clickEditMyApp(item.id)" label="Edit" class="btn-sm btn-primary">
                                             <CIcon name="cil-pencil"/>
                                         </CLink>
                                         &nbsp;
-                                        <CLink @click="clickDeleteApp(item.id)" label="Delete"
+                                        <CLink @click="clickDeleteMyApp(item.id)" label="Delete"
                                                class="btn-sm btn-danger">
                                             <CIcon name="cil-trash"/>
                                         </CLink>
@@ -181,11 +181,11 @@
             clickRegisterApp(e) {
                 this.$router.push({name: "RegisterApp"})
             },
-            clickEditApp(id) {
-                this.$router.push({name: "EditApp", params: {app: id.toString()}})
+            clickEditMyApp(id) {
+                this.$router.push({name: "EditMyApp", params: {id: id.toString()}})
             },
-            clickDeleteApp(id) {
-                this.$router.push({name: "DeleteApp", params: {app: id.toString()}})
+            clickDeleteMyApp(id) {
+                this.$router.push({name: "DeleteMyApp", params: {id: id.toString()}})
             },
         }
     }

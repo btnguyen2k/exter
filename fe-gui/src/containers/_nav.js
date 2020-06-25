@@ -14,8 +14,8 @@ export default [
             },
             {
                 _name: 'CSidebarNavItem',
-                name: 'Apps',
-                to: '/apps',
+                name: 'My Apps',
+                to: '/myapps',
                 icon: 'cilApplications',
             },
         ]

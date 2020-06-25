@@ -31,9 +31,11 @@ func initApiHandlers(router *itineris.ApiRouter) {
 	router.SetHandler("checkLoginToken", apiCheckLoginToken)
 	router.SetHandler("systemInfo", apiSystemInfo)
 
-	router.SetHandler("myAppList", apiMyAppList)
 	router.SetHandler("getApp", apiGetApp)
+	router.SetHandler("myAppList", apiMyAppList)
+	router.SetHandler("getMyApp", apiGetMyApp)
 	router.SetHandler("registerApp", apiRegisterApp)
+	router.SetHandler("updateMyApp", apiUpdateMyApp)
 
 	// router.SetHandler("userList", apiUserList)
 	// router.SetHandler("getUser", apiGetUser)
@@ -258,6 +260,35 @@ func apiMyAppList(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.
 }
 
 /*
+API handler "getMyApp"
+
+Notes:
+	- This API return only app's public info
+*/
+func apiGetMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
+	id, _ := params.GetParamAsType("id", reddo.TypeString)
+	if id == nil || strings.TrimSpace(id.(string)) == "" {
+		return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("App [%s] not found", id))
+	}
+	if myApp, err := appDao.Get(id.(string)); err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if myApp == nil {
+		return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("App [%s] not found", id))
+	} else {
+		sessionClaim, ok := ctx.GetContextValue(ctxFieldSession).(*SessionClaim)
+		if !ok || sessionClaim == nil {
+			return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("Cannot obtain current logged in user info")
+		}
+		if myApp.GetOwnerId() != sessionClaim.UserId {
+			// purposely return "not found" error
+			return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("App [%s] not found", id))
+		}
+		attrsPublic := extractAppAttrsPublic(myApp)
+		return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{"id": myApp.GetId(), "config": attrsPublic})
+	}
+}
+
+/*
 API handler "getApp"
 
 Notes:
@@ -294,11 +325,10 @@ func _extractParam(params *itineris.ApiParams, paramName string, typ reflect.Typ
 	return v
 }
 
-// API handler "registerApp"
-func apiRegisterApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
+func _extractAppParams(ctx *itineris.ApiContext, params *itineris.ApiParams) (*app.App, *itineris.ApiResult) {
 	id := _extractParam(params, "id", reddo.TypeString, nil, regexp.MustCompile("^[0-9A-Za-z_]+$"))
 	if id == nil {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Missing or invalid value for parameter [id]")
+		return nil, itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Missing or invalid value for parameter [id]")
 	} else {
 		id = strings.ToLower(id.(string))
 	}
@@ -306,33 +336,29 @@ func apiRegisterApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itine
 	desc := _extractParam(params, "description", reddo.TypeString, "", nil)
 	defaultReturnUrl := _extractParam(params, "default_return_url", reddo.TypeString, "", nil)
 	if defaultReturnUrl != "" && !regexp.MustCompile("^(?i)https?://.*$").Match([]byte(defaultReturnUrl.(string))) {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Invalid value for parameter [default_return_url]")
+		return nil, itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Invalid value for parameter [default_return_url]")
 	}
 	tagsStr := _extractParam(params, "tags", reddo.TypeString, "", nil)
 	tags := regexp.MustCompile("[,;]+").Split(tagsStr.(string), -1)
+	for i, tag := range tags {
+		tags[i] = strings.TrimSpace(tag)
+	}
 	idSources := _extractParam(params, "id_sources", reflect.TypeOf(map[string]bool{}), make(map[string]bool), nil)
 	rsaPubicKeyPem := _extractParam(params, "rsa_public_key", reddo.TypeString, "", nil)
 	if rsaPubicKeyPem != "" {
 		_, err := parseRsaPublicKeyFromPem(rsaPubicKeyPem.(string))
 		if err != nil {
-			return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(err.Error())
+			return nil, itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(err.Error())
 		}
 	}
 
 	sessionClaim, ok := ctx.GetContextValue(ctxFieldSession).(*SessionClaim)
 	if !ok || sessionClaim == nil {
-		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("Cannot obtain current logged in user info")
+		return nil, itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("Cannot obtain current logged in user info")
 	}
 	ownerId := sessionClaim.UserId
 
-	boApp, err := appDao.Get(id.(string))
-	if err != nil {
-		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	} else if boApp != nil {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] already existed", id))
-	}
-
-	boApp = app.NewApp(goapi.AppVersionNumber, id.(string), ownerId, desc.(string))
+	boApp := app.NewApp(goapi.AppVersionNumber, id.(string), ownerId, desc.(string))
 	boApp.SetAttrsPublic(app.AppAttrsPublic{
 		IsActive:         isActive.(bool),
 		Description:      desc.(string),
@@ -341,10 +367,54 @@ func apiRegisterApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itine
 		Tags:             tags,
 		RsaPublicKey:     rsaPubicKeyPem.(string),
 	})
-	if ok, err := appDao.Create(boApp); err != nil {
+
+	return boApp, nil
+}
+
+// API handler "registerApp"
+func apiRegisterApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
+	newApp, apiResult := _extractAppParams(ctx, params)
+	if apiResult != nil {
+		return apiResult
+	}
+
+	existingApp, err := appDao.Get(newApp.GetId())
+	if err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if existingApp != nil {
+		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] already existed", newApp.GetId()))
+	}
+
+	if ok, err := appDao.Create(existingApp); err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if !ok {
-		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("Unknown error while registering app [%s]", id))
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("Unknown error while registering app [%s]", newApp.GetId()))
 	}
-	return itineris.NewApiResult(itineris.StatusOk).SetMessage(fmt.Sprintf("App [%s] has been registered successfully", id))
+	return itineris.NewApiResult(itineris.StatusOk).SetMessage(fmt.Sprintf("App [%s] has been registered successfully", newApp.GetId()))
+}
+
+// API handler "updateMyApp"
+func apiUpdateMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
+	newApp, apiResult := _extractAppParams(ctx, params)
+	if apiResult != nil {
+		return apiResult
+	}
+
+	existingApp, err := appDao.Get(newApp.GetId())
+	if err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if existingApp == nil {
+		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] does not existed", newApp.GetId()))
+	}
+
+	if existingApp.GetOwnerId() != newApp.GetOwnerId() {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] does not belong to user", newApp.GetId()))
+	}
+
+	if ok, err := appDao.Update(newApp); err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if !ok {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("Unknown error while updating app [%s]", newApp.GetId()))
+	}
+	return itineris.NewApiResult(itineris.StatusOk).SetMessage(fmt.Sprintf("App [%s] has been updated successfully", newApp.GetId()))
 }

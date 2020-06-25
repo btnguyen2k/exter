@@ -23,10 +23,7 @@ let apiCheckLoginToken = "/api/checkLoginToken"
 let apiSystemInfo = "/api/systemInfo"
 let apiApp = "/api/app"
 let apiMyAppList = "/api/myapps"
-let apiGroupList = "/api/groups"
-let apiGroup = "/api/group"
-let apiUserList = "/api/users"
-let apiUser = "/api/user"
+let apiMyApp = "/api/myapp"
 
 function _apiOnSuccess(resp, apiUri, callbackSuccessful) {
     if (apiUri != apiLogin && apiUri != apiCheckLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
@@ -35,7 +32,7 @@ function _apiOnSuccess(resp, apiUri, callbackSuccessful) {
         return
     }
     if (resp.hasOwnProperty("data") && resp.data.hasOwnProperty("extras") && resp.data.extras.hasOwnProperty("_access_token_")) {
-        console.log("Update new access token from API [" + apiUri + "]")
+        // console.log("Update new access token from API [" + apiUri + "]")
         let jwt = utils.parseJwt(resp.data.extras._access_token_)
         utils.saveLoginSession({uid: jwt.payloadObj.uid, token: resp.data.extras._access_token_})
     }
@@ -98,10 +95,7 @@ export default {
     apiCheckLoginToken,
     apiSystemInfo,
     apiMyAppList,
-    apiGroupList,
-    apiGroup,
-    apiUserList,
-    apiUser,
+    apiMyApp,
 
     apiDoGet,
     apiDoPost,

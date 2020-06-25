@@ -207,7 +207,7 @@
                 clientUtils.apiDoPost(clientUtils.apiCheckLoginToken, {token: token},
                     (apiRes) => {
                         if (300 <= apiRes.status && apiRes.status <= 399) {
-                            console.log("Server is creating login session: " + JSON.stringify(apiRes))
+                            // console.log("Server is creating login session: " + JSON.stringify(apiRes))
                             this.infoMsg = waitLoginInfoMsg
                             setTimeout(() => {
                                 this._waitPreLogin(token)

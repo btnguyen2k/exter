@@ -7,23 +7,11 @@ const TheContainer = () => import('@/containers/TheContainer')
 // Views
 const Dashboard = () => import('@/views/Dashboard')
 
-// Apps
-const Apps = () => import('@/views/apps/Apps')
+// My Apps
+const MyApps = () => import('@/views/apps/MyApps')
 const RegisterApp = () => import('@/views/apps/RegisterApp')
-const EditApp = () => import('@/views/apps/EditApp')
-const DeleteApp = () => import('@/views/apps/DeleteApp')
-
-// Groups
-const Groups = () => import('@/views/groups/Groups')
-const CreateGroup = () => import('@/views/groups/CreateGroup')
-const EditGroup = () => import('@/views/groups/EditGroup')
-const DeleteGroup = () => import('@/views/groups/DeleteGroup')
-
-// Users
-const Users = () => import('@/views/users/Users')
-const CreateUser = () => import('@/views/users/CreateUser')
-const EditUser = () => import('@/views/users/EditUser')
-const DeleteUser = () => import('@/views/users/DeleteUser')
+const EditMyApp = () => import('@/views/apps/EditMyApp')
+const DeleteMyApp = () => import('@/views/apps/DeleteMyApp')
 
 // Views - Pages
 const Page404 = () => import('@/views/pages/Page404')
@@ -97,8 +85,8 @@ function configRoutes() {
                     component: Dashboard
                 },
                 {
-                    path: 'apps',
-                    meta: {label: 'Apps'},
+                    path: 'myapps',
+                    meta: {label: 'My Apps'},
                     component: {
                         render(c) {
                             return c('router-view')
@@ -108,8 +96,8 @@ function configRoutes() {
                         {
                             path: '',
                             meta: {label: 'App List'},
-                            name: 'Apps',
-                            component: Apps,
+                            name: 'MyApps',
+                            component: MyApps,
                             props: true,
                         },
                         {
@@ -119,88 +107,16 @@ function configRoutes() {
                             component: RegisterApp,
                         },
                         {
-                            path: '_edit/:app',
-                            meta: {label: 'Edit App'},
-                            name: 'EditApp',
-                            component: EditApp,
-                        },
-                        {
-                            path: '_delete/:app',
-                            meta: {label: 'Delete App'},
-                            name: 'DeleteApp',
-                            component: DeleteApp,
-                        },
-                    ]
-                },
-                {
-                    path: 'groups',
-                    meta: {label: 'Groups'},
-                    component: {
-                        render(c) {
-                            return c('router-view')
-                        }
-                    },
-                    children: [
-                        {
-                            path: '',
-                            meta: {label: 'Group List'},
-                            name: 'Groups',
-                            component: Groups,
-                            props: true,
-                        },
-                        {
-                            path: '_create',
-                            meta: {label: 'Create New Group'},
-                            name: 'CreateGroup',
-                            component: CreateGroup,
-                        },
-                        {
                             path: '_edit/:id',
-                            meta: {label: 'Edit Group'},
-                            name: 'EditGroup',
-                            component: EditGroup,
+                            meta: {label: 'Edit My App'},
+                            name: 'EditMyApp',
+                            component: EditMyApp,
                         },
                         {
                             path: '_delete/:id',
-                            meta: {label: 'Delete Group'},
-                            name: 'DeleteGroup',
-                            component: DeleteGroup,
-                        },
-                    ]
-                },
-                {
-                    path: 'users',
-                    meta: {label: 'Users'},
-                    component: {
-                        render(c) {
-                            return c('router-view')
-                        }
-                    },
-                    children: [
-                        {
-                            path: '',
-                            meta: {label: 'User List'},
-                            name: 'Users',
-                            component: Users,
-                            props: true,
-                        },
-                        {
-                            path: '_create',
-                            meta: {label: 'Create New User'},
-                            name: 'CreateUser',
-                            component: RegisterApp,
-                        },
-                        {
-                            path: '_edit/:username',
-                            meta: {label: 'Edit User'},
-                            name: 'EditUser',
-                            component: EditUser,
-                        },
-                        {
-                            path: '_delete/:username',
-                            meta: {label: 'Delete User'},
-                            name: 'DeleteUser',
-                            component: DeleteUser,
+                            meta: {label: 'Delete My App'},
+                            name: 'DeleteMyApp',
+                            component: DeleteMyApp,
                         },
                     ]
                 },
@@ -242,7 +158,10 @@ function configRoutes() {
                     component: Register
                 }
             ]
+        },
+        {
+            path: '*',
+            redirect: '/',
         }
     ]
 }
-

@@ -19,8 +19,8 @@
                 </CHeaderNavLink>
             </CHeaderNavItem>
             <CHeaderNavItem class="px-3">
-                <CHeaderNavLink to="/apps" exact>
-                    Apps
+                <CHeaderNavLink to="/myapps" exact>
+                    My Apps
                 </CHeaderNavLink>
             </CHeaderNavItem>
         </CHeaderNav>
