@@ -68,8 +68,8 @@
                     </CCardHeader>
                     <CCollapse :show="isCollapsedMyApps" :duration="400">
                         <CCardBody>
-                            <CDataTable :items="myAppList.data" :fields="['#','id','description','sources','tags','actions']">
-                                <template ##="{item}">
+                            <CDataTable :items="myAppList.data" :fields="[{label:'',key:'active'},'id','description','sources','tags','actions']">
+                                <template #active="{item}">
                                     <td>
                                         <CIcon name="cil-check" :style="`color: ${item.config.actv?'green':'grey'}`"/>
                                     </td>

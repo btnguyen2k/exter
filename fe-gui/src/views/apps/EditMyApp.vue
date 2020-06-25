@@ -3,7 +3,7 @@
         <CRow v-if="!found">
             <CCol sm="12">
                 <CCard>
-                    <CCardHeader>Edit User</CCardHeader>
+                    <CCardHeader>Edit Application</CCardHeader>
                     <CCardBody>
                         <p class="alert alert-danger">Application [{{this.$route.params.id}}] not found</p>
                     </CCardBody>
@@ -78,7 +78,6 @@
 <script>
     import router from "@/router"
     import clientUtils from "@/utils/api_client"
-    import utils from "@/utils/app_utils"
 
     let patternReturnUrl = /^http(s?):\/\//
 
@@ -150,7 +149,6 @@
                         if (apiRes.status != 200) {
                             this.errorMsg = apiRes.status + ": " + apiRes.message
                         } else {
-                            utils.localStorageSet(utils.lskeyLoginSessionLastCheck, null)
                             this.$router.push({
                                 name: "MyApps",
                                 params: {flashMsg: "Application [" + this.app.id + "] has been updated successfully."},

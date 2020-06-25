@@ -13,10 +13,10 @@
                 </CCardHeader>
                 <CCardBody>
                     <p v-if="flashMsg" class="alert alert-success">{{flashMsg}}</p>
-                    <CDataTable :items="myAppList.data" :fields="['#','id','description','sources','tags','actions']">
-                        <template ##="{item}">
+                    <CDataTable :items="myAppList.data" :fields="[{label:'',key:'active'},'id','description','sources','tags','actions']">
+                        <template #active="{item}">
                             <td>
-                                <CIcon name="cil-check" :style="`color: ${item.config.actv?'green':'grey'}`"/>
+                                <CIcon :name="`${item.config.actv?'cil-check':'cil-check-alt'}`" :style="`color: ${item.config.actv?'green':'grey'}`"/>
                             </td>
                         </template>
                         <template #description="{item}">

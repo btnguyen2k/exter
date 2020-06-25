@@ -3,34 +3,48 @@
         <CRow>
             <CCol sm="12">
                 <CCard>
-                    <CCardHeader>Delete User</CCardHeader>
+                    <CCardHeader>Delete Application</CCardHeader>
                     <CForm @submit.prevent="doSubmit" method="post">
                         <CCardBody>
-                            <p v-if="!found" class="alert alert-danger">User [{{this.$route.params.username}}] not
-                                found</p>
+                            <p v-if="!found" class="alert alert-danger">Application [{{this.$route.params.id}}] not found</p>
                             <p v-if="errorMsg!=''" class="alert alert-danger">{{errorMsg}}</p>
-                            <CInput v-if="found"
-                                    type="text"
-                                    v-model="user.username"
-                                    label="Username"
-                                    placeholder="Enter user's username..."
-                                    horizontal
+                            <CInput v-if="found" horizontal type="text" v-model="app.id" label="Id"
+                                    placeholder="Application's unique id"
                                     disabled="disabled"
                             />
-                            <CInput v-if="found"
-                                    type="text"
-                                    v-model="user.name"
-                                    label="Name"
-                                    placeholder="Enter user's name..."
-                                    horizontal
+                            <div v-if="found" class="form-group form-row">
+                                <CCol :sm="{offset:3,size:9}" class="form-inline">
+                                    <CInputCheckbox inline label="Active" :checked.sync="app.isActive"
+                                            disabled="disabled"
+                                    />
+                                </CCol>
+                            </div>
+                            <div v-if="found" class="form-group form-row">
+                                <CCol tag="label" sm="3" class="col-form-label">
+                                    Login channels
+                                </CCol>
+                                <CCol sm="9" class="form-inline">
+                                    <CInputCheckbox inline v-for="option in loginChannelList" :label="option"
+                                            :value="option" :checked.sync="app.idSources[option]"
+                                            disabled="disabled"
+                                    />
+                                </CCol>
+                            </div>
+                            <CInput v-if="found" horizontal type="text" v-model="app.description" label="Description"
+                                    placeholder="Application's description"
                                     disabled="disabled"
                             />
-                            <CSelect v-if="found"
-                                     label="Group"
-                                     :options="groupList"
-                                     :value.sync="user.groupId"
-                                     horizontal
-                                     disabled="disabled"
+                            <CInput v-if="found" horizontal type="text" v-model="app.defaultReturnUrl" label="Default return URL"
+                                    placeholder="http://..."
+                                    disabled="disabled"
+                            />
+                            <CInput v-if="found" horizontal type="text" v-model="app.tags" label="Tags"
+                                    placeholder="Tags separated by comma"
+                                    disabled="disabled"
+                            />
+                            <CTextarea v-if="found" horizontal type="text" v-model="app.rsaPublicKey" label="RSA public key"
+                                    rows="6" placeholder="RSA public key in PEM format"
+                                    disabled="disabled"
                             />
                         </CCardBody>
                         <CCardFooter>
@@ -53,61 +67,70 @@
 <script>
     import router from "@/router"
     import clientUtils from "@/utils/api_client"
-    import utils from "@/utils/app_utils"
 
     export default {
-        name: 'DeleteUser',
+        name: 'DeleteMyApp',
         data() {
-            let groupList = {data: []}
-            clientUtils.apiDoGet(clientUtils.apiGroupList,
+            let loginChannelList = []
+            let app = {
+                isActive: true,
+                id: "", description: "", rsaPublicKey: "", defaultReturnUrl: "",
+                tags: "",
+                idSources: {},
+            }
+            clientUtils.apiDoGet(clientUtils.apiMyApp + "/" + this.$route.params.id,
                 (apiRes) => {
+                    this.found = apiRes.status == 200
                     if (apiRes.status == 200) {
-                        apiRes.data.every(function (e) {
-                            groupList.data.push({value: e.id, label: e.name})
-                            return true
-                        })
-                        clientUtils.apiDoGet(clientUtils.apiUser + "/" + this.$route.params.username,
+                        app.id = apiRes.data.id
+                        app.isActive = apiRes.data.config.actv
+                        app.description = apiRes.data.config.desc
+                        app.rsaPublicKey = apiRes.data.config.rpub
+                        app.defaultReturnUrl = apiRes.data.config.rurl
+                        app.idSources = apiRes.data.config.sources
+                        app.tags = apiRes.data.config.tags != null ? apiRes.data.config.tags.join(", ") : ""
+
+                        clientUtils.apiDoGet(clientUtils.apiInfo,
                             (apiRes) => {
-                                this.found = apiRes.status == 200
                                 if (apiRes.status == 200) {
-                                    this.user.username = apiRes.data.username
-                                    this.user.name = apiRes.data.name
-                                    this.user.groupId = apiRes.data.gid
+                                    apiRes.data.login_channels.every(function (e) {
+                                        loginChannelList.push(e)
+                                        return true
+                                    })
+                                } else {
+                                    console.error("Getting info was unsuccessful: " + apiRes)
                                 }
                             },
                             (err) => {
-                                this.errorMsg = err
+                                console.error("Error getting info list: " + err)
                             })
-                    } else {
-                        console.error("Getting group list was unsuccessful: " + apiRes)
                     }
                 },
                 (err) => {
-                    console.error("Error getting group list: " + err)
+                    this.errorMsg = err
                 })
             return {
-                user: {username: "", name: "", groupId: ""},
-                groupList: groupList.data,
+                app: app,
                 errorMsg: "",
+                loginChannelList: loginChannelList,
                 found: true,
             }
         },
         methods: {
             doCancel() {
-                router.push("/users")
+                router.push("/myapps")
             },
             doSubmit(e) {
                 e.preventDefault()
                 clientUtils.apiDoDelete(
-                    clientUtils.apiUser + "/" + this.$route.params.username,
+                    clientUtils.apiMyApp + "/" + this.$route.params.id,
                     (apiRes) => {
                         if (apiRes.status != 200) {
                             this.errorMsg = apiRes.status + ": " + apiRes.message
                         } else {
-                            utils.localStorageSet(utils.lskeyLoginSessionLastCheck, null)
                             this.$router.push({
-                                name: "Users",
-                                params: {flashMsg: "User [" + this.user.username + "] has been deleted successfully."},
+                                name: "MyApps",
+                                params: {flashMsg: "Application [" + this.app.id + "] has been deleted successfully."},
                             })
                         }
                     },

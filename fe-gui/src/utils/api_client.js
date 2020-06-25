@@ -25,8 +25,9 @@ let apiApp = "/api/app"
 let apiMyAppList = "/api/myapps"
 let apiMyApp = "/api/myapp"
 
-function _apiOnSuccess(resp, apiUri, callbackSuccessful) {
-    if (apiUri != apiLogin && apiUri != apiCheckLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
+function _apiOnSuccess(method, resp, apiUri, callbackSuccessful) {
+    if (method=='GET' && resp.hasOwnProperty("data") && resp.data.status == 403) {
+    //if (apiUri != apiLogin && apiUri != apiCheckLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
         console.error("Error 403 from API [" + apiUri + "], redirecting to login page...")
         router.push({name: "Login", query: {app: appConfig.APP_NAME, returnUrl: router.currentRoute.fullPath}})
         return
@@ -55,7 +56,7 @@ function apiDoGet(apiUri, callbackSuccessful, callbackError) {
     headers[headerAccessToken] = session != null ? session.token : ""
     return apiClient.get(apiUri, {
         headers: headers
-    }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
+    }).then(res => _apiOnSuccess('GET', res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
 }
 
 function apiDoPost(apiUri, data, callbackSuccessful, callbackError) {
@@ -65,7 +66,7 @@ function apiDoPost(apiUri, data, callbackSuccessful, callbackError) {
     headers[headerAccessToken] = session != null ? session.token : ""
     apiClient.post(apiUri, data, {
         headers: headers
-    }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
+    }).then(res => _apiOnSuccess('POST', res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
 }
 
 function apiDoPut(apiUri, data, callbackSuccessful, callbackError) {
@@ -75,7 +76,7 @@ function apiDoPut(apiUri, data, callbackSuccessful, callbackError) {
     headers[headerAccessToken] = session != null ? session.token : ""
     apiClient.put(apiUri, data, {
         headers: headers
-    }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
+    }).then(res => _apiOnSuccess('PUT', res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
 }
 
 function apiDoDelete(apiUri, callbackSuccessful, callbackError) {
@@ -85,7 +86,7 @@ function apiDoDelete(apiUri, callbackSuccessful, callbackError) {
     headers[headerAccessToken] = session != null ? session.token : ""
     apiClient.delete(apiUri, {
         headers: headers
-    }).then(res => _apiOnSuccess(res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
+    }).then(res => _apiOnSuccess('DELETE', res, apiUri, callbackSuccessful)).catch(err => _apiOnError(err, apiUri, callbackError))
 }
 
 export default {

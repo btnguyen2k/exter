@@ -21,7 +21,6 @@ import (
 	"golang.org/x/oauth2/google"
 
 	"main/src/goapi"
-	"main/src/itineris"
 	"main/src/mico"
 )
 
@@ -166,94 +165,4 @@ func initGoogleClientSecret() {
 		panic(err)
 	}
 	sGoogleClientSecret = semita.NewSemita(gClientSecretData)
-}
-
-/*----------------------------------------------------------------------*/
-
-
-
-
-// API handler "deleteUser"
-func apiDeleteUser(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("not implemented")
-	// username, _ := params.GetParamAsType("username", reddo.TypeString)
-	// if username == nil || strings.TrimSpace(username.(string)) == "" {
-	// 	return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("User [%s] not found", username))
-	// }
-	// if user, err := userDao.Get(username.(string)); err != nil {
-	// 	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	// } else if user == nil {
-	// 	return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("User [%s] not found", username))
-	// } else {
-	// 	// TODO check current user's permission
-	//
-	// 	// FIXME this is for demo purpose only!
-	// 	if user.GetUsername() == systemAdminUsername {
-	// 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Cannot delete system admin user [%s]", user.GetUsername()))
-	// 	}
-	//
-	// 	if ok, err := userDao.Delete(user); err != nil {
-	// 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	// 	} else if !ok {
-	// 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("User [%s] has not been deleted", username.(string)))
-	// 	}
-	// 	return itineris.NewApiResult(itineris.StatusOk)
-	// }
-}
-
-// API handler "createUser"
-func apiCreateUser(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("not implemented")
-	// username, _ := params.GetParamAsType("username", reddo.TypeString)
-	// if username == nil || strings.TrimSpace(username.(string)) == "" {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Missing or empty parameter [username]")
-	// }
-	// username = strings.TrimSpace(strings.ToLower(username.(string)))
-	// if !regexp.MustCompile("^[0-9a-z_]+$").Match([]byte(username.(string))) {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Invalid value for parameter [username]")
-	// }
-	//
-	// password, _ := params.GetParamAsType("password", reddo.TypeString)
-	// if password == nil || strings.TrimSpace(password.(string)) == "" {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Missing or empty parameter [password]")
-	// }
-	// password = strings.TrimSpace(password.(string))
-	// password2, _ := params.GetParamAsType("password2", reddo.TypeString)
-	// if password2 == nil || strings.TrimSpace(password2.(string)) != password {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Password does not match confirmed one")
-	// }
-	//
-	// name, _ := params.GetParamAsType("name", reddo.TypeString)
-	// if name == nil || strings.TrimSpace(name.(string)) == "" {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Missing or empty parameter [name]")
-	// }
-	// name = strings.TrimSpace(name.(string))
-	//
-	// groupId, _ := params.GetParamAsType("group_id", reddo.TypeString)
-	// if groupId == nil || strings.TrimSpace(groupId.(string)) == "" {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Missing or empty parameter [group_id]")
-	// }
-	// groupId = strings.TrimSpace(strings.ToLower(groupId.(string)))
-	// if group, err := groupDao.Get(groupId.(string)); err != nil {
-	// 	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	// } else if group == nil {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("Group [%s] does not exist", groupId))
-	// }
-	//
-	// if user, err := userDao.Get(username.(string)); err != nil {
-	// 	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	// } else if user != nil {
-	// 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("User [%s] already existed", username))
-	// }
-	// user := user.NewUserBo(username.(string), "").
-	// 	SetPassword(encryptPassword(username.(string), password.(string))).
-	// 	SetName(name.(string)).
-	// 	SetGroupId(groupId.(string)).
-	// 	SetAesKey(utils.RandomString(16))
-	// if ok, err := userDao.Create(user); err != nil {
-	// 	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-	// } else if !ok {
-	// 	return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("User [%s] has not been created", username))
-	// }
-	// return itineris.NewApiResult(itineris.StatusOk)
 }

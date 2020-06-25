@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -36,12 +37,7 @@ func initApiHandlers(router *itineris.ApiRouter) {
 	router.SetHandler("getMyApp", apiGetMyApp)
 	router.SetHandler("registerApp", apiRegisterApp)
 	router.SetHandler("updateMyApp", apiUpdateMyApp)
-
-	// router.SetHandler("userList", apiUserList)
-	// router.SetHandler("getUser", apiGetUser)
-	// router.SetHandler("createUser", apiCreateUser)
-	// router.SetHandler("deleteUser", apiDeleteUser)
-	// router.SetHandler("updateUser", apiUpdateUser)
+	router.SetHandler("deleteMyApp", apiDeleteMyApp)
 }
 
 /*------------------------------ shared variables and functions ------------------------------*/
@@ -125,6 +121,7 @@ func apiInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiParams)
 	for channel, _ := range enabledLoginChannels {
 		loginChannels = append(loginChannels, channel)
 	}
+	sort.Strings(loginChannels)
 	result := map[string]interface{}{
 		"app":              appInfo,
 		"login_channels":   loginChannels,
@@ -382,7 +379,7 @@ func apiRegisterApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itine
 	if err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if existingApp != nil {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] already existed", newApp.GetId()))
+		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] already exist", newApp.GetId()))
 	}
 
 	if ok, err := appDao.Create(existingApp); err != nil {
@@ -395,26 +392,56 @@ func apiRegisterApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itine
 
 // API handler "updateMyApp"
 func apiUpdateMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	newApp, apiResult := _extractAppParams(ctx, params)
+	submitApp, apiResult := _extractAppParams(ctx, params)
 	if apiResult != nil {
 		return apiResult
 	}
 
-	existingApp, err := appDao.Get(newApp.GetId())
+	existingApp, err := appDao.Get(submitApp.GetId())
 	if err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if existingApp == nil {
-		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] does not existed", newApp.GetId()))
+		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] does not exist", submitApp.GetId()))
 	}
 
-	if existingApp.GetOwnerId() != newApp.GetOwnerId() {
-		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] does not belong to user", newApp.GetId()))
+	if existingApp.GetOwnerId() != submitApp.GetOwnerId() {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] does not belong to user", submitApp.GetId()))
 	}
 
-	if ok, err := appDao.Update(newApp); err != nil {
+	if ok, err := appDao.Update(submitApp); err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if !ok {
-		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("Unknown error while updating app [%s]", newApp.GetId()))
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("Unknown error while updating app [%s]", submitApp.GetId()))
 	}
-	return itineris.NewApiResult(itineris.StatusOk).SetMessage(fmt.Sprintf("App [%s] has been updated successfully", newApp.GetId()))
+	return itineris.NewApiResult(itineris.StatusOk).SetMessage(fmt.Sprintf("App [%s] has been updated successfully", submitApp.GetId()))
+}
+
+// API handler "deleteMyApp"
+func apiDeleteMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
+	submitApp, apiResult := _extractAppParams(ctx, params)
+	if apiResult != nil {
+		return apiResult
+	}
+
+	existingApp, err := appDao.Get(submitApp.GetId())
+	if err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if existingApp == nil {
+		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] does not exist", submitApp.GetId()))
+	}
+
+	if existingApp.GetOwnerId() != submitApp.GetOwnerId() {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] does not belong to user", submitApp.GetId()))
+	}
+
+	if submitApp.GetId() == systemAppId {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] can not be deleted", submitApp.GetId()))
+	}
+
+	if ok, err := appDao.Delete(submitApp); err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if !ok {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("Unknown error while deleting app [%s]", submitApp.GetId()))
+	}
+	return itineris.NewApiResult(itineris.StatusOk).SetMessage(fmt.Sprintf("App [%s] has been deleted successfully", submitApp.GetId()))
 }
