@@ -87,7 +87,6 @@ func createUserAccountFromGoogleProfile(ui *goauthv2.Userinfo) (*user.User, erro
 }
 
 func goFetchGoogleProfile(sessId string) {
-	t1 := time.Now()
 	if bo, err := sessionDao.Get(sessId); err != nil {
 		log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile(%s) - error loading session data: %e", sessId, err))
 	} else if bo == nil {
@@ -119,11 +118,11 @@ func goFetchGoogleProfile(sessId string) {
 			if u, err := createUserAccountFromGoogleProfile(userinfo); err != nil {
 				log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile - error creating user account from Google userinfo: %e", err))
 			} else {
-				now := time.Now()
-				expiry := now.Add(3600 * time.Second)
+				// now := time.Now()
+				// expiry := now.Add(3600 * time.Second)
 				js, _ := json.Marshal(oauth2Token)
 				sess.UserId = u.GetId()
-				sess.ExpiredAt = expiry
+				sess.ExpiredAt = oauth2Token.Expiry
 				sess.Data = js
 				claims, err := genLoginClaims(sessId, sess)
 				if err != nil {
@@ -133,7 +132,6 @@ func goFetchGoogleProfile(sessId string) {
 				if err != nil {
 					log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile(%s) - error saving login token: %e", sessId, err))
 				}
-				log.Printf("[goFetchGoogleProfile] finished in %d ms", time.Now().Sub(t1).Milliseconds())
 			}
 		}
 	}

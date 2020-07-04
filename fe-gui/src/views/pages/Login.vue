@@ -180,7 +180,7 @@
                 this.waitCounter = -1
                 const jwt = utils.parseJwt(token)
                 utils.saveLoginSession({uid: jwt.payloadObj.uid, token: token})
-                //console.log(returnUrl)
+                // console.log(returnUrl)
                 window.location.href = returnUrl != "" ? returnUrl : "/"
             },
             _doWaitMessage() {

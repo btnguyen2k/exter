@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"log"
 	"reflect"
 	"regexp"
 	"sort"
@@ -142,7 +141,6 @@ func apiSystemInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiP
 /*------------------------------ login & session APIs ------------------------------*/
 
 func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string, app *app.App, returnUrl string) *itineris.ApiResult {
-	t1 := time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	// firstly exchange authCode for accessToken
 	if token, err := gConfig.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
@@ -153,12 +151,12 @@ func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 		// secondly embed accessToken into exter's session as a JWT
 		js, _ := json.Marshal(token)
 		now := time.Now()
-		expiry := now.Add(5 * time.Minute)
+		// expiry := now.Add(5 * time.Minute)
 		claims, err := genPreLoginClaims(&Session{
 			ClientId:  app.GetId(),
 			Channel:   loginChannelGoogle,
 			CreatedAt: now,
-			ExpiredAt: expiry,
+			ExpiredAt: token.Expiry,
 			Data:      js, // JSON-serialization of oauth2.Token
 		})
 		if err != nil {
@@ -171,7 +169,6 @@ func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 		// lastly use accessToken to fetch Google profile info
 		go goFetchGoogleProfile(claims.Id)
 		returnUrl = strings.ReplaceAll(returnUrl, "${token}", jwt)
-		log.Printf("[_doLoginGoogle] finished in %d ms", time.Now().Sub(t1).Milliseconds())
 		return itineris.NewApiResult(itineris.StatusOk).SetData(jwt).SetExtras(map[string]interface{}{apiResultExtraReturnUrl: returnUrl})
 	}
 }
