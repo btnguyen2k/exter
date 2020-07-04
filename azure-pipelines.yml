@@ -4,7 +4,7 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
 
 trigger:
-- master
+- '*'
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -26,7 +26,7 @@ steps:
 - script: |
     whoami && pwd && date
     ls -l
-    echo $(system.defaultWorkingDirectory
+    echo "$(system.defaultWorkingDirectory)"
   displayName: 'Build Exter-FE'
 
 # - script: |
