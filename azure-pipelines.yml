@@ -4,16 +4,13 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/go
 
 trigger:
-- master
+- '*'
 
 pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  GOBIN:  '$(GOPATH)/bin' # Go binaries path
-  GOROOT: '/usr/local/go1.13' # Go installation path
-  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
-  modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
+  foo: bar
 
 steps:
 - task: GoTool@0
@@ -24,29 +21,29 @@ steps:
     versionSpec: '12.x'
 
 - script: |
-    whoami && pwd && date
-    ls -l
-    echo $(system.defaultWorkingDirectory
-  displayName: 'Build Exter-FE'
+    npm install
+    npm run build
+  workingDirectory: $(system.defaultWorkingDirectory)/fe-gui
+  displayName: 'Exter-FE: install dependencies and build'
 
-# - script: |
-#     mkdir -p '$(GOBIN)'
-#     mkdir -p '$(GOPATH)/pkg'
-#     mkdir -p '$(modulePath)'
-#     shopt -s extglob
-#     shopt -s dotglob
-#     mv !(gopath) '$(modulePath)'
-#     echo '##vso[task.prependpath]$(GOBIN)'
-#     echo '##vso[task.prependpath]$(GOROOT)/bin'
-#   displayName: 'Set up the Go workspace'
+- task: Go@0
+  inputs:
+    command: 'build'
+    arguments: '-o main'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/be-api'
+  displayName: 'Exter-BE: build'
 
-# - script: |
-#     go version
-#     go get -v -t -d ./...
-#     if [ -f Gopkg.toml ]; then
-#         curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-#         dep ensure
-#     fi
-#     go build -v .
-#   workingDirectory: '$(modulePath)'
-#   displayName: 'Get dependencies, then build'
+- task: Go@0
+  inputs:
+    command: 'test'
+    arguments: '-v -cover'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/be-api'
+  displayName: 'Exter-BE: test'
+
+- task: Docker@2
+  inputs:
+    command: build
+    repository: 
+    tags: exter
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+  displayName: 'Exter: build all-in-one docker image'
