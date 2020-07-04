@@ -29,6 +29,20 @@ steps:
   workingDirectory: $(system.defaultWorkingDirectory)/fe-gui
   displayName: 'Exter-FE: install dependencies and build'
 
+- task: Go@0
+  inputs:
+    command: 'build'
+    arguments: '-o main'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/be-api'
+  displayName: 'Exter-BE: build'
+
+- task: Go@0
+  inputs:
+    command: 'test'
+    arguments: '-v -cover'
+    workingDirectory: '$(System.DefaultWorkingDirectory)/be-api'
+  displayName: 'Exter-BE: test'
+
 # - script: |
 #     mkdir -p '$(GOBIN)'
 #     mkdir -p '$(GOPATH)/pkg'
