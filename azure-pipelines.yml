@@ -24,9 +24,11 @@ steps:
     versionSpec: '12.x'
 
 - script: |
-    whoami && pwd && date
-    cd $(system.defaultWorkingDirectory)/fe-gui && npm install && npm run build
-  displayName: 'Build Exter-FE'
+    npm install
+    npm run build
+  inputs:
+    workingDirectory: $(system.defaultWorkingDirectory)/fe-gui
+  displayName: 'Exter-FE: install dependencies and build'
 
 # - script: |
 #     mkdir -p '$(GOBIN)'
