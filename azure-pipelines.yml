@@ -19,6 +19,14 @@ steps:
 - task: GoTool@0
   inputs:
     version: '1.13'
+- task: NodeTool@0 
+  inputs:
+    versionSpec: '12.x'
+
+- script: |
+    whoami && pwd && date
+    ls -l
+  displayName: 'Build Exter-FE'
 
 # - script: |
 #     mkdir -p '$(GOBIN)'
