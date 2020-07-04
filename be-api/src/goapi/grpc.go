@@ -5,9 +5,10 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/golang/protobuf/ptypes/empty"
 	"io"
+
+	"github.com/golang/protobuf/ptypes/empty"
+
 	"main/grpc"
 	"main/src/itineris"
 )
@@ -92,8 +93,6 @@ func parseParams(gparams *grpc.PApiParams) *itineris.ApiParams {
 		}
 	case grpc.PDataEncoding_JSON_GZIP:
 		buf, err := gzipDecode(gparams.ParamsData)
-		fmt.Println(len(gparams.ParamsData), len(buf))
-		fmt.Println("Encoding Gzip", err)
 		if err != nil {
 			return nil
 		}

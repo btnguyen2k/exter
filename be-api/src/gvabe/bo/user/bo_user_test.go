@@ -24,14 +24,12 @@ func TestUser_json(t *testing.T) {
 
 	user1 := NewUser(1357, "btnguyen2k")
 	js1, _ := json.Marshal(user1)
-	// fmt.Println(string(js1))
 
 	var user2 *User
 	err := json.Unmarshal(js1, &user2)
 	if err != nil {
 		t.Fatalf("%s failed: %e", name, err)
 	}
-	// fmt.Println(user2)
 	if user1.GetId() != user2.GetId() {
 		t.Fatalf("%s failed: expected %#v but received %#v", name, user1.GetId(), user2.GetId())
 	}
