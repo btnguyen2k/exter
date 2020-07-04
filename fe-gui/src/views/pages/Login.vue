@@ -1,73 +1,44 @@
 <template>
-    <CContainer class="d-flex align-items-center min-vh-100">
-        <CRow class="justify-content-center">
-            <CCol md="8">
-                <CCardGroup>
-                    <CCard class="p-4">
-                        <CCardBody>
-                            <h1>Login</h1>
-                            <p v-if="errorMsg!=''" class="alert alert-danger">{{errorMsg}}</p>
-                            <CForm method="post">
-                                <p v-if="infoMsg!=''" class="text-muted">{{infoMsg}}</p>
-                                <CButton v-if="sources.facebook" id="loginFb" type="button" name="facebook"
-                                         color="facebook" class="mb-1" style="width: 100%"
-                                         @click="doLoginFacebook">
-                                    <CIcon name="cib-facebook"/>
-                                    Login with Facebook
-                                </CButton>
-                                <CButton v-if="sources.google" id="loginGoogle" type="button" name="google"
-                                         color="light" class="mb-1" style="width: 100%"
-                                         @click="doLoginGoogle">
-                                    <CIcon name="cib-google"/>
-                                    Login with Google
-                                </CButton>
-
-                                <!--                                <CInput placeholder="Username" autocomplete="username email" name="username"-->
-                                <!--                                        id="username" v-model="form.username">-->
-                                <!--                                    <template #prepend-content>-->
-                                <!--                                        <CIcon name="cil-user"/>-->
-                                <!--                                    </template>-->
-                                <!--                                </CInput>-->
-                                <!--                                <CInput placeholder="Password" type="password" autocomplete="current-password"-->
-                                <!--                                        name="password" id="password" v-model="form.password">-->
-                                <!--                                    <template #prepend-content>-->
-                                <!--                                        <CIcon name="cil-lock-locked"/>-->
-                                <!--                                    </template>-->
-                                <!--                                </CInput>-->
-                                <!--                                <CRow>-->
-                                <!--                                    <CCol col="6">-->
-                                <!--                                        <CButton color="primary" class="px-4" type="submit">-->
-                                <!--                                            Login-->
-                                <!--                                        </CButton>-->
-                                <!--                                    </CCol>-->
-                                <!--                                    <CCol col="6" class="text-right">-->
-                                <!--                                        <CButton color="link" class="px-0" @click="funcNotImplemented">Forgot password?-->
-                                <!--                                        </CButton>-->
-                                <!--                                    </CCol>-->
-                                <!--                                </CRow>-->
-                            </CForm>
-                        </CCardBody>
-                    </CCard>
-                    <CCard color="primary" text-color="white" class="text-center py-5 d-md-down-none" style="width:44%"
-                           body-wrapper>
-                        <h2>Demo</h2>
-                        <p>This is instance is for demo purpose only. Login with administrator account <strong>admin/s3cr3t</strong>.
-                            You can create/edit/delete other user group or user account. This special admin account,
-                            however, can not be modified or deleted.</p>
-                        <!--
-                        <CButton color="primary" class="active mt-3" :to="pageRegister">
-                            Register Now!
-                        </CButton>
-                        -->
-                    </CCard>
-                </CCardGroup>
-            </CCol>
-        </CRow>
-    </CContainer>
+    <div class="c-app flex-row align-items-center">
+        <!--        <CContainer class="d-flex align-items-center min-vh-100">-->
+        <CContainer>
+            <CRow class="justify-content-center">
+                <CCol md="8">
+                    <CCardGroup>
+                        <CCard class="p-4" style="width:56%">
+                            <CCardBody>
+                                <h1>Login</h1>
+                                <p v-if="errorMsg!=''" class="alert alert-danger">{{errorMsg}}</p>
+                                <CForm method="post">
+                                    <p v-if="infoMsg!=''" class="text-muted">{{infoMsg}}</p>
+                                    <CButton v-if="sources.facebook" id="loginFb" type="button" name="facebook"
+                                             color="facebook" class="mb-1" style="width: 100%"
+                                             @click="doLoginFacebook">
+                                        <CIcon name="cib-facebook"/>
+                                        Login with Facebook
+                                    </CButton>
+                                    <CButton v-if="sources.google" id="loginGoogle" type="button" name="google"
+                                             color="light" class="mb-1" style="width: 100%"
+                                             @click="doLoginGoogle">
+                                        <CIcon name="cib-google"/>
+                                        Login with Google
+                                    </CButton>
+                                </CForm>
+                            </CCardBody>
+                        </CCard>
+                        <CCard v-if="app!=null && app.config!=null" color="primary" text-color="white"
+                               class="text-center py-5 d-md-down-none" style="width:44%" body-wrapper>
+                            <h2>{{app.id}}</h2>
+                            <p>{{app.config.desc}}</p>
+                        </CCard>
+                    </CCardGroup>
+                </CCol>
+            </CRow>
+        </CContainer>
+    </div>
 </template>
 
 <script>
-    import Register from "@/views/pages/Register"
     import clientUtils from "@/utils/api_client"
     import utils from "@/utils/app_utils"
     import appConfig from "@/utils/app_config"
@@ -80,25 +51,38 @@
         name: 'Login',
         data() {
             this.infoMsg = waitInfoMsg
-            clientUtils.apiDoGet(clientUtils.apiApp + "/" + this.$route.query.app,
+            let appId = this.$route.query.app ? this.$route.query.app : appConfig.APP_NAME
+            clientUtils.apiDoGet(clientUtils.apiApp + "/" + appId,
                 (apiRes) => {
                     if (apiRes.status != 200) {
                         this.errorMsg = apiRes.message
+                        this.infoMsg = ""
                     } else {
-                        this.sources = apiRes.data.config.sources
+                        this.app = apiRes.data
+                        if (!this.app.config.actv) {
+                            this.errorMsg = "App [" + appId + "] is not active"
+                            this.infoMsg = ""
+                            return
+                        }
                         this.infoMsg = defaultInfoMsg
-                    }
-                },
-                (err) => {
-                    this.errorMsg = err
-                })
-            clientUtils.apiDoGet("/info",
-                (apiRes) => {
-                    if (apiRes.status != 200) {
-                        this.errorMsg = apiRes.message
-                    } else {
-                        this.googleClientId = apiRes.data.google_client_id
-                        this.rsaPublicKeyPEM = apiRes.data.rsa_public_key
+                        let appISources = this.app.config.sources
+                        let iSources = {}
+                        clientUtils.apiDoGet(clientUtils.apiInfo,
+                            (apiRes) => {
+                                if (apiRes.status != 200) {
+                                    this.errorMsg = apiRes.message
+                                } else {
+                                    this.googleClientId = apiRes.data.google_client_id
+                                    apiRes.data.login_channels.every(function (e) {
+                                        iSources[e] = appISources[e]
+                                        return true
+                                    })
+                                    this.sources = iSources
+                                }
+                            },
+                            (err) => {
+                                this.errorMsg = err
+                            })
                     }
                 },
                 (err) => {
@@ -109,14 +93,14 @@
                 googleAuthScope: 'email profile openid',
                 googleClientId: '',
 
-                rsaPublicKeyPEM: '',
-
                 returnUrl: this.$route.query.returnUrl ? this.$route.query.returnUrl : "/",
-                app: this.$route.query.app ? this.$route.query.app : appConfig.APP_NAME,
-                sources: {},
-                pageRegister: Register,
                 errorMsg: "",
                 infoMsg: defaultInfoMsg,
+
+                app: {},
+                sources: {},
+
+                waitCounter: -1,
             }
         },
         mounted() {
@@ -125,20 +109,6 @@
             vue.$loadScript(scriptSrc)
                 .then(() => {
                     gapi.load('auth2', () => {
-                        //use gapi.auth2.init together with gapi.auth2.getAuthInstance().signIn or gapi.auth2.getAuthInstance().grantOfflineAccess
-                        //if to use gapi.auth2.authorize, do NOT call gapi.auth2.init
-                        // gapi.auth2.init({
-                        //     client_id: vue.googleClientId,
-                        //     scope: vue.googleAuthScope,
-                        // }).then(
-                        //     () => {
-                        //         vue.googleInited = true
-                        //     },
-                        //     () => {
-                        //         vue.$unloadScript(scriptSrc)
-                        //         vue.errorMsg = "Error while initializing Google SDK"
-                        //     }
-                        // )
                         vue.googleInited = true
                     })
                 })
@@ -158,20 +128,6 @@
                     alert('Please wait, Google SDK is being loaded.')
                 } else {
                     this.infoMsg = waitInfoMsg
-                    // gapi.auth2.getAuthInstance().grantOfflineAccess({
-                    //     prompt: "consent",
-                    //     scope: this.googleAuthScope,
-                    // }).then(
-                    //     (resp) => {
-                    //         if (!resp.error) {
-                    //             // const data = {
-                    //             //     source: 'google',
-                    //             //     code: resp.code,
-                    //             // }
-                    //             // this._doLogin(data)
-                    //         }
-                    //     }
-                    // )
                     gapi.auth2.authorize({
                         client_id: this.googleClientId,
                         scope: this.googleAuthScope,
@@ -181,41 +137,34 @@
                         this.infoMsg = defaultInfoMsg
                         if (!resp.error) {
                             const data = {
+                                app: this.app.id,
                                 source: 'google',
                                 code: resp.code,
+                                return_url: this.returnUrl,
                             }
                             this._doLogin(data)
                         }
                     })
-                    // this.googleAuth.signIn({scope: this.googleAuthScope, prompt: 'consent'})
-                    //     .then((auth) => {
-                    //         const data = {
-                    //             source: 'google',
-                    //             id_token: auth.getAuthResponse().id_token,
-                    //             access_token: auth.getAuthResponse().access_token,
-                    //             email: auth.getBasicProfile().getEmail(),
-                    //         }
-                    //         this._doLogin(data)
-                    //     })
-                    //     .catch((err) => {
-                    //         //this.errorMsg = 'Error while logging with Google account: ' + err
-                    //     })
                 }
             },
-            _waitPreLogin(token) {
-                this.infoMsg = waitInfoMsg
-                clientUtils.apiDoPost(clientUtils.apiCheckLoginToken, {token: token},
+            _waitPreLogin(token, returnUrl) {
+                clientUtils.apiDoPost(clientUtils.apiVerifyLoginToken, {
+                        token: token,
+                        app: this.app.id,
+                        return_url: returnUrl
+                    },
                     (apiRes) => {
                         if (300 <= apiRes.status && apiRes.status <= 399) {
-                            // console.log("Server is creating login session: " + JSON.stringify(apiRes))
-                            this.infoMsg = waitLoginInfoMsg
                             setTimeout(() => {
-                                this._waitPreLogin(token)
+                                this._waitPreLogin(token, returnUrl)
                             }, 2000)
                         } else if (apiRes.status != 200) {
                             this.errorMsg = apiRes.message
+                            this.infoMsg = defaultInfoMsg
+                            this.waitCounter = -1
                         } else {
-                            this._doSaveLoginSessionAndLogin(apiRes.data)
+                            let returnUrl = apiRes.extras.return_url
+                            this._doSaveLoginSessionAndLogin(apiRes.data, returnUrl)
                         }
                     },
                     (err) => {
@@ -223,33 +172,50 @@
                         console.error(msg)
                         this.errorMsg = msg
                         setTimeout(() => {
-                            this._waitPreLogin(token)
+                            this._waitPreLogin(token, returnUrl)
                         }, 2000)
                     })
             },
-            _doSaveLoginSessionAndLogin(token) {
+            _doSaveLoginSessionAndLogin(token, returnUrl) {
+                this.waitCounter = -1
                 const jwt = utils.parseJwt(token)
                 utils.saveLoginSession({uid: jwt.payloadObj.uid, token: token})
-                this.$router.push(this.returnUrl != "" ? this.returnUrl : "/")
+                //console.log(returnUrl)
+                window.location.href = returnUrl != "" ? returnUrl : "/"
+            },
+            _doWaitMessage() {
+                if (this.waitCounter >= 0) {
+                    this.waitCounter++
+                    this.infoMsg = waitLoginInfoMsg + " " + this.waitCounter
+                    setTimeout(() => {
+                        this._doWaitMessage()
+                    }, 2000)
+                }
             },
             _doLogin(data) {
-                this.infoMsg = waitInfoMsg
+                this.waitCounter = 0
+                this._doWaitMessage()
                 clientUtils.apiDoPost(
                     clientUtils.apiLogin, data,
                     (apiRes) => {
                         if (apiRes.status != 200) {
                             this.errorMsg = apiRes.status + ": " + apiRes.message
+                            this.infoMsg = defaultInfoMsg
+                            this.waitCounter = -1
                         } else {
+                            let returnUrl = apiRes.extras.return_url
                             const jwt = utils.parseJwt(apiRes.data)
                             if (jwt.payloadObj.type == "pre_login") {
-                                this._waitPreLogin(apiRes.data)
+                                this._waitPreLogin(apiRes.data, returnUrl)
                             } else {
-                                this._doSaveLoginSessionAndLogin(apiRes.data)
+                                this._doSaveLoginSessionAndLogin(apiRes.data, returnUrl)
                             }
                         }
                     },
                     (err) => {
                         this.errorMsg = err
+                        this.infoMsg = defaultInfoMsg
+                        this.waitCounter = -1
                     }
                 )
             },

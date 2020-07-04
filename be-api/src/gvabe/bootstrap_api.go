@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"reflect"
 	"regexp"
 	"sort"
@@ -29,7 +30,7 @@ Setup API handlers: application register its api-handlers by calling router.SetH
 func initApiHandlers(router *itineris.ApiRouter) {
 	router.SetHandler("info", apiInfo)
 	router.SetHandler("login", apiLogin)
-	router.SetHandler("checkLoginToken", apiCheckLoginToken)
+	router.SetHandler("verifyLoginToken", apiVerifyLoginToken)
 	router.SetHandler("systemInfo", apiSystemInfo)
 
 	router.SetHandler("getApp", apiGetApp)
@@ -50,18 +51,18 @@ var (
 		"login":            false,
 		"info":             true,
 		"getApp":           false,
-		"checkLoginToken":  true,
+		"verifyLoginToken": true,
 		"loginChannelList": true,
 	}
 )
 
-func _parseLoginTokenFromApi(_token interface{}) (*itineris.ApiResult, *SessionClaim, *user.User) {
+func _parseLoginTokenFromApi(_token interface{}) (*itineris.ApiResult, *SessionClaims, *user.User) {
 	stoken, ok := _token.(string)
 	if !ok || stoken == "" {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("empty token"), nil, nil
 	}
 
-	var claim *SessionClaim
+	var claim *SessionClaims
 	var user *user.User
 	var err error
 	if claim, err = parseLoginToken(stoken); err != nil {
@@ -140,28 +141,38 @@ func apiSystemInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiP
 
 /*------------------------------ login & session APIs ------------------------------*/
 
-func _doLoginGoogle(_ *itineris.ApiContext, aauth *itineris.ApiAuth, authCode string) *itineris.ApiResult {
+func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string, app *app.App, returnUrl string) *itineris.ApiResult {
+	t1 := time.Now()
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	// firstly exchange authCode for accessToken
 	if token, err := gConfig.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("Error: exchanged token is nil")
 	} else {
+		// secondly embed accessToken into exter's session as a JWT
 		js, _ := json.Marshal(token)
 		now := time.Now()
-		session := Session{
-			ClientId:  aauth.GetAppId(),
+		expiry := now.Add(5 * time.Minute)
+		claims, err := genPreLoginClaims(&Session{
+			ClientId:  app.GetId(),
 			Channel:   loginChannelGoogle,
 			CreatedAt: now,
-			ExpiredAt: now.Add(2 * 60 * time.Second), // 2 mins
-			Data:      js,                            // JSON-serialization of oauth2.Token
-		}
-		preLoginToken, err := genPreLoginToken(session, "")
+			ExpiredAt: expiry,
+			Data:      js, // JSON-serialization of oauth2.Token
+		})
 		if err != nil {
 			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 		}
-		goFetchGoogleProfile(preLoginToken)
-		return itineris.NewApiResult(itineris.StatusOk).SetData(preLoginToken)
+		_, jwt, err := saveSession(claims)
+		if err != nil {
+			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+		}
+		// lastly use accessToken to fetch Google profile info
+		go goFetchGoogleProfile(claims.Id)
+		returnUrl = strings.ReplaceAll(returnUrl, "${token}", jwt)
+		log.Printf("[_doLoginGoogle] finished in %d ms", time.Now().Sub(t1).Milliseconds())
+		return itineris.NewApiResult(itineris.StatusOk).SetData(jwt).SetExtras(map[string]interface{}{apiResultExtraReturnUrl: returnUrl})
 	}
 }
 
@@ -171,60 +182,91 @@ apiLogin handles API call "login".
 - Upon login successfully, this API returns the login token as JWT.
 */
 func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	source, _ := params.GetParamAsType("source", reddo.TypeString)
-	if source == nil {
-		source = ""
+	appId := _extractParam(params, "app", reddo.TypeString, "", nil)
+	app, err := appDao.Get(appId.(string))
+	if err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if app == nil {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] not found", appId))
+	} else if !app.GetAttrsPublic().IsActive {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] is not active", appId))
 	}
+
+	returnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
+	if returnUrl != "" {
+		if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
+			return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
+		}
+	}
+
+	source := _extractParam(params, "source", reddo.TypeString, "", nil)
+
 	switch strings.ToLower(source.(string)) {
 	case loginChannelGoogle:
-		authCode, _ := params.GetParamAsType("code", reddo.TypeString)
-		if authCode == nil {
-			authCode = ""
-		}
-		return _doLoginGoogle(ctx, auth, authCode.(string))
+		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
+		return _doLoginGoogle(ctx, auth, authCode.(string), app, returnUrl.(string))
 	}
 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("Login source is not supported: %s", source))
 }
 
 /*
-apiCheckLoginToken handles API call "checkLoginToken".
+apiVerifyLoginToken handles API call "verifyLoginToken".
 This API expects an input map:
 
 	{
-		"token": login token (returned by apiLogin/apiCheckLoginToken),
+		"token": login token (returned by apiLogin/apiVerifyLoginToken),
+		"app": application's id,
 	}
 
 - Upon successful, this API returns the login-token.
 */
-func apiCheckLoginToken(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
-	token, _ := params.GetParamAsType("token", reddo.TypeString)
-	if token == nil || token == "" {
+func apiVerifyLoginToken(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
+	// firstly extract JWT token from request and convert it into claims
+	token := _extractParam(params, "token", reddo.TypeString, "", nil)
+	if token == "" {
 		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("empty token")
 	}
-	claim, err := parseLoginToken(token.(string))
+	claims, err := parseLoginToken(token.(string))
 	if err != nil {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	}
-	if claim.isExpired() {
+	if claims.isExpired() {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(errorExpiredJwt.Error())
 	}
-	if claim.Type == sessionTypePreLogin {
-		session, err := loadPreLoginSessionFromCache(claim.CacheKey)
-		if err != nil {
-			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
-		}
-		if session == nil {
-			return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("session not found or expired")
-		}
-		if session.UserId == "" {
-			return itineris.NewApiResult(302).SetMessage("please try again after a moment")
-		}
-		token, err = genLoginToken(*session, "")
-		if err != nil {
-			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+
+	// secondly verify the client app
+	appId := _extractParam(params, "app", reddo.TypeString, "", nil)
+	app, err := appDao.Get(appId.(string))
+	if err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	} else if app == nil || !app.GetAttrsPublic().IsActive {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("invalid app")
+	}
+
+	// also verify 'return-url'
+	returnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
+	if returnUrl != "" {
+		if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
+			return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
 		}
 	}
-	return itineris.NewApiResult(itineris.StatusOk).SetData(token.(string))
+
+	// thirdly verify the session
+	sess, err := sessionDao.Get(claims.Id)
+	if err != nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+	}
+	if sess == nil || sess.IsExpired() {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Session not exists not expired"))
+	}
+
+	// lastly return the session encoded as JWT
+	if sess.GetSessionType() == sessionTypePreLogin {
+		return itineris.NewApiResult(302).SetMessage("please try again after a moment")
+	} else {
+		returnUrl = strings.ReplaceAll(returnUrl.(string), "${token}", sess.GetSessionData())
+	}
+	return itineris.NewApiResult(itineris.StatusOk).SetData(sess.GetSessionData()).SetExtras(map[string]interface{}{apiResultExtraReturnUrl: returnUrl})
 }
 
 /* app APIs */
@@ -234,7 +276,7 @@ API handler "myAppList"
 This API expects an input map:
 
 	{
-		"token": login token (returned by apiLogin/apiCheckLoginToken),
+		"token": login token (returned by apiLogin/apiVerifyLoginToken),
 	}
 */
 func apiMyAppList(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
@@ -272,7 +314,7 @@ func apiGetMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris
 	} else if myApp == nil {
 		return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("App [%s] not found", id))
 	} else {
-		sessionClaim, ok := ctx.GetContextValue(ctxFieldSession).(*SessionClaim)
+		sessionClaim, ok := ctx.GetContextValue(ctxFieldSession).(*SessionClaims)
 		if !ok || sessionClaim == nil {
 			return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("Cannot obtain current logged in user info")
 		}
@@ -349,7 +391,7 @@ func _extractAppParams(ctx *itineris.ApiContext, params *itineris.ApiParams) (*a
 		}
 	}
 
-	sessionClaim, ok := ctx.GetContextValue(ctxFieldSession).(*SessionClaim)
+	sessionClaim, ok := ctx.GetContextValue(ctxFieldSession).(*SessionClaims)
 	if !ok || sessionClaim == nil {
 		return nil, itineris.NewApiResult(itineris.StatusNoPermission).SetMessage("Cannot obtain current logged in user info")
 	}
@@ -375,14 +417,13 @@ func apiRegisterApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itine
 		return apiResult
 	}
 
-	existingApp, err := appDao.Get(newApp.GetId())
-	if err != nil {
+	if existingApp, err := appDao.Get(newApp.GetId()); err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if existingApp != nil {
 		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] already exist", newApp.GetId()))
 	}
 
-	if ok, err := appDao.Create(existingApp); err != nil {
+	if ok, err := appDao.Create(newApp); err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if !ok {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(fmt.Sprintf("Unknown error while registering app [%s]", newApp.GetId()))
@@ -397,14 +438,11 @@ func apiUpdateMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itine
 		return apiResult
 	}
 
-	existingApp, err := appDao.Get(submitApp.GetId())
-	if err != nil {
+	if existingApp, err := appDao.Get(submitApp.GetId()); err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if existingApp == nil {
 		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] does not exist", submitApp.GetId()))
-	}
-
-	if existingApp.GetOwnerId() != submitApp.GetOwnerId() {
+	} else if existingApp.GetOwnerId() != submitApp.GetOwnerId() {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] does not belong to user", submitApp.GetId()))
 	}
 
@@ -423,14 +461,11 @@ func apiDeleteMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itine
 		return apiResult
 	}
 
-	existingApp, err := appDao.Get(submitApp.GetId())
-	if err != nil {
+	if existingApp, err := appDao.Get(submitApp.GetId()); err != nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
 	} else if existingApp == nil {
 		return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("App [%s] does not exist", submitApp.GetId()))
-	}
-
-	if existingApp.GetOwnerId() != submitApp.GetOwnerId() {
+	} else if existingApp.GetOwnerId() != submitApp.GetOwnerId() {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] does not belong to user", submitApp.GetId()))
 	}
 

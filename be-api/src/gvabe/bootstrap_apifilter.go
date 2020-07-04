@@ -3,7 +3,6 @@ package gvabe
 import (
 	"log"
 	"strings"
-	"time"
 
 	"main/src/itineris"
 )
@@ -48,7 +47,7 @@ type GVAFEAuthenticationFilter struct {
 Call implements IApiFilter.Call
 
 	- This function first authenticates API call.
-	- If authentication is successful, *SessionClaim instance is populated to 'ctx' under field 'ctxFieldSession'
+	- If authentication is successful, *SessionClaims instance is populated to 'ctx' under field 'ctxFieldSession'
 	- Finally, if the login session is about to expire, this function renews the login token and returns it in result's "extra" field.
 */
 func (f *GVAFEAuthenticationFilter) Call(handler itineris.IApiHandler, ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
@@ -61,12 +60,13 @@ func (f *GVAFEAuthenticationFilter) Call(handler itineris.IApiHandler, ctx *itin
 		return f.NextFilter.Call(handler, ctx, auth, params)
 	}
 	result := handler(ctx, auth, params)
-	if sessionClaim != nil && sessionClaim.isGoingExpired(loginSessionNearExpiry) {
-		// extends login session
-		sessionClaim.ExpiresAt = time.Now().Unix() + loginSessionTtl
-		jws, _ := genJws(*sessionClaim)
-		result.AddExtraInfo(apiResultExtraAccessToken, jws)
-	}
+	// if sessionClaim != nil && sessionClaim.isGoingExpired(loginSessionNearExpiry) {
+	// 	// extends login session
+	// 	expiry := time.Now().Add(loginSessionTtl * time.Second)
+	// 	sessionClaim.ExpiresAt = expiry.Unix()
+	// 	jws, _ := genJws(sessionClaim)
+	// 	result.AddExtraInfo(apiResultExtraAccessToken, jws)
+	// }
 	return result
 }
 
@@ -74,9 +74,9 @@ func (f *GVAFEAuthenticationFilter) Call(handler itineris.IApiHandler, ctx *itin
 authenticate authenticates an API call.
 
 This function expects auth.access_token is a JWT.
-Upon successful authentication, this function returns the SessionClaim decoded from JWT; otherwise, error is returned.
+Upon successful authentication, this function returns the SessionClaims decoded from JWT; otherwise, error is returned.
 */
-func (f *GVAFEAuthenticationFilter) authenticate(ctx *itineris.ApiContext, auth *itineris.ApiAuth) (*SessionClaim, error) {
+func (f *GVAFEAuthenticationFilter) authenticate(ctx *itineris.ApiContext, auth *itineris.ApiAuth) (*SessionClaims, error) {
 	publicApi, ok := publicApis[ctx.GetApiName()]
 	if !ok || !publicApi {
 		// need app-id

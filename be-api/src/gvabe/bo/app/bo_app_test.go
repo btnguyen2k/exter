@@ -37,7 +37,6 @@ func TestApp_json(t *testing.T) {
 	app1.SetAttrsPublic(attrs)
 
 	js1, _ := json.Marshal(app1)
-	// fmt.Println(string(js1))
 
 	var app2 *App
 	err := json.Unmarshal(js1, &app2)

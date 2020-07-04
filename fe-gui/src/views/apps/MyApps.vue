@@ -67,7 +67,6 @@
                     (apiRes) => {
                         if (apiRes.status == 200) {
                             myAppList.data = apiRes.data
-                            //console.log(myAppList.data)
                         } else {
                             console.error("Getting my app list was unsuccessful: " + JSON.stringify(apiRes))
                         }

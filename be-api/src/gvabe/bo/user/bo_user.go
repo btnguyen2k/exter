@@ -1,4 +1,4 @@
-// package user contains User business object (BO) and DAO implementations.
+// package user contains business object (BO) and data access object (DAO) implementations for User.
 package user
 
 import (
@@ -38,8 +38,8 @@ func NewUserFromUbo(ubo *henge.UniversalBo) *User {
 }
 
 const (
-	UserAttr_AesKey = "aes_key"
-	UserAttr_Ubo    = "_ubo"
+	AttrUser_AesKey = "aes_key"
+	AttrUser_Ubo    = "_ubo"
 )
 
 // User is the business object
@@ -49,45 +49,9 @@ type User struct {
 	henge.UniversalBo `json:"_ubo"`
 }
 
-// // MarshalJSON implements json.encode.Marshaler.MarshalJSON
-// func (app *App) MarshalJSON() ([]byte, error) {
-// 	app.sync()
-// 	m := map[string]interface{}{
-// 		AppAttr_Ubo:         app.UniversalBo.Clone(),
-// 		FieldApp_OwnerId:    app.ownerId,
-// 		AppAttr_PublicAttrs: app.attrsPublic.clone(),
-// 	}
-// 	return json.Marshal(m)
-// }
-//
-// // UnmarshalJSON implements json.decode.Unmarshaler.UnmarshalJSON
-// func (app *App) UnmarshalJSON(data []byte) error {
-// 	var m map[string]interface{}
-// 	if err := json.Unmarshal(data, &m); err != nil {
-// 		return err
-// 	}
-// 	var err error
-// 	if m[AppAttr_Ubo] != nil {
-// 		js, _ := json.Marshal(m[AppAttr_Ubo])
-// 		if err := json.Unmarshal(js, &app.UniversalBo); err != nil {
-// 			return err
-// 		}
-// 	}
-// 	if m[AppAttr_PublicAttrs] != nil {
-// 		js, _ := json.Marshal(m[AppAttr_PublicAttrs])
-// 		if err := json.Unmarshal(js, &app.attrsPublic); err != nil {
-// 			return err
-// 		}
-// 	}
-// 	if app.ownerId, err = reddo.ToString(m[FieldApp_OwnerId]); err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }
-
 // GetAesKey returns value of user's 'aes-key' attribute
 func (user *User) GetAesKey() string {
-	v, err := user.GetDataAttrAs(UserAttr_AesKey, reddo.TypeString)
+	v, err := user.GetDataAttrAs(AttrUser_AesKey, reddo.TypeString)
 	if err != nil || v == nil {
 		return ""
 	}
@@ -96,7 +60,7 @@ func (user *User) GetAesKey() string {
 
 // SetAesKey sets value of user's 'aes-key' attribute
 func (user *User) SetAesKey(v string) *User {
-	user.SetDataAttr(UserAttr_AesKey, strings.TrimSpace(v))
+	user.SetDataAttr(AttrUser_AesKey, strings.TrimSpace(v))
 	return user
 }
 

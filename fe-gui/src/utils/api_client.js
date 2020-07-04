@@ -19,7 +19,7 @@ let appId = appConfig.APP_CONFIG.api_client.app_id + ":" + Math.random()
 
 let apiInfo = "/info"
 let apiLogin = "/api/login"
-let apiCheckLoginToken = "/api/checkLoginToken"
+let apiVerifyLoginToken = "/api/verifyLoginToken"
 let apiSystemInfo = "/api/systemInfo"
 let apiApp = "/api/app"
 let apiMyAppList = "/api/myapps"
@@ -27,13 +27,12 @@ let apiMyApp = "/api/myapp"
 
 function _apiOnSuccess(method, resp, apiUri, callbackSuccessful) {
     if (method=='GET' && resp.hasOwnProperty("data") && resp.data.status == 403) {
-    //if (apiUri != apiLogin && apiUri != apiCheckLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
+    //if (apiUri != apiLogin && apiUri != apiVerifyLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
         console.error("Error 403 from API [" + apiUri + "], redirecting to login page...")
         router.push({name: "Login", query: {app: appConfig.APP_NAME, returnUrl: router.currentRoute.fullPath}})
         return
     }
     if (resp.hasOwnProperty("data") && resp.data.hasOwnProperty("extras") && resp.data.extras.hasOwnProperty("_access_token_")) {
-        // console.log("Update new access token from API [" + apiUri + "]")
         let jwt = utils.parseJwt(resp.data.extras._access_token_)
         utils.saveLoginSession({uid: jwt.payloadObj.uid, token: resp.data.extras._access_token_})
     }
@@ -93,7 +92,7 @@ export default {
     apiInfo,
     apiLogin,
     apiApp,
-    apiCheckLoginToken,
+    apiVerifyLoginToken,
     apiSystemInfo,
     apiMyAppList,
     apiMyApp,

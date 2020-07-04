@@ -32,6 +32,7 @@ func NewUniversalDaoSql(sqlc *prom.SqlConnect, tableName string, extraColNameToF
 	dao.GenericDaoSql = sql.NewGenericDaoSql(sqlc, godal.NewAbstractGenericDao(dao))
 	dao.SetRowMapper(buildRowMapper(tableName, extraColNameToFieldMappings))
 	dao.SetSqlFlavor(sqlc.GetDbFlavor())
+	dao.SetTxModeOnWrite(true)
 	return dao
 }
 
@@ -113,19 +114,19 @@ func (dao *UniversalDaoSql) ToGenericBo(ubo *UniversalBo) godal.IGenericBo {
 	return gbo
 }
 
-// Delete implements AppDao.Delete
+// Delete implements UniversalDao.Delete
 func (dao *UniversalDaoSql) Delete(bo *UniversalBo) (bool, error) {
 	numRows, err := dao.GdaoDelete(dao.tableName, dao.ToGenericBo(bo))
 	return numRows > 0, err
 }
 
-// Create implements AppDao.Create
+// Create implements UniversalDao.Create
 func (dao *UniversalDaoSql) Create(bo *UniversalBo) (bool, error) {
 	numRows, err := dao.GdaoCreate(dao.tableName, dao.ToGenericBo(bo))
 	return numRows > 0, err
 }
 
-// Get implements AppDao.Get
+// Get implements UniversalDao.Get
 func (dao *UniversalDaoSql) Get(id string) (*UniversalBo, error) {
 	gbo, err := dao.GdaoFetchOne(dao.tableName, map[string]interface{}{ColId: id})
 	if err != nil {
@@ -134,7 +135,7 @@ func (dao *UniversalDaoSql) Get(id string) (*UniversalBo, error) {
 	return dao.ToUniversalBo(gbo), nil
 }
 
-// GetN implements AppDao.GetN
+// GetN implements UniversalDao.GetN
 func (dao *UniversalDaoSql) GetN(fromOffset, maxNumRows int) ([]*UniversalBo, error) {
 	// order ascending by "id" column
 	ordering := (&sql.GenericSorting{Flavor: dao.GetSqlFlavor()}).Add(ColId)
@@ -150,13 +151,19 @@ func (dao *UniversalDaoSql) GetN(fromOffset, maxNumRows int) ([]*UniversalBo, er
 	return result, nil
 }
 
-// GetAll implements AppDao.GetAll
+// GetAll implements UniversalDao.GetAll
 func (dao *UniversalDaoSql) GetAll() ([]*UniversalBo, error) {
 	return dao.GetN(0, 0)
 }
 
-// Update implements AppDao.Update
+// Update implements UniversalDao.Update
 func (dao *UniversalDaoSql) Update(bo *UniversalBo) (bool, error) {
 	numRows, err := dao.GdaoUpdate(dao.tableName, dao.ToGenericBo(bo))
+	return numRows > 0, err
+}
+
+// Save implements UniversalDao.Save
+func (dao *UniversalDaoSql) Save(bo *UniversalBo) (bool, error) {
+	numRows, err := dao.GdaoSave(dao.tableName, dao.ToGenericBo(bo))
 	return numRows > 0, err
 }

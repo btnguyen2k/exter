@@ -27,6 +27,7 @@ import (
 	"github.com/shirou/gopsutil/mem"
 
 	"main/src/gvabe/bo/app"
+	"main/src/gvabe/bo/session"
 	"main/src/gvabe/bo/user"
 	"main/src/mico"
 )
@@ -36,11 +37,12 @@ const (
 	frontendAppIdPrefix = frontendAppId + ":"
 
 	systemAppId   = "exter"
-	systemAppDesc = "Exter"
+	systemAppDesc = "Login to Exter control panel to register and manage applications."
 )
 
 const (
-	apiResultExtraAccessToken = "_access_token_"
+	apiResultExtraAccessToken = "access_token"
+	apiResultExtraReturnUrl = "return_url"
 
 	loginSessionTtl        = 3600 * 8
 	loginSessionNearExpiry = 3600 * 3
@@ -52,6 +54,7 @@ var (
 
 	appDao  app.AppDao
 	userDao user.UserDao
+	sessionDao session.SessionDao
 
 	rsaPrivKey *rsa.PrivateKey
 	rsaPubKey  *rsa.PublicKey

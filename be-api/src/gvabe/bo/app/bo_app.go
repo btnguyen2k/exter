@@ -1,10 +1,11 @@
-// package app contains App business object (BO) and DAO implementations.
+// package app contains business object (BO) and data access object (DAO) implementations for Application.
 package app
 
 import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/url"
 	"strings"
 
 	"github.com/btnguyen2k/consu/reddo"
@@ -74,8 +75,8 @@ func (apub AppAttrsPublic) clone() AppAttrsPublic {
 
 const (
 	FieldApp_OwnerId    = "oid"
-	AppAttr_PublicAttrs = "apub"
-	AppAttr_Ubo         = "_ubo"
+	AttrApp_PublicAttrs = "apub"
+	AttrApp_Ubo         = "_ubo"
 )
 
 // App is the business object
@@ -86,32 +87,69 @@ type App struct {
 	attrsPublic       AppAttrsPublic `json:"apub"` // app's public attributes, can be access publicly
 }
 
+// GenerateReturnUrl validates 'preferredReturnUrl' and builds "return url" for the app.
+//
+//	- if 'preferredReturnUrl' is invalid, this function returns empty string
+func (app *App) GenerateReturnUrl(preferredReturnUrl string) string {
+	preferredReturnUrl = strings.TrimSpace(preferredReturnUrl)
+	if preferredReturnUrl == "" {
+		return app.attrsPublic.DefaultReturnUrl
+	}
+	urlPreferredReturnUrl, err := url.Parse(preferredReturnUrl)
+	if err != nil {
+		log.Println("[WARN] Preferred return url is invalid: " + preferredReturnUrl)
+		return ""
+	}
+	urlDefaultReturnUrl, err := url.Parse(strings.TrimSpace(app.attrsPublic.DefaultReturnUrl))
+	if err != nil {
+		log.Println("[WARN] Default return url is invalid: " + app.attrsPublic.DefaultReturnUrl)
+		return ""
+	}
+	if !urlDefaultReturnUrl.IsAbs() {
+		if urlPreferredReturnUrl.IsAbs() {
+			log.Printf("[WARN] Preferred return url [%s] is not valid against app's default one [%s]", preferredReturnUrl, app.attrsPublic.DefaultReturnUrl)
+			return ""
+		}
+		return preferredReturnUrl
+	}
+	if !urlPreferredReturnUrl.IsAbs() {
+		return urlDefaultReturnUrl.Scheme + "://" + urlDefaultReturnUrl.Host + "/" + strings.TrimPrefix(preferredReturnUrl, "/")
+	}
+	if urlDefaultReturnUrl.Host != urlPreferredReturnUrl.Host {
+		log.Printf("[WARN] Preferred return url [%s] is not valid against app's default one [%s]", preferredReturnUrl, app.attrsPublic.DefaultReturnUrl)
+		return ""
+	}
+	return preferredReturnUrl
+}
+
 // MarshalJSON implements json.encode.Marshaler.MarshalJSON
+//	TODO: lock for read?
 func (app *App) MarshalJSON() ([]byte, error) {
 	app.sync()
 	m := map[string]interface{}{
-		AppAttr_Ubo:         app.UniversalBo.Clone(),
+		AttrApp_Ubo:         app.UniversalBo.Clone(),
 		FieldApp_OwnerId:    app.ownerId,
-		AppAttr_PublicAttrs: app.attrsPublic.clone(),
+		AttrApp_PublicAttrs: app.attrsPublic.clone(),
 	}
 	return json.Marshal(m)
 }
 
 // UnmarshalJSON implements json.decode.Unmarshaler.UnmarshalJSON
+//	TODO: lock for write?
 func (app *App) UnmarshalJSON(data []byte) error {
 	var m map[string]interface{}
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
 	var err error
-	if m[AppAttr_Ubo] != nil {
-		js, _ := json.Marshal(m[AppAttr_Ubo])
+	if m[AttrApp_Ubo] != nil {
+		js, _ := json.Marshal(m[AttrApp_Ubo])
 		if err := json.Unmarshal(js, &app.UniversalBo); err != nil {
 			return err
 		}
 	}
-	if m[AppAttr_PublicAttrs] != nil {
-		js, _ := json.Marshal(m[AppAttr_PublicAttrs])
+	if m[AttrApp_PublicAttrs] != nil {
+		js, _ := json.Marshal(m[AttrApp_PublicAttrs])
 		if err := json.Unmarshal(js, &app.attrsPublic); err != nil {
 			return err
 		}
@@ -119,6 +157,7 @@ func (app *App) UnmarshalJSON(data []byte) error {
 	if app.ownerId, err = reddo.ToString(m[FieldApp_OwnerId]); err != nil {
 		return err
 	}
+	app.sync()
 	return nil
 }
 
@@ -145,7 +184,7 @@ func (app *App) SetAttrsPublic(apub AppAttrsPublic) *App {
 }
 
 func (app *App) sync() *App {
-	app.SetDataAttr(AppAttr_PublicAttrs, app.attrsPublic)
+	app.SetDataAttr(AttrApp_PublicAttrs, app.attrsPublic)
 	app.SetExtraAttr(FieldApp_OwnerId, app.ownerId)
 	app.UniversalBo.Sync()
 	return app

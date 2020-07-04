@@ -31,7 +31,7 @@ let router = new Router({
 
 import appConfig from "@/utils/app_config"
 import utils from "@/utils/app_utils"
-import api_client from "@/utils/api_client"
+import clientUtils from "@/utils/api_client"
 
 router.beforeEach((to, from, next) => {
     if (!to.matched.some(record => record.meta.allowGuest)) {
@@ -43,9 +43,9 @@ router.beforeEach((to, from, next) => {
         let lastUserTokenCheck = utils.localStorageGetAsInt(utils.lskeyLoginSessionLastCheck)
         if (lastUserTokenCheck + 60 < utils.getUnixTimestamp()) {
             lastUserTokenCheck = utils.getUnixTimestamp()
-            let uid = session.uid
+            //let uid = session.uid
             let token = session.token
-            api_client.apiDoPost(api_client.apiCheckLoginToken, {uid: uid, token: token},
+            clientUtils.apiDoPost(clientUtils.apiVerifyLoginToken, {app: appConfig.APP_NAME, token: token},
                 (apiRes) => {
                     if (apiRes.status != 200) {
                         //redirect to login page if session verification failed
@@ -123,42 +123,50 @@ function configRoutes() {
             ]
         },
         {
-            path: '/pages',
-            redirect: '/pages/404',
-            name: 'Pages',
-            component: {
-                render(c) {
-                    return c('router-view')
-                }
-            },
+            path: '/xlogin',
             meta: {
                 allowGuest: true
             },
-            children: [
-                {
-                    path: '404',
-                    name: 'Page404',
-                    component: Page404
-                },
-                {
-                    path: '500',
-                    name: 'Page500',
-                    component: Page500
-                },
-                {
-                    path: 'login',
-                    name: 'Login',
-                    component: Login,
-                    //props: (route) => ({returnUrl: route.query.returnUrl, app: route.query.app}),
-                    //params: (route) => ({returnUrl: route.query.returnUrl, app: route.query.app}),
-                },
-                {
-                    path: 'register',
-                    name: 'Register',
-                    component: Register
-                }
-            ]
+            name: 'Login',
+            component: Login,
         },
+        // {
+        //     path: '/pages',
+        //     redirect: '/pages/404',
+        //     name: 'Pages',
+        //     component: {
+        //         render(c) {
+        //             return c('router-view')
+        //         }
+        //     },
+        //     meta: {
+        //         allowGuest: true
+        //     },
+        //     children: [
+        //         {
+        //             path: '404',
+        //             name: 'Page404',
+        //             component: Page404
+        //         },
+        //         {
+        //             path: '500',
+        //             name: 'Page500',
+        //             component: Page500
+        //         },
+        //         {
+        //             path: 'login',
+        //             name: 'Login',
+        //             component: Login,
+        //             //props: (route) => ({returnUrl: route.query.returnUrl, app: route.query.app}),
+        //             //params: (route) => ({returnUrl: route.query.returnUrl, app: route.query.app}),
+        //         },
+        //         {
+        //             path: 'register',
+        //             name: 'Register',
+        //             component: Register
+        //         }
+        //     ]
+        // },
         {
             path: '*',
             redirect: '/',

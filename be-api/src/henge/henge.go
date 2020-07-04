@@ -120,6 +120,9 @@ func (ubo *UniversalBo) UnmarshalJSON(data []byte) error {
 	if m[FieldExtras], err = reddo.ToMap(m[FieldExtras], reflect.TypeOf(map[string]interface{}{})); err != nil {
 		return err
 	}
+
+	ubo._lock.Lock()
+	defer ubo._lock.Unlock()
 	ubo.id = m[FieldId].(string)
 	ubo.appVersion = m[FieldAppVersion].(uint64)
 	ubo.checksum = m[FieldChecksum].(string)
@@ -130,8 +133,8 @@ func (ubo *UniversalBo) UnmarshalJSON(data []byte) error {
 	} else {
 		ubo._extraAttrs = make(map[string]interface{})
 	}
-	ubo.SetDataJson(m[FieldData].(string))
-	ubo.Sync()
+	ubo._setDataJson(m[FieldData].(string))
+	ubo._sync()
 	return nil
 }
 
@@ -167,7 +170,7 @@ var (
 	ErrorDataInitedAsSlice = errors.New("data is initialized as empty slice")
 )
 
-func (ubo *UniversalBo) parseDataJson(dataInit dataInitType) error {
+func (ubo *UniversalBo) _parseDataJson(dataInit dataInitType) error {
 	err := json.Unmarshal([]byte(ubo.dataJson), &ubo._data)
 	if err != nil || ubo._data == nil {
 		if dataInit == dataInitMap {
@@ -188,14 +191,18 @@ func (ubo *UniversalBo) parseDataJson(dataInit dataInitType) error {
 	return err
 }
 
+func (ubo *UniversalBo) _setDataJson(value string) *UniversalBo {
+	ubo.dataJson = strings.TrimSpace(value)
+	ubo._parseDataJson(dataInitNone)
+	ubo._dirty = true
+	return ubo
+}
+
 // SetDataJson sets value of bo's 'data-json' field
 func (ubo *UniversalBo) SetDataJson(value string) *UniversalBo {
 	ubo._lock.Lock()
 	defer ubo._lock.Unlock()
-	ubo.dataJson = strings.TrimSpace(value)
-	ubo.parseDataJson(dataInitNone)
-	ubo._dirty = true
-	return ubo
+	return ubo._setDataJson(value)
 }
 
 // GetAppVersion returns value of bo's 'app-version' field
@@ -243,15 +250,27 @@ func (ubo *UniversalBo) GetDataAttr(path string) (interface{}, error) {
 	return ubo.GetDataAttrAs(path, nil)
 }
 
-// GetDataAttrUnsafe is alias of GetDataAttrAsUnsafe(path, nil)
+// GetDataAttrUnsafe is similar to GetDataAttr but ignoring error
 func (ubo *UniversalBo) GetDataAttrUnsafe(path string) interface{} {
 	return ubo.GetDataAttrAsUnsafe(path, nil)
 }
 
-// GetDataAttrUnsafe is similar to GetDataAttr but ignoring error
+// GetDataAttrAsUnsafe is similar to GetDataAttrAs but ignoring error
 func (ubo *UniversalBo) GetDataAttrAsUnsafe(path string, typ reflect.Type) interface{} {
 	v, _ := ubo.GetDataAttrAs(path, typ)
 	return v
+}
+
+// GetDataAttrAsTimeWithLayout returns value, converted to time, of a data attribute located at 'path'
+func (ubo *UniversalBo) GetDataAttrAsTimeWithLayout(path, layout string) (time.Time, error) {
+	v, _ := ubo.GetDataAttr(path)
+	return reddo.ToTimeWithLayout(v, layout)
+}
+
+// GetDataAttrAsTimeWithLayoutUnsafe is similar to GetDataAttrAsTimeWithLayout but ignoring error
+func (ubo *UniversalBo) GetDataAttrAsTimeWithLayoutUnsafe(path, layout string) time.Time {
+	t, _ := ubo.GetDataAttrAsTimeWithLayout(path, layout)
+	return t
 }
 
 func (ubo *UniversalBo) _initSdata(path string) {
@@ -260,7 +279,7 @@ func (ubo *UniversalBo) _initSdata(path string) {
 		if strings.HasSuffix(path, "[") {
 			dataInit = dataInitSlice
 		}
-		ubo.parseDataJson(dataInit)
+		ubo._parseDataJson(dataInit)
 	}
 }
 
@@ -284,6 +303,12 @@ func (ubo *UniversalBo) SetDataAttr(path string, value interface{}) error {
 	if ubo._sdata == nil {
 		return errors.New("cannot set data at path [" + path + "]")
 	}
+	switch value.(type) {
+	case time.Time:
+		value, _ = time.Parse(TimeLayout, value.(time.Time).Format(TimeLayout))
+	case *time.Time:
+		value, _ = time.Parse(TimeLayout, value.(*time.Time).Format(TimeLayout))
+	}
 	return ubo._sdata.SetValue(path, value)
 }
 
@@ -306,10 +331,22 @@ func (ubo *UniversalBo) GetExtraAttrAs(key string, typ reflect.Type) (interface{
 	return reddo.Convert(v, typ)
 }
 
+// GetExtraAttrAsTimeWithLayout returns value, converted to time, of an 'extra' attribute specified by 'key'
+func (ubo *UniversalBo) GetExtraAttrAsTimeWithLayout(key, layout string) (time.Time, error) {
+	v := ubo.GetExtraAttr(key)
+	return reddo.ToTimeWithLayout(v, layout)
+}
+
 // GetExtraAttrAsUnsafe is similar to GetExtraAttrAs but no error is returned
 func (ubo *UniversalBo) GetExtraAttrAsUnsafe(key string, typ reflect.Type) interface{} {
 	v, _ := ubo.GetExtraAttrAs(key, typ)
 	return v
+}
+
+// GetExtraAttrAsTimeWithLayoutUnsafe is similar to GetExtraAttrAsTimeWithLayout but no error is returned
+func (ubo *UniversalBo) GetExtraAttrAsTimeWithLayoutUnsafe(key, layout string) time.Time {
+	t, _ := ubo.GetExtraAttrAsTimeWithLayout(key, layout)
+	return t
 }
 
 // SetExtraAttr sets value of an 'extra' attribute specified by 'key'
@@ -319,16 +356,20 @@ func (ubo *UniversalBo) SetExtraAttr(key string, value interface{}) *UniversalBo
 	if ubo._extraAttrs == nil {
 		ubo._extraAttrs = make(map[string]interface{})
 	}
-	ubo._extraAttrs[key] = value
 	ubo._dirty = true
+	switch value.(type) {
+	case time.Time:
+		value, _ = time.Parse(TimeLayout, value.(time.Time).Format(TimeLayout))
+	case *time.Time:
+		value, _ = time.Parse(TimeLayout, value.(*time.Time).Format(TimeLayout))
+	}
+	ubo._extraAttrs[key] = value
 	return ubo
 }
 
-// Sync syncs bo's '_data' object and 'data-json' attribute and returns itself.
-func (ubo *UniversalBo) Sync() *UniversalBo {
-	ubo._lock.Lock()
-	defer ubo._lock.Unlock()
+func (ubo *UniversalBo) _sync() *UniversalBo {
 	if ubo._dirty {
+		ubo.timeUpdated = time.Now()
 		csumMap := map[string]interface{}{
 			"id":          ubo.id,
 			"app_version": ubo.appVersion,
@@ -342,6 +383,13 @@ func (ubo *UniversalBo) Sync() *UniversalBo {
 		ubo._dirty = false
 	}
 	return ubo
+}
+
+// Sync syncs bo's '_data' object and 'data-json' attribute and returns itself.
+func (ubo *UniversalBo) Sync() *UniversalBo {
+	ubo._lock.Lock()
+	defer ubo._lock.Unlock()
+	return ubo._sync()
 }
 
 // Clone creates a cloned copy of the business object
@@ -388,4 +436,7 @@ type UniversalDao interface {
 
 	// Update modifies an existing business object
 	Update(bo *UniversalBo) (bool, error)
+
+	// Save creates new business object or updates an existing one
+	Save(bo *UniversalBo) (bool, error)
 }
