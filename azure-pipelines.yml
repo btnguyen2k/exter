@@ -26,8 +26,7 @@ steps:
 - script: |
     npm install
     npm run build
-  inputs:
-    workingDirectory: $(system.defaultWorkingDirectory)/fe-gui
+  workingDirectory: $(system.defaultWorkingDirectory)/fe-gui
   displayName: 'Exter-FE: install dependencies and build'
 
 # - script: |
