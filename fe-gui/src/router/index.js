@@ -14,10 +14,8 @@ const EditMyApp = () => import('@/views/apps/EditMyApp')
 const DeleteMyApp = () => import('@/views/apps/DeleteMyApp')
 
 // Views - Pages
-const Page404 = () => import('@/views/pages/Page404')
-const Page500 = () => import('@/views/pages/Page500')
 const Login = () => import('@/views/pages/Login')
-const Register = () => import('@/views/pages/Register')
+const CheckLogin = () => import('@/views/pages/CheckLogin')
 
 Vue.use(Router)
 
@@ -130,43 +128,14 @@ function configRoutes() {
             name: 'Login',
             component: Login,
         },
-        // {
-        //     path: '/pages',
-        //     redirect: '/pages/404',
-        //     name: 'Pages',
-        //     component: {
-        //         render(c) {
-        //             return c('router-view')
-        //         }
-        //     },
-        //     meta: {
-        //         allowGuest: true
-        //     },
-        //     children: [
-        //         {
-        //             path: '404',
-        //             name: 'Page404',
-        //             component: Page404
-        //         },
-        //         {
-        //             path: '500',
-        //             name: 'Page500',
-        //             component: Page500
-        //         },
-        //         {
-        //             path: 'login',
-        //             name: 'Login',
-        //             component: Login,
-        //             //props: (route) => ({returnUrl: route.query.returnUrl, app: route.query.app}),
-        //             //params: (route) => ({returnUrl: route.query.returnUrl, app: route.query.app}),
-        //         },
-        //         {
-        //             path: 'register',
-        //             name: 'Register',
-        //             component: Register
-        //         }
-        //     ]
-        // },
+        {
+            path: '/xcheck',
+            meta: {
+                allowGuest: true
+            },
+            name: 'CheckLogin',
+            component: CheckLogin,
+        },
         {
             path: '*',
             redirect: '/',
