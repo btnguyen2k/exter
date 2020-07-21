@@ -1,10 +1,10 @@
 {
   "app": {
-    "name": "Exter",
-    "initial": "E",
-    "shortname": "exter",
-    "desc": "Admin Control Panel project with Vue-based frontend and Go-based backend using Echo framework",
-    "version": "0.1.0"
+    "name": "#{appName}",
+    "initial": "#{appInitial}",
+    "shortname": "#{appShortname}",
+    "desc": "#{appDescription}",
+    "version": "#{appVersion}"
   },
   "api_client": {
     "bo_api_base_url": "",
