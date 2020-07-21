@@ -8,7 +8,7 @@ COPY ./fe-gui /build
 COPY ./fe-gui/src/config_one_image.json /build/src/config.json
 RUN cd /build && npm install && npm run build
 
-FROM golang:1.12-alpine AS builder_be
+FROM golang:1.13-alpine AS builder_be
 RUN apk add git build-base
 RUN mkdir /build
 COPY ./be-api /build
