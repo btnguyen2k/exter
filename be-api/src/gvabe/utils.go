@@ -32,6 +32,8 @@ import (
 	"main/src/mico"
 )
 
+var DEBUG = false
+
 const (
 	frontendAppId       = "exter_fe"
 	frontendAppIdPrefix = frontendAppId + ":"

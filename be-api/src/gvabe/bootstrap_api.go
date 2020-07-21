@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"reflect"
 	"regexp"
 	"sort"
@@ -141,9 +142,22 @@ func apiSystemInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiP
 /*------------------------------ login & session APIs ------------------------------*/
 
 func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string, app *app.App, returnUrl string) *itineris.ApiResult {
+	if DEBUG {
+		log.Printf("[DEBUG] START _doLoginGoogle")
+		t := time.Now().UnixNano()
+		defer func() {
+			d := time.Now().UnixNano() - t
+			log.Printf("[DEBUG] END _doLoginGoogle: %d ms", d/1000000)
+		}()
+	}
+
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	// firstly exchange authCode for accessToken
 	if token, err := gConfig.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
+		if DEBUG {
+			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s", authCode)
+			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s", err)
+		}
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
 		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("Error: exchanged token is nil")

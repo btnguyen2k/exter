@@ -25,10 +25,9 @@ const (
 )
 
 var (
-	gClientSecretJson   []byte
-	gClientSecretData   map[string]interface{}
-	gConfig             *oauth2.Config
-	sGoogleClientSecret *semita.Semita
+	// gClientSecretJson []byte
+	// gClientSecretData map[string]interface{}
+	gConfig           *oauth2.Config
 )
 
 type IdTokenVerified struct {

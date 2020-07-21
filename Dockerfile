@@ -1,21 +1,22 @@
-## Sample Dockerfile to package the whole application (backend and frontend) a docker image.
+## Sample Dockerfile to package the whole application (backend and frontend) as a Docker image.
 # Sample build command:
-# docker build --force-rm --squash -t exter:0.1.0 .
+# docker build --rm -t exter .
 
 FROM node:13.6-alpine3.11 AS builder_fe
+RUN apk add jq
 RUN mkdir /build
 COPY ./fe-gui /build
 COPY ./fe-gui/src/config_one_image.json /build/src/config.json
-RUN cd /build && npm install && npm run build
+RUN cd /build && rm -rf dist node_modules && export BUILD=`date +%Y%m%d%H%M` && sed -i 's/exter - Exter v0.1.0/GoVueAdmin v0.1.1 b'$BUILD/g public/index.html && npm install && npm run build
 
 FROM golang:1.13-alpine AS builder_be
-RUN apk add git build-base
+RUN apk add git build-base jq
 RUN mkdir /build
 COPY ./be-api /build
 RUN cd /build && go build -o main
 
 FROM alpine:3.10
-MAINTAINER Thanh Nguyen <btnguyen2k@gmail.com>
+LABEL maintainer="Thanh Nguyen <btnguyen2k@gmail.com>"
 RUN mkdir /app
 RUN mkdir /app/frontend
 COPY --from=builder_be /build/main /app/main

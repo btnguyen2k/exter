@@ -2,8 +2,10 @@ package gvabe
 
 import (
 	"log"
+	"os"
 	"strings"
 
+	"main/src/goapi"
 	"main/src/itineris"
 )
 
@@ -23,11 +25,26 @@ func initApiFilters(apiRouter *itineris.ApiRouter) {
 	// suggested order of filters:
 	// - Request logger should be the last one to capture full request/response
 
-	// apiFilter = itineris.NewAddPerfInfoFilter(goapi.ApiRouter, apiFilter)
-	// apiFilter = itineris.NewLoggingFilter(goapi.ApiRouter, apiFilter, itineris.NewWriterPerfLogger(os.Stderr, appName, appVersion))
+	if DEBUG {
+		// apiFilter = itineris.NewAddPerfInfoFilter(goapi.ApiRouter, apiFilter)
+		apiFilter = itineris.NewLoggingFilter(
+			goapi.ApiRouter,
+			apiFilter,
+			itineris.NewWriterPerfLogger(
+				os.Stderr,
+				goapi.AppConfig.GetString("app.name"),
+				goapi.AppConfig.GetString("app.version")))
+	}
 	apiFilter = &GVAFEAuthenticationFilter{BaseApiFilter: &itineris.BaseApiFilter{ApiRouter: apiRouter, NextFilter: apiFilter}}
-	// apiFilter = itineris.NewLoggingFilter(goapi.ApiRouter, apiFilter, itineris.NewWriterRequestLogger(os.Stdout, appName, appVersion))
-
+	// if DEBUG {
+	// 	apiFilter = itineris.NewLoggingFilter(
+	// 		goapi.ApiRouter,
+	// 		apiFilter,
+	// 		itineris.NewWriterRequestLogger(
+	// 			os.Stdout,
+	// 			goapi.AppConfig.GetString("app.name"),
+	// 			goapi.AppConfig.GetString("app.version")))
+	// }
 	apiRouter.SetApiFilter(apiFilter)
 }
 
