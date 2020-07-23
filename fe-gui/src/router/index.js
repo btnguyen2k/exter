@@ -36,7 +36,7 @@ router.beforeEach((to, from, next) => {
         let session = utils.loadLoginSession()
         if (session == null) {
             //redirect to login page if not logged in
-            return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_NAME}})
+            return next({name: "Login", query: {returnUrl: router.options.base+"#"+to.fullPath, app: appConfig.APP_NAME}})
         }
         let lastUserTokenCheck = utils.localStorageGetAsInt(utils.lskeyLoginSessionLastCheck)
         if (lastUserTokenCheck + 60 < utils.getUnixTimestamp()) {
@@ -73,7 +73,7 @@ function configRoutes() {
     return [
         {
             path: '/',
-            redirect: '/dashboard',
+            redirect: {name: "Dashboard"},
             name: 'Home',
             component: TheContainer,
             children: [

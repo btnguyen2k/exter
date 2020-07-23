@@ -2,6 +2,9 @@
 # Sample build command:
 # docker build --rm -t exter .
 
+# && export BUILD=`date +%Y%m%d%H%M` \
+# && sed -i 's/exter - Exter v0.1.0/GoVueAdmin v0.1.1 b'$BUILD/g public/index.html \
+
 FROM node:13.6-alpine3.11 AS builder_fe
 RUN apk add jq sed
 RUN mkdir /build
@@ -13,7 +16,6 @@ RUN cd /build \
     && export APP_INITIAL=`jq -r '.initial' appinfo.json` \
     && export APP_VERSION=`jq -r '.version' appinfo.json` \
     && export APP_DESC=`jq -r '.description' appinfo.json` \
-    # && export BUILD=`date +%Y%m%d%H%M` \
     && cd /build/fe-gui \
     && rm -rf dist node_modules \
     && sed -i s/#{pageTitle}/"$APP_NAME v$APP_VERSION"/g public/index.html \
@@ -28,7 +30,6 @@ RUN cd /build \
     && sed -i s/#{appDescription}/"$APP_DESC"/g src/config.json \
     && sed -i s/#{appVersion}/"$APP_VERSION"/g src/config.json \
     && npm install && npm run build
-    # && sed -i 's/exter - Exter v0.1.0/GoVueAdmin v0.1.1 b'$BUILD/g public/index.html \
 
 FROM golang:1.13-alpine AS builder_be
 RUN apk add git build-base jq sed
@@ -53,7 +54,7 @@ LABEL maintainer="Thanh Nguyen <btnguyen2k@gmail.com>"
 RUN mkdir -p /app/frontend
 COPY --from=builder_be /build/be-api/main /app/main
 COPY --from=builder_be /build/be-api/config /app/config
-COPY --from=builder_fe /build/ge-gui/dist /app/frontend
+COPY --from=builder_fe /build/fe-gui/dist /app/frontend
 RUN apk add --no-cache -U tzdata bash ca-certificates \
     && update-ca-certificates \
     && cp /usr/share/zoneinfo/Asia/Ho_Chi_Minh /etc/localtime \
