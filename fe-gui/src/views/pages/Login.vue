@@ -51,7 +51,7 @@
         name: 'Login',
         data() {
             this.infoMsg = waitInfoMsg
-            let appId = this.$route.query.app ? this.$route.query.app : appConfig.APP_NAME
+            let appId = this.$route.query.app ? this.$route.query.app : appConfig.APP_ID
             clientUtils.apiDoGet(clientUtils.apiApp + "/" + appId,
                 (apiRes) => {
                     if (apiRes.status != 200) {
