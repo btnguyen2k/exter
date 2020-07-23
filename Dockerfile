@@ -9,7 +9,6 @@ FROM node:13.6-alpine3.11 AS builder_fe
 RUN apk add jq sed
 RUN mkdir /build
 COPY . /build
-COPY ./fe-gui/src/config_one_image.json /build/fe-gui/src/config.json
 RUN cd /build \
     && export APP_NAME=`jq -r '.name' appinfo.json` \
     && export APP_SHORTNAME=`jq -r '.shortname' appinfo.json` \

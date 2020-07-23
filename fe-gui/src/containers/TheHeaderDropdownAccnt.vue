@@ -94,7 +94,7 @@
             doLogout() {
                 utils.localStorageSet(utils.lskeyLoginSession, null)
                 utils.localStorageSet(utils.lskeyLoginSessionLastCheck, null)
-                this.$router.push({name: "Login", query: {app: appConfig.APP_NAME}})
+                this.$router.push({name: "Login", query: {app: appConfig.APP_ID}})
             }
         }
     }
