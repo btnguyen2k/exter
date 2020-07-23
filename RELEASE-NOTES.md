@@ -1,8 +1,7 @@
-# Exter Release Notes
+# Exter release notes
 
-## yyyy-MM-dd - v0.1.0
+## 2020-07-24 - v0.1.0
 
 First release:
 
-- Feature 1
-- Feature 2
+- Login using [Google account](https://www.google.com/account/about/).
