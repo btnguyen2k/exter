@@ -1,0 +1,7 @@
+{
+    "name": "Exter",
+    "shortname": "exter",
+    "initial": "E",
+    "version": "0.1.0",
+    "description": "Exter is an identity gateway that allows application to authenticate users using various idendity sources"
+}

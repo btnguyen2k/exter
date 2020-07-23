@@ -14,10 +14,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 
-	"github.com/btnguyen2k/consu/semita"
 	"golang.org/x/oauth2/google"
 
 	"main/src/goapi"
@@ -38,6 +38,9 @@ Bootstrapper usually does:
 - other initializing work (e.g. creating DAO, initializing database, etc)
 */
 func (b *MyBootstrapper) Bootstrap() error {
+	if os.Getenv("DEBUG") != "" {
+		DEBUG = true
+	}
 	go startUpdateSystemInfo()
 
 	initRsaKeys()
@@ -127,20 +130,34 @@ func initGoogleClientSecret() {
 	}
 	clientSecretJson := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.client_secret_json"))
 	if clientSecretJson == "" {
-		log.Println("[INFO] No valid GoogleAPI client secret defined at [gvabe.channels.google.client_secret_json], falling back to {project_id, client_id, client_secret}")
+		log.Println("[INFO] No valid GoogleAPI client secret defined at [gvabe.channels.google.client_secret_json], falling back to {project_id, client_id, client_secret, app_domains}")
 
 		projectId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.project_id"))
 		if projectId == "" {
-			log.Println("[ERROR] No valid GoogleAPI project id defined at [gvabe.channels.google.project_id]")
+			log.Println("[ERROR] No valid GoogleAPI project-id defined at [gvabe.channels.google.project_id]")
 		}
 		clientId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.client_id"))
 		if clientId == "" {
-			log.Println("[ERROR] No valid GoogleAPI client id defined at [gvabe.channels.google.client_id]")
+			log.Println("[ERROR] No valid GoogleAPI client-id defined at [gvabe.channels.google.client_id]")
 		}
 		clientSecret := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.client_secret"))
 		if clientSecret == "" {
-			log.Println("[ERROR] No valid GoogleAPI client id defined at [gvabe.channels.google.client_secret]")
+			log.Println("[ERROR] No valid GoogleAPI client-secret defined at [gvabe.channels.google.client_secret]")
 		}
+		appDomainsStr := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.app_domains"))
+		if appDomainsStr == "" {
+			log.Println("[ERROR] No valid GoogleAPI app-domains defined at [gvabe.channels.google.app_domains]")
+		}
+		appDomains := make([]string, 0)
+		for _, s := range regexp.MustCompile("[,; ]+").Split(appDomainsStr, -1) {
+			if strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
+				appDomains = append(appDomains, s)
+			} else {
+				appDomains = append(append(appDomains, "http://"+s), "https://"+s)
+			}
+		}
+		appDomainsJs, _ := json.Marshal(appDomains)
+
 		clientSecretJson = fmt.Sprintf(`{
 		  "type":"authorized_user",
 		  "web": {
@@ -150,19 +167,21 @@ func initGoogleClientSecret() {
 			"auth_uri": "https://accounts.google.com/o/oauth2/auth",
 			"token_uri": "https://oauth2.googleapis.com/token",
 			"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-			"redirect_uris": ["http://localhost:8080"],
-			"javascript_origins": ["http://localhost:8080"],
+			"redirect_uris": %s,
+			"javascript_origins": %s,
 			"access_type": "offline"
 		  }
-		}`, projectId, clientId, clientSecret)
+		}`, projectId, clientId, clientSecret, appDomainsJs, appDomainsJs)
 	}
-	gClientSecretJson = []byte(clientSecretJson)
+	if DEBUG {
+		log.Printf("[DEBUG] initGoogleClientSecret: %s", clientSecretJson)
+	}
+	// gClientSecretJson = []byte(clientSecretJson)
 	var err error
 	if gConfig, err = google.ConfigFromJSON([]byte(clientSecretJson)); err != nil {
 		panic(err)
 	}
-	if err = json.Unmarshal([]byte(clientSecretJson), &gClientSecretData); err != nil {
-		panic(err)
-	}
-	sGoogleClientSecret = semita.NewSemita(gClientSecretData)
+	// if err = json.Unmarshal([]byte(clientSecretJson), &gClientSecretData); err != nil {
+	// 	panic(err)
+	// }
 }

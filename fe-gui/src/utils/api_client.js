@@ -29,7 +29,7 @@ function _apiOnSuccess(method, resp, apiUri, callbackSuccessful) {
     if (method=='GET' && resp.hasOwnProperty("data") && resp.data.status == 403) {
     //if (apiUri != apiLogin && apiUri != apiVerifyLoginToken && resp.hasOwnProperty("data") && resp.data.status == 403) {
         console.error("Error 403 from API [" + apiUri + "], redirecting to login page...")
-        router.push({name: "Login", query: {app: appConfig.APP_NAME, returnUrl: router.currentRoute.fullPath}})
+        router.push({name: "Login", query: {app: appConfig.APP_ID, returnUrl: router.currentRoute.fullPath}})
         return
     }
     if (resp.hasOwnProperty("data") && resp.data.hasOwnProperty("extras") && resp.data.extras.hasOwnProperty("_access_token_")) {

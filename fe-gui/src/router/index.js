@@ -36,19 +36,19 @@ router.beforeEach((to, from, next) => {
         let session = utils.loadLoginSession()
         if (session == null) {
             //redirect to login page if not logged in
-            return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_NAME}})
+            return next({name: "Login", query: {returnUrl: router.options.base+"#"+to.fullPath, app: appConfig.APP_ID}})
         }
         let lastUserTokenCheck = utils.localStorageGetAsInt(utils.lskeyLoginSessionLastCheck)
         if (lastUserTokenCheck + 60 < utils.getUnixTimestamp()) {
             lastUserTokenCheck = utils.getUnixTimestamp()
             //let uid = session.uid
             let token = session.token
-            clientUtils.apiDoPost(clientUtils.apiVerifyLoginToken, {app: appConfig.APP_NAME, token: token},
+            clientUtils.apiDoPost(clientUtils.apiVerifyLoginToken, {app: appConfig.APP_ID, token: token},
                 (apiRes) => {
                     if (apiRes.status != 200) {
                         //redirect to login page if session verification failed
                         console.error("Session verification failed: " + JSON.stringify(apiRes))
-                        return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_NAME}})
+                        return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_ID}})
                     } else {
                         utils.localStorageSet(utils.lskeyLoginSessionLastCheck, lastUserTokenCheck)
                         next()
@@ -57,7 +57,7 @@ router.beforeEach((to, from, next) => {
                 (err) => {
                     console.error("Session verification error: " + err)
                     //redirect to login page if cannot verify session
-                    return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_NAME}})
+                    return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_ID}})
                 })
         } else {
             next()
@@ -73,7 +73,7 @@ function configRoutes() {
     return [
         {
             path: '/',
-            redirect: '/dashboard',
+            redirect: {name: "Dashboard"},
             name: 'Home',
             component: TheContainer,
             children: [
