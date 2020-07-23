@@ -12,7 +12,7 @@ Latest release [`v0.1.0`](RELEASE-NOTES.md).
 
 Live demo site: https://demo-exter.herokuapp.com/
 
-**Privacy Policy**
+### Privacy Policy
 
 - Email is used to uniquely identify user. Upon successful authentication Exter, and the demo site, will obtain your email address and store in its session.
 - The demo site will remove its session data periodically without notice.
