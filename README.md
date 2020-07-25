@@ -6,6 +6,8 @@ Supported identity sources:
 - [x] Google
 - [ ] Linkedin
 
+See Exter's [GitHub repository](https://github.com/btnguyen2k/exter/) for details.
+
 Latest release [`v0.1.0`](RELEASE-NOTES.md).
 
 You can [deploy Exter](#buil--run) on your own infrastructure, on-premises or cloud. Or leverage the [pre-hosted Exter](ExterOSS.md).
