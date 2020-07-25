@@ -1,5 +1,3 @@
-# ExterOSS
-
 ![Exter icon](icons/exter_icon.png) is an identity gateway that allows application to authenticate users using various identity sources.
 
 Supported identity sources:
@@ -26,8 +24,8 @@ See Exter's [GitHub repository](https://github.com/btnguyen2k/exter/) for docume
 ### Technical Info
 
 - Exter version: `latest build`
-- URL Home: `https://exteross.herokuapp.com/`
-- URL Login: `https://exteross.herokuapp.com/app/#/xlogin`
-- URL Check login: `https://exteross.herokuapp.com/app/#/xcheck`
-- API info: `GET https://exteross.herokuapp.com/info`
-- API verifyLoginToken: `POST https://exteross.herokuapp.com/api/verifyLoginToken`
+- URL Home: `http://exteross.gpvcloud.com/`
+- URL Login: `http://exteross.gpvcloud.com/app/#/xlogin`
+- URL Check login: `http://exteross.gpvcloud.com/app/#/xcheck`
+- API info: `GET http://exteross.gpvcloud.com/info`
+- API verifyLoginToken: `POST http://exteross.gpvcloud.com/api/verifyLoginToken`
