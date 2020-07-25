@@ -12,9 +12,9 @@
 
 ## Technical Info
 
-- Exter version: latest build
-- URL Home: https://exteross.herokuapp.com/
-- URL Login: https://exteross.herokuapp.com/app/#/xlogin
-- URL Check login: https://exteross.herokuapp.com/app/#/xcheck
+- Exter version: `latest build`
+- URL Home: `https://exteross.herokuapp.com/`
+- URL Login: `https://exteross.herokuapp.com/app/#/xlogin`
+- URL Check login: `https://exteross.herokuapp.com/app/#/xcheck`
 - API info: `GET https://exteross.herokuapp.com/info`
-- API verifyLoginToken: `GET https://exteross.herokuapp.com/api/verifyLoginToken`
+- API verifyLoginToken: `POST https://exteross.herokuapp.com/api/verifyLoginToken`
