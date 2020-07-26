@@ -7,8 +7,6 @@ Supported identity sources:
 - [x] Google
 - [ ] Linkedin
 
-See Exter's [GitHub repository](https://github.com/btnguyen2k/exter/) for documentations.
-
 ## ExterOSS
 
 `ExterOSS` is a pre-hosted `Exter` instance which is free to use for personal and open source projects.
@@ -29,3 +27,5 @@ See Exter's [GitHub repository](https://github.com/btnguyen2k/exter/) for docume
 - URL Check login: `http://exteross.gpvcloud.com/app/#/xcheck`
 - API info: `GET http://exteross.gpvcloud.com/info`
 - API verifyLoginToken: `POST http://exteross.gpvcloud.com/api/verifyLoginToken`
+
+> See Exter's [GitHub repository](https://github.com/btnguyen2k/exter/) for documentations.

@@ -44,18 +44,18 @@ const (
 
 const (
 	apiResultExtraAccessToken = "access_token"
-	apiResultExtraReturnUrl = "return_url"
+	apiResultExtraReturnUrl   = "return_url"
 
 	loginSessionTtl        = 3600 * 8
 	loginSessionNearExpiry = 3600 * 3
 )
 
 var (
-	systemAdminId        string
+	systemAppOwnerId     string
 	enabledLoginChannels = make(map[string]bool)
 
-	appDao  app.AppDao
-	userDao user.UserDao
+	appDao     app.AppDao
+	userDao    user.UserDao
 	sessionDao session.SessionDao
 
 	rsaPrivKey *rsa.PrivateKey
