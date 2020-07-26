@@ -83,24 +83,24 @@ func initDaos() {
 }
 
 func _initUsers() {
-	systemAdminId = goapi.AppConfig.GetString("gvabe.init.system_admin_id")
-	systemAdminId = strings.ToLower(strings.TrimSpace(systemAdminId))
-	if systemAdminId == "" {
-		panic("system admin user account id is not found at config [gvabe.init.system_admin_id]")
+	systemAppOwnerId = goapi.AppConfig.GetString("gvabe.init.system_app_owner_id")
+	systemAppOwnerId = strings.ToLower(strings.TrimSpace(systemAppOwnerId))
+	if systemAppOwnerId == "" {
+		panic("owner id of system app not found at config [gvabe.init.system_app_owner_id]")
 	}
-	systemAdminUser, err := userDao.Get(systemAdminId)
+	systemAppOwner, err := userDao.Get(systemAppOwnerId)
 	if err != nil {
-		panic("error while getting user [" + systemAdminId + "]: " + err.Error())
+		panic("error while getting user [" + systemAppOwnerId + "]: " + err.Error())
 	}
-	if systemAdminUser == nil {
-		log.Printf("System admin user [%s] not found, creating one...", systemAdminId)
-		systemAdminUser = user.NewUser(goapi.AppVersionNumber, systemAdminId)
-		result, err := userDao.Create(systemAdminUser)
+	if systemAppOwner == nil {
+		log.Printf("System app owner [%s] not found, creating one...", systemAppOwnerId)
+		systemAppOwner = user.NewUser(goapi.AppVersionNumber, systemAppOwnerId)
+		result, err := userDao.Create(systemAppOwner)
 		if err != nil {
-			panic("error while creating user [" + systemAdminId + "]: " + err.Error())
+			panic("error while creating user [" + systemAppOwnerId + "]: " + err.Error())
 		}
 		if !result {
-			log.Printf("Cannot create user [%s]", systemAdminId)
+			log.Printf("Cannot create user [%s]", systemAppOwnerId)
 		}
 	}
 }
@@ -112,7 +112,7 @@ func _initApps() {
 	}
 	if systemApp == nil {
 		log.Printf("System app [%s] not found, creating one...", systemAppId)
-		systemApp = app.NewApp(goapi.AppVersionNumber, systemAppId, systemAdminId, systemAppDesc)
+		systemApp = app.NewApp(goapi.AppVersionNumber, systemAppId, systemAppOwnerId, systemAppDesc)
 		attrsPublic := systemApp.GetAttrsPublic()
 		attrsPublic.IdentitySources = enabledLoginChannels
 		attrsPublic.Tags = []string{systemAppId}
