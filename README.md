@@ -30,4 +30,4 @@ When user accesses the application website, the application calls Exter's API `v
 Read more:
 
 - [Set a running Exter instance](BuildAndRun.md)
-- [Integration with Exter](Integration.md)
+- [Integrate with Exter](Integration.md)

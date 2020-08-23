@@ -11,7 +11,7 @@ Supported identity sources:
 
 `ExterOSS` is a pre-hosted `Exter` instance which is free to use for personal and open source projects.
 
-> **`ExterOSS` does not provide any SLA or guarantee. You are encouraged to [host `Exter` on your own infrastructure](README.md#buil--run).**
+> **`ExterOSS` does not provide any SLA or guarantee. You are welcome to [host `Exter` on your own infrastructure](https://github.com/btnguyen2k/exter/blob/master/BuildAndRun.md).**
 
 ### Privacy Policy
 
