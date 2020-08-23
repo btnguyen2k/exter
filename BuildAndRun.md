@@ -126,4 +126,4 @@ On developer environment you can either run Exter as a container from [Docker im
 
 ## Read more
 
-- [Integration with Exter](Integration.md)
+- [Integrate with Exter](Integration.md)
