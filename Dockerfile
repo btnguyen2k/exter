@@ -10,6 +10,7 @@ RUN apk add jq sed
 RUN mkdir /build
 COPY . /build
 RUN cd /build \
+    && cat appinfo.json \
     && export APP_NAME=`jq -r '.name' appinfo.json` \
     && export APP_SHORTNAME=`jq -r '.shortname' appinfo.json` \
     && export APP_INITIAL=`jq -r '.initial' appinfo.json` \
@@ -35,6 +36,7 @@ RUN apk add git build-base jq sed
 RUN mkdir /build
 COPY . /build
 RUN cd /build \
+    && cat appinfo.json \
     && export APP_NAME=`jq -r '.name' appinfo.json` \
     && export APP_SHORTNAME=`jq -r '.shortname' appinfo.json` \
     && export APP_INITIAL=`jq -r '.initial' appinfo.json` \
