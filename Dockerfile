@@ -10,7 +10,6 @@ RUN apk add jq sed
 RUN mkdir /build
 COPY . /build
 RUN cd /build \
-    && cat appinfo.json \
     && export APP_NAME=`jq -r '.name' appinfo.json` \
     && export APP_SHORTNAME=`jq -r '.shortname' appinfo.json` \
     && export APP_INITIAL=`jq -r '.initial' appinfo.json` \
@@ -29,7 +28,6 @@ RUN cd /build \
     && sed -i s/#{appShortname}/"$APP_SHORTNAME"/g src/config.json \
     && sed -i s/#{appDescription}/"$APP_DESC"/g src/config.json \
     && sed -i s/#{appVersion}/"$APP_VERSION"/g src/config.json \
-    && cat src/config.json \
     && npm install && npm run build
 
 FROM golang:1.13-alpine AS builder_be
@@ -37,7 +35,6 @@ RUN apk add git build-base jq sed
 RUN mkdir /build
 COPY . /build
 RUN cd /build \
-    && cat appinfo.json \
     && export APP_NAME=`jq -r '.name' appinfo.json` \
     && export APP_SHORTNAME=`jq -r '.shortname' appinfo.json` \
     && export APP_INITIAL=`jq -r '.initial' appinfo.json` \
@@ -49,7 +46,6 @@ RUN cd /build \
     && sed -i s/#{appShortname}/"$APP_SHORTNAME"/g config/application.conf \
     && sed -i s/#{appDescription}/"$APP_DESC"/g config/application.conf \
     && sed -i s/#{appVersion}/"$APP_VERSION"/g config/application.conf \
-    && cat config/application.conf \
     && go build -o main
 
 FROM alpine:3.10
