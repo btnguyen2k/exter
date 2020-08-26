@@ -1,11 +1,10 @@
 <template>
     <div class="c-app flex-row align-items-center">
-        <!--        <CContainer class="d-flex align-items-center min-vh-100">-->
         <CContainer>
             <CRow class="justify-content-center">
                 <CCol md="8">
                     <CCardGroup>
-                        <CCard class="p-4" style="width:56%">
+                        <CCard class="p-4">
                             <CCardBody>
                                 <h1>Login</h1>
                                 <p v-if="errorMsg!=''" class="alert alert-danger">{{errorMsg}}</p>
