@@ -128,5 +128,5 @@ Output: if the login-token is valid
 
 ## Read more
 
-- [Set a running Exter instance](BuildAndRun.md)
+- [Setup an Exter instance](BuildAndRun.md)
 - [Exter demo](https://github.com/btnguyen2k/exter_demo): A simple application to demonstrate Exter.

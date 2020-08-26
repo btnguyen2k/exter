@@ -27,7 +27,7 @@ When the user accesses the application website, the application calls Exter's AP
 
 > **(*) Authentication will be done on the identity source site. User will _not_ be asked to enter any credential information on Exter.**
 
-Read more:
+## Read more
 
-- [Set a running Exter instance](BuildAndRun.md)
+- [Setup an Exter instance](BuildAndRun.md)
 - [Integrate with Exter](Integration.md)
