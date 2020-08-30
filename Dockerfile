@@ -2,9 +2,6 @@
 # Sample build command:
 # docker build --rm -t exter .
 
-# && export BUILD=`date +%Y%m%d%H%M` \
-# && sed -i 's/exter - Exter v0.1.0/GoVueAdmin v0.1.1 b'$BUILD/g public/index.html \
-
 FROM node:13.6-alpine3.11 AS builder_fe
 RUN apk add jq sed
 RUN mkdir /build
@@ -16,6 +13,7 @@ RUN cd /build \
     && export APP_VERSION=`jq -r '.version' appinfo.json` \
     && export APP_DESC=`jq -r '.description' appinfo.json` \
     && cd /build/fe-gui \
+    && rm -rf .env \
     && rm -rf dist node_modules \
     && sed -i s/#{pageTitle}/"$APP_NAME v$APP_VERSION"/g public/index.html \
     && sed -i s/#{appName}/"$APP_NAME"/g public/index.html \
