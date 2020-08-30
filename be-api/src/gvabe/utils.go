@@ -66,6 +66,7 @@ var (
 )
 
 const (
+	loginChannelGithub   = "github"
 	loginChannelGoogle   = "google"
 	loginChannelFacebook = "facebook"
 )

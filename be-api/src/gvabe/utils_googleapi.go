@@ -2,14 +2,17 @@ package gvabe
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"math/big"
 	"strings"
 	"sync"
@@ -18,6 +21,8 @@ import (
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
 	"golang.org/x/oauth2"
+	goauthv2 "google.golang.org/api/oauth2/v2"
+	"google.golang.org/api/option"
 )
 
 const (
@@ -25,9 +30,7 @@ const (
 )
 
 var (
-	// gClientSecretJson []byte
-	// gClientSecretData map[string]interface{}
-	gConfig           *oauth2.Config
+	googleOAuthConf *oauth2.Config
 )
 
 type IdTokenVerified struct {
@@ -49,6 +52,58 @@ var (
 	cachedAccessTokens     = make(map[string]*AccessTokenVerified)
 	mutexCacheAccessTokens sync.Mutex
 )
+
+// routine ro fetch Google profile in background
+func goFetchGoogleProfile(sessId string) {
+	if bo, err := sessionDao.Get(sessId); err != nil {
+		log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile(%s) - error loading session data: %e", sessId, err))
+	} else if bo == nil {
+		log.Println(fmt.Sprintf("[WARN] goFetchGoogleProfile(%s) - session does not exist", sessId))
+	} else if bo.IsExpired() {
+		log.Println(fmt.Sprintf("[WARN] goFetchGoogleProfile(%s) - session expired", sessId))
+	} else if claims, err := parseLoginToken(bo.GetSessionData()); err != nil {
+		log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile(%s) - cannot parse JWT token: %e", sessId, err))
+	} else if claims.Type != sessionTypePreLogin || claims.isExpired() {
+		log.Println(fmt.Sprintf("[WARN] goFetchGoogleProfile(%s) - invalid claims type of JWT expired", sessId))
+	} else {
+		sess := &Session{}
+		if err := json.Unmarshal(claims.Data, &sess); err != nil {
+			log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile(%s) - error decoding session: %e", sessId, err))
+			return
+		}
+		if sess.Channel != loginChannelGoogle {
+			log.Println(fmt.Sprintf("[WARN] goFetchGoogleProfile(%s) - invalid login channel: %s", sessId, sess.Channel))
+			return
+		}
+		oauth2Token := &oauth2.Token{}
+		if err := json.Unmarshal(sess.Data, &oauth2Token); err != nil {
+			log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile - error unmarshalling oauth2.Token: %e", err))
+		} else if oauth2Service, err := goauthv2.NewService(context.Background(), option.WithTokenSource(googleOAuthConf.TokenSource(context.Background(), oauth2Token))); err != nil {
+			log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile - error creating new Google Service: %e", err))
+		} else if userinfo, err := oauth2Service.Userinfo.V2.Me.Get().Do(); err != nil {
+			log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile - error fetching Google userinfo: %e", err))
+		} else {
+			if u, err := createUserAccountFromGoogleProfile(userinfo); err != nil {
+				log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile - error creating user account from Google userinfo: %e", err))
+			} else {
+				// now := time.Now()
+				// expiry := now.Add(3600 * time.Second)
+				js, _ := json.Marshal(oauth2Token)
+				sess.UserId = u.GetId()
+				sess.ExpiredAt = oauth2Token.Expiry
+				sess.Data = js
+				claims, err := genLoginClaims(sessId, sess)
+				if err != nil {
+					log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile(%s) - error generating login token: %e", sessId, err))
+				}
+				_, _, err = saveSession(claims)
+				if err != nil {
+					log.Println(fmt.Sprintf("[ERROR] goFetchGoogleProfile(%s) - error saving login token: %e", sessId, err))
+				}
+			}
+		}
+	}
+}
 
 // parseAndVerifyGoogleIdToken calls Google's tokeninfo service to parse and verify id_token.
 func parseAndVerifyGoogleIdToken(idToken string) (*IdTokenVerified, error) {

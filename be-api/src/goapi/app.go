@@ -3,20 +3,22 @@ package goapi
 import (
 	"encoding/json"
 	"fmt"
-	hocon "github.com/go-akka/configuration"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
-	pb "main/grpc"
-	"main/src/itineris"
-	"main/src/utils"
 	"net"
 	"net/http"
 	"os"
 	"regexp"
 	"time"
+
+	hocon "github.com/go-akka/configuration"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	"google.golang.org/grpc"
+
+	pb "main/grpc"
+	"main/src/itineris"
+	"main/src/utils"
 )
 
 const (
@@ -130,7 +132,8 @@ func initEchoServer() {
 	e.GET("/", func(c echo.Context) error {
 		return c.Redirect(http.StatusFound, fePath+"/")
 	})
-	e.GET(fePath+"/", func(c echo.Context) error {
+	// START - update for v0.2.0: migrate from Vue's 'hash' route to 'history' route.
+	feFunf := func(c echo.Context) error {
 		if fcontent, err := ioutil.ReadFile(feDir + "/index.html"); err != nil {
 			if os.IsNotExist(err) {
 				return c.HTML(http.StatusNotFound, "Not found: "+fePath+"/index.html")
@@ -140,7 +143,10 @@ func initEchoServer() {
 		} else {
 			return c.HTMLBlob(http.StatusOK, fcontent)
 		}
-	})
+	}
+	e.GET(fePath+"/", feFunf)
+	e.GET(fePath+"/*", feFunf)
+	// END
 	e.GET("/manifest.json", func(c echo.Context) error {
 		if fcontent, err := ioutil.ReadFile(feDir + "/manifest.json"); err != nil {
 			if os.IsNotExist(err) {

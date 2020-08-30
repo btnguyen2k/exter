@@ -45,6 +45,7 @@ func (b *MyBootstrapper) Bootstrap() error {
 
 	initRsaKeys()
 	initLoginChannels()
+	initGithubClientSecret()
 	initGoogleClientSecret()
 	initCaches()
 	initDaos()
@@ -124,6 +125,26 @@ func initLoginChannels() {
 	}
 }
 
+// available since v0.2.0
+func initGithubClientSecret() {
+	if !enabledLoginChannels[loginChannelGithub] {
+		return
+	}
+	clientId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.github.client_id"))
+	if clientId == "" {
+		log.Println("[ERROR] No valid Github OAuth app client-id defined at [gvabe.channels.github.client_id]")
+	}
+	clientSecret := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.github.client_secret"))
+	if clientSecret == "" {
+		log.Println("[ERROR] No valid Github OAuth app client-secret defined at [gvabe.channels.github.client_secret]")
+	}
+	githubOAuthConf.ClientID = clientId
+	githubOAuthConf.ClientSecret = clientSecret
+	if DEBUG {
+		log.Printf("[DEBUG] initGithubClientSecret: %s/%s", clientId, "***"+clientSecret[len(clientSecret)-4:])
+	}
+}
+
 func initGoogleClientSecret() {
 	if !enabledLoginChannels[loginChannelGoogle] {
 		return
@@ -176,12 +197,8 @@ func initGoogleClientSecret() {
 	if DEBUG {
 		log.Printf("[DEBUG] initGoogleClientSecret: %s", clientSecretJson)
 	}
-	// gClientSecretJson = []byte(clientSecretJson)
 	var err error
-	if gConfig, err = google.ConfigFromJSON([]byte(clientSecretJson)); err != nil {
+	if googleOAuthConf, err = google.ConfigFromJSON([]byte(clientSecretJson)); err != nil {
 		panic(err)
 	}
-	// if err = json.Unmarshal([]byte(clientSecretJson), &gClientSecretData); err != nil {
-	// 	panic(err)
-	// }
 }

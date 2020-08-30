@@ -20,7 +20,7 @@ const CheckLogin = () => import('@/views/pages/CheckLogin')
 Vue.use(Router)
 
 let router = new Router({
-    mode: 'hash', // https://router.vuejs.org/api/#mode
+    mode: 'history', // https://router.vuejs.org/api/#mode
     linkActiveClass: 'active',
     //scrollBehavior: () => ({y: 0}),
     base: "/app/",
@@ -36,7 +36,8 @@ router.beforeEach((to, from, next) => {
         let session = utils.loadLoginSession()
         if (session == null) {
             //redirect to login page if not logged in
-            return next({name: "Login", query: {returnUrl: router.options.base+"#"+to.fullPath, app: appConfig.APP_ID}})
+            return next({name: "Login", query: {returnUrl: router.resolve(to, from).href, app: appConfig.APP_ID}})
+            //return next({name: "Login", query: {returnUrl: router.options.base+"#"+to.fullPath, app: appConfig.APP_ID}})
         }
         let lastUserTokenCheck = utils.localStorageGetAsInt(utils.lskeyLoginSessionLastCheck)
         if (lastUserTokenCheck + 60 < utils.getUnixTimestamp()) {
