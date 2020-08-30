@@ -1,14 +1,14 @@
 ## Sample Dockerfile to package Frontend-GUI as a docker image.
 # Sample build command:
-# docker build --force-rm --squash -t exter_fe:0.1.0 .
+# docker build --force-rm --squash -t exter_fe .
 
 FROM node:13.6-alpine3.11 AS builder
-MAINTAINER Thanh Nguyen <btnguyen2k@gmail.com>
 RUN mkdir /build
 COPY . /build
 RUN cd /build && rm -rf dist node_modules && npm install && npm run build
 
 FROM nginx:1.17-alpine
+LABEL maintainer="Thanh Nguyen <btnguyen2k@gmail.com>"
 COPY nginx.conf /etc/nginx/nginx.conf
 RUN mkdir -p /usr/share/nginx/html/app
 COPY --from=builder /build/dist /usr/share/nginx/html/app

@@ -127,7 +127,8 @@ func apiInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiParams)
 		"app":              appInfo,
 		"login_channels":   loginChannels,
 		"rsa_public_key":   string(publicPEM),
-		"google_client_id": gConfig.ClientID,
+		"google_client_id": googleOAuthConf.ClientID,
+		"github_client_id": githubOAuthConf.ClientID,
 	}
 
 	return itineris.NewApiResult(itineris.StatusOk).SetData(result)
@@ -141,6 +142,55 @@ func apiSystemInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiP
 
 /*------------------------------ login & session APIs ------------------------------*/
 
+func _doLoginGitHub(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string, app *app.App, returnUrl string) *itineris.ApiResult {
+	if DEBUG {
+		log.Printf("[DEBUG] START _doLoginGitHub")
+		t := time.Now().UnixNano()
+		defer func() {
+			d := time.Now().UnixNano() - t
+			log.Printf("[DEBUG] END _doLoginGitHub: %d ms", d/1000000)
+		}()
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	// firstly exchange authCode for accessToken
+	if token, err := githubOAuthConf.Exchange(ctx, authCode /*, oauth2.AccessTypeOnline*/); err != nil {
+		if DEBUG {
+			log.Printf("[DEBUG] ERROR _doLoginGithub: %s / %s", authCode, err)
+		}
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
+	} else if token == nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("Error: exchanged token is nil")
+	} else {
+		now := time.Now()
+		/*
+			GitHub's OAuth token does not set expiry, which causes the token to be expired immediately.
+			Hence we need to explicitly set expiry.
+		*/
+		token.Expiry = now.Add(1 * time.Hour)
+		// secondly embed accessToken into exter's session as a JWT
+		js, _ := json.Marshal(token)
+		claims, err := genPreLoginClaims(&Session{
+			ClientId:  app.GetId(),
+			Channel:   loginChannelGithub,
+			CreatedAt: now,
+			ExpiredAt: token.Expiry,
+			Data:      js, // JSON-serialization of oauth2.Token
+		})
+		if err != nil {
+			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+		}
+		_, jwt, err := saveSession(claims)
+		if err != nil {
+			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+		}
+		// lastly use accessToken to fetch GitHub profile info
+		go goFetchGitHubProfile(claims.Id)
+		returnUrl = strings.ReplaceAll(returnUrl, "${token}", jwt)
+		return itineris.NewApiResult(itineris.StatusOk).SetData(jwt).SetExtras(map[string]interface{}{apiResultExtraReturnUrl: returnUrl})
+	}
+}
+
 func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string, app *app.App, returnUrl string) *itineris.ApiResult {
 	if DEBUG {
 		log.Printf("[DEBUG] START _doLoginGoogle")
@@ -153,10 +203,9 @@ func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	// firstly exchange authCode for accessToken
-	if token, err := gConfig.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
+	if token, err := googleOAuthConf.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
 		if DEBUG {
-			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s", authCode)
-			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s", err)
+			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s / %s", authCode, err)
 		}
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
@@ -165,7 +214,6 @@ func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 		// secondly embed accessToken into exter's session as a JWT
 		js, _ := json.Marshal(token)
 		now := time.Now()
-		// expiry := now.Add(5 * time.Minute)
 		claims, err := genPreLoginClaims(&Session{
 			ClientId:  app.GetId(),
 			Channel:   loginChannelGoogle,
@@ -216,6 +264,9 @@ func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris
 	case loginChannelGoogle:
 		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
 		return _doLoginGoogle(ctx, auth, authCode.(string), app, returnUrl.(string))
+	case loginChannelGithub:
+		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
+		return _doLoginGitHub(ctx, auth, authCode.(string), app, returnUrl.(string))
 	}
 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("Login source is not supported: %s", source))
 }
