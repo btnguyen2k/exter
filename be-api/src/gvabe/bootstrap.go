@@ -140,7 +140,7 @@ func initGithubClientSecret() {
 	}
 	githubOAuthConf.ClientID = clientId
 	githubOAuthConf.ClientSecret = clientSecret
-	if DEBUG {
+	if DEBUG && clientId != "" && clientSecret != "" {
 		log.Printf("[DEBUG] initGithubClientSecret: %s/%s", clientId, "***"+clientSecret[len(clientSecret)-4:])
 	}
 }

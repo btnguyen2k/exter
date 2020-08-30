@@ -7,7 +7,10 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -127,24 +130,42 @@ func initEchoServer() {
 	}
 
 	const fePath = "/app"
-	const feDir = "./frontend"
-	e.Static(fePath, feDir)
 	e.GET("/", func(c echo.Context) error {
 		return c.Redirect(http.StatusFound, fePath+"/")
 	})
 	// START - update for v0.2.0: migrate from Vue's 'hash' route to 'history' route.
+	const feDir = "./frontend"
+	// e.Static(fePath, feDir)
 	feFunf := func(c echo.Context) error {
-		if fcontent, err := ioutil.ReadFile(feDir + "/index.html"); err != nil {
-			if os.IsNotExist(err) {
-				return c.HTML(http.StatusNotFound, "Not found: "+fePath+"/index.html")
-			} else {
-				return err
-			}
-		} else {
-			return c.HTMLBlob(http.StatusOK, fcontent)
+		p, err := url.PathUnescape(c.Param("*"))
+		if err != nil {
+			return err
 		}
+		name := filepath.Join(feDir, path.Clean("/"+p)) // "/"+ for security
+		fi, err := os.Stat(name)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// The access path does not exist
+				if fcontent, err := ioutil.ReadFile(feDir + "/index.html"); err != nil {
+					if os.IsNotExist(err) {
+						return echo.NotFoundHandler(c)
+					}
+					return err
+				} else {
+					return c.HTMLBlob(http.StatusOK, fcontent)
+				}
+			}
+			return err
+		}
+		// If the request is for a directory and does not end with "/"
+		p = c.Request().URL.Path // path must not be empty.
+		if fi.IsDir() && p[len(p)-1] != '/' {
+			// Redirect to ends with "/"
+			return c.Redirect(http.StatusMovedPermanently, p+"/")
+		}
+		return c.File(name)
 	}
-	e.GET(fePath+"/", feFunf)
+	e.GET(fePath, feFunf)
 	e.GET(fePath+"/*", feFunf)
 	// END
 	e.GET("/manifest.json", func(c echo.Context) error {
