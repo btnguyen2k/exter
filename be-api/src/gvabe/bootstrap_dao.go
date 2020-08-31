@@ -116,15 +116,6 @@ func _initApps() {
 		attrsPublic := systemApp.GetAttrsPublic()
 		attrsPublic.IdentitySources = enabledLoginChannels
 		attrsPublic.Tags = []string{systemAppId}
-		{
-			pubBlock := &pem.Block{
-				Type:    "RSA PUBLIC KEY",
-				Headers: nil,
-				Bytes:   x509.MarshalPKCS1PublicKey(rsaPubKey),
-			}
-			publicPEM := pem.EncodeToMemory(pubBlock)
-			attrsPublic.RsaPublicKey = string(publicPEM)
-		}
 		systemApp.SetAttrsPublic(attrsPublic)
 		result, err := appDao.Create(systemApp)
 		if err != nil {
@@ -132,6 +123,26 @@ func _initApps() {
 		}
 		if !result {
 			log.Printf("Cannot create app [%s]", systemAppId)
+		}
+	}
+
+	// AB#13: sync the public key with exter app record in database
+	if systemApp != nil {
+		pubBlock := &pem.Block{
+			Type:    "RSA PUBLIC KEY",
+			Headers: nil,
+			Bytes:   x509.MarshalPKCS1PublicKey(rsaPubKey),
+		}
+		publicPEM := pem.EncodeToMemory(pubBlock)
+		attrsPublic := systemApp.GetAttrsPublic()
+		attrsPublic.RsaPublicKey = string(publicPEM)
+		systemApp.SetAttrsPublic(attrsPublic)
+		result, err := appDao.Update(systemApp)
+		if err != nil {
+			panic("error while syncing RSA public key for app [" + systemAppId + "]: " + err.Error())
+		}
+		if !result {
+			log.Printf("Cannot sync RSA public key for app [%s]", systemAppId)
 		}
 	}
 }
