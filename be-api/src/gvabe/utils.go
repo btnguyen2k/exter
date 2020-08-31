@@ -81,16 +81,20 @@ func parseRsaPublicKeyFromPem(pemStr string) (*rsa.PublicKey, error) {
 		return nil, errors.New("failed to parse PEM block")
 	}
 
-	if pub, err := x509.ParsePKIXPublicKey(block.Bytes); err != nil {
-		return nil, err
-	} else {
-		switch pub := pub.(type) {
-		case *rsa.PublicKey:
-			return pub, nil
-		default:
-			return nil, errors.New("not RSA public key")
+	switch block.Type {
+	case "RSA PUBLIC KEY":
+		return x509.ParsePKCS1PublicKey(block.Bytes)
+	case "PUBLIC KEY":
+		if pub, err := x509.ParsePKIXPublicKey(block.Bytes); err != nil {
+			return nil, err
+		} else {
+			switch pub := pub.(type) {
+			case *rsa.PublicKey:
+				return pub, nil
+			}
 		}
 	}
+	return nil, errors.New("not RSA public key")
 }
 
 func encryptPassword(username, rawPassword string) string {
