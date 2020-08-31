@@ -92,7 +92,7 @@ On developer environment you can either run Exter as a container from [Docker im
 |RSA_PRIVKEY_FILE (2)        |Path to RSA private key (PEM format)|`./config/keys/exter_priv.pem`|
 |RSA_PRIVKEY_PASSPHRASE (2)  |Pass-phrase for RSA private key|`exters3cr3t`|
 
-> - (1) This affect only the Exter frontend. On development env you can use the default value. On production env put your fronend domains here. Domain names are separated by spaces or commas or semi-colons. For example `exteross.gpvcloud.com,exteross.mydomain.com;exteross.mydomain.net`.
+> - (1) This affects only the Exter frontend. On development env you can use the default value. On production env put your fronend domains here. Domain names are separated by spaces or commas or semi-colons. For example `exteross.gpvcloud.com,exteross.mydomain.com;exteross.mydomain.net`.
 > - (2) On production env, do _not_ use the default private key. _Generate and use your own key_.
 
 **Database Backend Configuration**
@@ -110,19 +110,25 @@ On developer environment you can either run Exter as a container from [Docker im
 
 |Env variable                     |Description                              |Default value   |
 |---------------------------------|-----------------------------------------|----------------|
-|LOGIN_CHANNELS (1)               |List of enabled login channels, comma separated|`google`|
+|LOGIN_CHANNELS (1)               |List of enabled login channels, comma separated|`github,google`|
 |GOOGLE_API_PROJECT_ID (2)        |Google API's project-id||
 |GOOGLE_API_CLIENT_ID (2)         |Google API's client-id||
 |GOOGLE_API_CLIENT_SECRET (2)     |Google API's client-secret||
 |GOOGLE_API_APP_DOMAINS (2)       |List of authorized domains, separated by commas or semi-colons||
 |GOOGLE_API_CLIENT_SECRET_JSON (3)|Full content of client secret file||
+|GITHUB_OAUTHAPP_CLIENT_ID (4)    |GitHub OAuth App's Client ID||
+|GITHUB_OAUTHAPP_CLIENT_SECRET (4)|GitHub OAuth App's Client Secret||
 
-> - (1) As of version `0.1.0`, only one identity source `google` is available
+> - (1) As of version `0.2.0`, supported identity sources are `github` and `google`.
 > - (2)(3) Create your Google API project at https://console.developers.google.com/apis/ and generate client secret info on page https://console.developers.google.com/apis/credentials. Either supply full content of the download client secret file in `GOOGLE_API_CLIENT_SECRET_JSON` environment variable; or supply project-id, client-id, client-secret and authorized domains info:
 >   - `GOOGLE_API_PROJECT_ID`: your Google API's project id
 >   - `GOOGLE_API_CLIENT_ID`: your Google API's client id
 >   - `GOOGLE_API_CLIENT_SECRET`: your Google API's client secret
 >   - `GOOGLE_API_APP_DOMAINS`: list of authorized domains, separated by commas or semi-colons. Can be bare domain name or domain name prefixed by protocol. Example: `exteross.gpvcloud.com,http://exteross.mydomain.com;https://exteross.mydomain.net`
+> - (4) Create your GitHub OAuth app at https://github.com/settings/developers
+>   - Set app's `Authorization callback URL` to `<exter-url>/app/xlogin?cba=gh`
+>   - `GITHUB_OAUTHAPP_CLIENT_ID`: your GitHub OAuth app's `Client ID` value
+>   - `GITHUB_OAUTHAPP_CLIENT_SECRET`: your GitHub OAuth app's `Client Secret` value
 
 ## Read more
 

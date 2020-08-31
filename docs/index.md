@@ -3,7 +3,7 @@
 Supported identity sources:
 
 - [ ] Facebook
-- [ ] GitHub
+- [x] GitHub
 - [x] Google
 - [ ] Linkedin
 
@@ -23,8 +23,8 @@ Supported identity sources:
 
 - Exter version: `latest build`
 - URL Home: `http://exteross.gpvcloud.com/`
-- URL Login: `http://exteross.gpvcloud.com/app/#/xlogin`
-- URL Check login: `http://exteross.gpvcloud.com/app/#/xcheck`
+- URL Login: `http://exteross.gpvcloud.com/app/xlogin`
+- URL Check login: `http://exteross.gpvcloud.com/app/xcheck`
 - API info: `GET http://exteross.gpvcloud.com/info`
 - API verifyLoginToken: `POST http://exteross.gpvcloud.com/api/verifyLoginToken`
 
