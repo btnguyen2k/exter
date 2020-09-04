@@ -1,8 +1,13 @@
 # Exter release notes
 
+## 2020-09-04 - v0.3.0
+
+- Support login with `Facebook` (EPIC#2).
+- Config `gvabe.channels.google.app_domains` is deprecated, replaced by `gvabe.exter_home_url`
+
 ## 2020-08-31 - v0.2.0
 
-- Support login with `GitHub` (AB#4).
+- Support login with `GitHub` (EPIC#4).
 - Breaking change: change Vue router mode to `history`:
   - Page `/app/#/xlogin` is now `/app/xlogin`.
   - Page `/app/#/xcheck` is now `/app/xcheck`.
