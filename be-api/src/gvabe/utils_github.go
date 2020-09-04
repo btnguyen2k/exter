@@ -24,7 +24,7 @@ var (
 	}
 )
 
-// routine ro fetch GitHub profile in background
+// routine to fetch GitHub profile in background
 func goFetchGitHubProfile(sessId string) {
 	if bo, err := sessionDao.Get(sessId); err != nil {
 		log.Println(fmt.Sprintf("[ERROR] goFetchGitHubProfile(%s) - error loading session data: %e", sessId, err))

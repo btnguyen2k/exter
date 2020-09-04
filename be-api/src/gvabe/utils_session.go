@@ -4,8 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/btnguyen2k/consu/reddo"
+	"github.com/btnguyen2k/consu/semita"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/go-github/github"
 	goauthv2 "google.golang.org/api/oauth2/v2"
@@ -69,6 +72,27 @@ func saveSession(claims *SessionClaims) (*session.Session, string, error) {
 }
 
 /*----------------------------------------------------------------------*/
+
+func createUserAccountFromFacebookProfile(profile map[string]interface{}) (*user.User, error) {
+	s := semita.NewSemita(profile)
+	if email, err := s.GetValueOfType("email", reddo.TypeString); err != nil {
+		return nil, err
+	} else if strings.TrimSpace(email.(string)) == "" {
+		return nil, errors.New("facebook profile does not contain email address")
+	} else {
+		var u *user.User
+		var err error
+		email = strings.TrimSpace(email.(string))
+		if u, err = userDao.Get(email.(string)); err == nil && u == nil {
+			u = user.NewUser(goapi.AppVersionNumber, email.(string))
+			var ok bool
+			if ok, err = userDao.Create(u); err != nil || !ok {
+				u = nil
+			}
+		}
+		return u, err
+	}
+}
 
 func createUserAccountFromGitHubProfile(ui *github.User) (*user.User, error) {
 	var u *user.User

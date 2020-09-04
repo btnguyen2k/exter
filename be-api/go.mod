@@ -16,6 +16,7 @@ require (
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/huandu/facebook/v2 v2.5.2
 	github.com/jackc/pgx/v4 v4.8.1
 	github.com/labstack/echo/v4 v4.1.17
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
