@@ -45,6 +45,8 @@ func (b *MyBootstrapper) Bootstrap() error {
 
 	initRsaKeys()
 	initLoginChannels()
+	initExterHomeUrl()
+	initFacebookAppSecret()
 	initGithubClientSecret()
 	initGoogleClientSecret()
 	initCaches()
@@ -125,6 +127,39 @@ func initLoginChannels() {
 	}
 }
 
+// available since v0.3.0
+func initExterHomeUrl() {
+	exterHomeUrl = strings.TrimSpace(goapi.AppConfig.GetString("gvabe.exter_home_url"))
+	if DEBUG {
+		log.Printf("[DEBUG] Exter home url: %s", exterHomeUrl)
+	}
+	if exterHomeUrl == "" {
+		panic("no valid Exter home-url defined at [gvabe.exter_home_url]")
+	}
+}
+
+// available since v0.3.0
+func initFacebookAppSecret() {
+	if !enabledLoginChannels[loginChannelFacebook] {
+		return
+	}
+	appId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.facebook.app_id"))
+	if appId == "" {
+		log.Println("[ERROR] No valid Facebook app-id defined at [gvabe.channels.facebook.app_id]")
+	}
+	appSecret := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.facebook.app_secret"))
+	if appSecret == "" {
+		log.Println("[ERROR] No valid Facebook app-secret defined at [gvabe.channels.facebook.app_secret]")
+	}
+	fbOAuthConf.ClientID = appId
+	fbOAuthConf.ClientSecret = appSecret
+	fbOAuthConf.RedirectURL = exterHomeUrl
+	initFacebookApp(appId, appSecret)
+	if DEBUG && appId != "" && appSecret != "" {
+		log.Printf("[DEBUG] initFacebookAppSecret: %s/%s", appId, "***"+appSecret[len(appSecret)-4:])
+	}
+}
+
 // available since v0.2.0
 func initGithubClientSecret() {
 	if !enabledLoginChannels[loginChannelGithub] {
@@ -140,6 +175,7 @@ func initGithubClientSecret() {
 	}
 	githubOAuthConf.ClientID = clientId
 	githubOAuthConf.ClientSecret = clientSecret
+	githubOAuthConf.RedirectURL = exterHomeUrl
 	if DEBUG && clientId != "" && clientSecret != "" {
 		log.Printf("[DEBUG] initGithubClientSecret: %s/%s", clientId, "***"+clientSecret[len(clientSecret)-4:])
 	}
@@ -151,7 +187,7 @@ func initGoogleClientSecret() {
 	}
 	clientSecretJson := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.client_secret_json"))
 	if clientSecretJson == "" {
-		log.Println("[INFO] No valid GoogleAPI client secret defined at [gvabe.channels.google.client_secret_json], falling back to {project_id, client_id, client_secret, app_domains}")
+		log.Println("[INFO] No valid GoogleAPI client secret defined at [gvabe.channels.google.client_secret_json], falling back to {project_id, client_id, client_secret}")
 
 		projectId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.project_id"))
 		if projectId == "" {
@@ -165,19 +201,20 @@ func initGoogleClientSecret() {
 		if clientSecret == "" {
 			log.Println("[ERROR] No valid GoogleAPI client-secret defined at [gvabe.channels.google.client_secret]")
 		}
-		appDomainsStr := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.app_domains"))
-		if appDomainsStr == "" {
-			log.Println("[ERROR] No valid GoogleAPI app-domains defined at [gvabe.channels.google.app_domains]")
-		}
-		appDomains := make([]string, 0)
-		for _, s := range regexp.MustCompile("[,; ]+").Split(appDomainsStr, -1) {
-			if strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
-				appDomains = append(appDomains, s)
-			} else {
-				appDomains = append(append(appDomains, "http://"+s), "https://"+s)
-			}
-		}
-		appDomainsJs, _ := json.Marshal(appDomains)
+		// appDomainsStr := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.app_domains"))
+		// if appDomainsStr == "" {
+		// 	log.Println("[ERROR] No valid GoogleAPI app-domains defined at [gvabe.channels.google.app_domains]")
+		// }
+		// appDomains := make([]string, 0)
+		// for _, s := range regexp.MustCompile("[,; ]+").Split(appDomainsStr, -1) {
+		// 	if strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
+		// 		appDomains = append(appDomains, s)
+		// 	} else {
+		// 		appDomains = append(append(appDomains, "http://"+s), "https://"+s)
+		// 	}
+		// }
+		// appDomainsJs, _ := json.Marshal(appDomains)
+		appDomainsJs, _ := json.Marshal([]string{exterHomeUrl})
 
 		clientSecretJson = fmt.Sprintf(`{
 		  "type":"authorized_user",
@@ -195,7 +232,14 @@ func initGoogleClientSecret() {
 		}`, projectId, clientId, clientSecret, appDomainsJs, appDomainsJs)
 	}
 	if DEBUG {
-		log.Printf("[DEBUG] initGoogleClientSecret: %s", clientSecretJson)
+		r := regexp.MustCompile(`(?s)"client_secret":\s*"(.*?)"`)
+		f := r.FindSubmatch([]byte(clientSecretJson))
+		if len(f) > 1 {
+			clientSecret := string(f[1])
+			clientSecret = "***" + clientSecret[len(clientSecret)-4:]
+			clientSecretJson = r.ReplaceAllString(clientSecretJson, `"client_secret": "`+clientSecret+`"`)
+			log.Printf("[DEBUG] initGoogleClientSecret: %s", clientSecretJson)
+		}
 	}
 	var err error
 	if googleOAuthConf, err = google.ConfigFromJSON([]byte(clientSecretJson)); err != nil {

@@ -51,6 +51,8 @@ const (
 )
 
 var (
+	exterHomeUrl string // Exter home url, used as "redirect_uri" for OAuth2
+
 	systemAppOwnerId     string
 	enabledLoginChannels = make(map[string]bool)
 
@@ -66,9 +68,9 @@ var (
 )
 
 const (
+	loginChannelFacebook = "facebook"
 	loginChannelGithub   = "github"
 	loginChannelGoogle   = "google"
-	loginChannelFacebook = "facebook"
 )
 
 func genRsaKey(numBits int) (*rsa.PrivateKey, error) {

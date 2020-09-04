@@ -129,6 +129,7 @@ func apiInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiParams)
 		"rsa_public_key":   string(publicPEM),
 		"google_client_id": googleOAuthConf.ClientID,
 		"github_client_id": githubOAuthConf.ClientID,
+		"facebook_app_id":  fbOAuthConf.ClientID,
 	}
 
 	return itineris.NewApiResult(itineris.StatusOk).SetData(result)
@@ -141,6 +142,50 @@ func apiSystemInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiP
 }
 
 /*------------------------------ login & session APIs ------------------------------*/
+
+func _doLoginFacebook(_ *itineris.ApiContext, _ *itineris.ApiAuth, accessToken string, app *app.App, returnUrl string) *itineris.ApiResult {
+	if DEBUG {
+		log.Printf("[DEBUG] START _doLoginFacebook")
+		t := time.Now().UnixNano()
+		defer func() {
+			d := time.Now().UnixNano() - t
+			log.Printf("[DEBUG] END _doLoginFacebook: %d ms", d/1000000)
+		}()
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	// firstly exchange for long-live token
+	if token, err := fbExchangeForLongLiveToken(ctx, accessToken); err != nil {
+		if DEBUG {
+			log.Printf("[DEBUG] ERROR _doLoginFacebook: %s / %s", accessToken[len(accessToken)-4:], err)
+		}
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
+	} else if token == nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("Error: exchanged token is nil")
+	} else {
+		// secondly embed accessToken into exter's session as a JWT
+		js, _ := json.Marshal(token)
+		now := time.Now()
+		claims, err := genPreLoginClaims(&Session{
+			ClientId:  app.GetId(),
+			Channel:   loginChannelFacebook,
+			CreatedAt: now,
+			ExpiredAt: token.Expiry,
+			Data:      js, // JSON-serialization of oauth2.Token
+		})
+		if err != nil {
+			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+		}
+		_, jwt, err := saveSession(claims)
+		if err != nil {
+			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+		}
+		// lastly use accessToken to fetch Facebook profile info
+		go goFetchFacebookProfile(claims.Id)
+		returnUrl = strings.ReplaceAll(returnUrl, "${token}", jwt)
+		return itineris.NewApiResult(itineris.StatusOk).SetData(jwt).SetExtras(map[string]interface{}{apiResultExtraReturnUrl: returnUrl})
+	}
+}
 
 func _doLoginGitHub(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string, app *app.App, returnUrl string) *itineris.ApiResult {
 	if DEBUG {
@@ -156,7 +201,7 @@ func _doLoginGitHub(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 	// firstly exchange authCode for accessToken
 	if token, err := githubOAuthConf.Exchange(ctx, authCode /*, oauth2.AccessTypeOnline*/); err != nil {
 		if DEBUG {
-			log.Printf("[DEBUG] ERROR _doLoginGithub: %s / %s", authCode, err)
+			log.Printf("[DEBUG] ERROR _doLoginGithub: %s / %s", authCode[len(authCode)-4:], err)
 		}
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
@@ -205,7 +250,7 @@ func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 	// firstly exchange authCode for accessToken
 	if token, err := googleOAuthConf.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
 		if DEBUG {
-			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s / %s", authCode, err)
+			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s / %s", authCode[len(authCode)-4:], err)
 		}
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
@@ -267,6 +312,9 @@ func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris
 	case loginChannelGithub:
 		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
 		return _doLoginGitHub(ctx, auth, authCode.(string), app, returnUrl.(string))
+	case loginChannelFacebook:
+		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
+		return _doLoginFacebook(ctx, auth, authCode.(string), app, returnUrl.(string))
 	}
 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("Login source is not supported: %s", source))
 }

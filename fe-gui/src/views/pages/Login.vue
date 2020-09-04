@@ -17,7 +17,7 @@
                     Login with Facebook
                   </CButton>
                   <CButton v-if="sources.github" id="loginGithub" type="button" name="github"
-                           color="light" class="mb-1" style="width: 100%"
+                           color="github" class="mb-1" style="width: 100%"
                            @click="doLoginGitHub">
                     <CIcon name="cib-github"/>
                     Login with GitHub
@@ -65,12 +65,12 @@ export default {
             this.infoMsg = ""
           } else {
             this.app = apiRes.data
+            this.appInited = true
             if (!this.app.config.actv) {
               this.errorMsg = "App [" + appId + "] is not active"
               this.infoMsg = ""
               return
             }
-            this.infoMsg = defaultInfoMsg
             let appISources = this.app.config.sources
             let iSources = {}
             clientUtils.apiDoGet(clientUtils.apiInfo,
@@ -80,12 +80,15 @@ export default {
                   } else {
                     this.githubClientId = apiRes.data.github_client_id
                     this.googleClientId = apiRes.data.google_client_id
+                    this.facebookAppId = apiRes.data.facebook_app_id
 
                     apiRes.data.login_channels.every(function (e) {
                       iSources[e] = appISources[e]
                       return true
                     })
                     this.sources = iSources
+                    this.exterInfoInited = true
+                    this.infoMsg = defaultInfoMsg
                   }
                 },
                 (err) => {
@@ -97,6 +100,9 @@ export default {
           this.errorMsg = err
         })
     return {
+      exterInfoInited: false,
+      appInited: false,
+
       githubClientId: '',
       //https://docs.github.com/en/developers/apps/scopes-for-oauth-apps
       githubAuthScope: 'user:email',
@@ -104,6 +110,9 @@ export default {
       googleInited: false,
       googleAuthScope: 'email profile openid',
       googleClientId: '',
+
+      facebookInited: false,
+      facebookAppId: '',
 
       returnUrl: this.$route.query.returnUrl ? this.$route.query.returnUrl : "/",
       errorMsg: "",
@@ -119,20 +128,50 @@ export default {
     const callbackAction = this.$route.query.cba
     switch (callbackAction) {
       case 'gh':
-        return this._doLoginGitHubCallback()
+        this._doLoginGitHubCallback()
     }
 
     const vue = this
-    const scriptSrc = 'https://apis.google.com/js/platform.js'
-    vue.$loadScript(scriptSrc)
+
+    const googleScriptSrc = 'https://apis.google.com/js/platform.js'
+    vue.$loadScript(googleScriptSrc)
         .then(() => {
           gapi.load('auth2', () => {
             vue.googleInited = true
           })
         })
         .catch(() => {
-          vue.$unloadScript(scriptSrc)
-          vue.errorMsg = 'Error loading GoogleApi SDK'
+          vue.$unloadScript(googleScriptSrc)
+          const msg = 'Error loading GoogleApi SDK'
+          vue.errorMsg += '<br>' + msg
+          console.error(msg)
+        })
+
+    window.fbAsyncInit = function () {
+      if (!vue.exterInfoInited) {
+        setTimeout(() => {
+          window.fbAsyncInit()
+        }, 1000)
+        return
+      }
+      FB.init({
+        appId: vue.facebookAppId,
+        cookie: true,
+        xfbml: false,
+        version: 'v8.0'
+      });
+      vue.facebookInited = true
+      FB.AppEvents.logPageView();
+    }
+    const facebookScriptSrc = 'https://connect.facebook.net/en_US/sdk.js'
+    vue.$loadScript(facebookScriptSrc)
+        .then(() => {
+        })
+        .catch(() => {
+          vue.$unloadScript(facebookScriptSrc)
+          const msg = 'Error loading Facebook SDK'
+          vue.errorMsg += '<br>' + msg
+          console.error(msg)
         })
   },
   methods: {
@@ -156,16 +195,15 @@ export default {
             query: {returnUrl: savedReturnUrl, app: savedApp, cba: "gh"}
           })
         }
-        return false
+      } else {
+        const data = {
+          app: this.$route.query.app,
+          source: 'github',
+          code: code,
+          return_url: this.returnUrl,
+        }
+        this._doLogin(data)
       }
-      const data = {
-        app: this.$route.query.app,
-        source: 'github',
-        code: code,
-        return_url: this.returnUrl,
-      }
-      this._doLogin(data)
-      return true
     },
     doLoginGitHub(e) {
       e.preventDefault()
@@ -188,7 +226,22 @@ export default {
     },
     doLoginFacebook(e) {
       e.preventDefault()
-      alert('Please wait, Facebook SDK is being loaded.')
+      if (!this.facebookInited) {
+        alert('Please wait, Facebook SDK is being loaded.')
+      } else {
+        const vue = this
+        FB.login(function (response) {
+          if (response.status == 'connected') {
+            const data = {
+              app: vue.app.id,
+              source: 'facebook',
+              code: response.authResponse.accessToken,
+              return_url: vue.returnUrl,
+            }
+            vue._doLogin(data)
+          }
+        }, {scope: 'public_profile,email', return_scopes: true, auth_type: 'rerequest'});
+      }
     },
     doLoginGoogle(e) {
       e.preventDefault()
