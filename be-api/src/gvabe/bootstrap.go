@@ -237,8 +237,8 @@ func initGoogleClientSecret() {
 		if len(f) > 1 {
 			clientSecret := string(f[1])
 			clientSecret = "***" + clientSecret[len(clientSecret)-4:]
-			clientSecretJson = r.ReplaceAllString(clientSecretJson, `"client_secret": "`+clientSecret+`"`)
-			log.Printf("[DEBUG] initGoogleClientSecret: %s", clientSecretJson)
+			_clientSecretJson := r.ReplaceAllString(clientSecretJson, `"client_secret": "`+clientSecret+`"`)
+			log.Printf("[DEBUG] initGoogleClientSecret: %s", _clientSecretJson)
 		}
 	}
 	var err error
