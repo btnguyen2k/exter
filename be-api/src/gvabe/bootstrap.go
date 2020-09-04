@@ -175,7 +175,7 @@ func initGithubClientSecret() {
 	}
 	githubOAuthConf.ClientID = clientId
 	githubOAuthConf.ClientSecret = clientSecret
-	githubOAuthConf.RedirectURL = exterHomeUrl
+	// githubOAuthConf.RedirectURL = exterHomeUrl //[btnguyen2k-20200904]: do NOT set RedirectURL, or else we encounter error "oauth2: server response missing access_token"
 	if DEBUG && clientId != "" && clientSecret != "" {
 		log.Printf("[DEBUG] initGithubClientSecret: %s/%s", clientId, "***"+clientSecret[len(clientSecret)-4:])
 	}
