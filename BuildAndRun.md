@@ -37,7 +37,7 @@ Run the _all-in-one_ Docker image on local machine:
 
 ```
 docker run -d --name exter -p 8000:8000 \
-    -e GOOGLE_API_APP_DOMAINS="http://localhost:8000" \
+    -e EXTER_HOME_URL="http://localhost:8000" \
     -e GOOGLE_API_PROJECT_ID=<proj-id> \
     -e GOOGLE_API_CLIENT_ID=<client-id> \
     -e GOOGLE_API_CLIENT_SECRET=<client-secret> \
@@ -110,25 +110,30 @@ On developer environment you can either run Exter as a container from [Docker im
 
 |Env variable                     |Description                              |Default value   |
 |---------------------------------|-----------------------------------------|----------------|
-|LOGIN_CHANNELS (1)               |List of enabled login channels, comma separated|`github,google`|
-|GOOGLE_API_PROJECT_ID (2)        |Google API's project-id||
-|GOOGLE_API_CLIENT_ID (2)         |Google API's client-id||
-|GOOGLE_API_CLIENT_SECRET (2)     |Google API's client-secret||
-|GOOGLE_API_APP_DOMAINS (2)       |List of authorized domains, separated by commas or semi-colons||
-|GOOGLE_API_CLIENT_SECRET_JSON (3)|Full content of client secret file||
-|GITHUB_OAUTHAPP_CLIENT_ID (4)    |GitHub OAuth App's Client ID||
-|GITHUB_OAUTHAPP_CLIENT_SECRET (4)|GitHub OAuth App's Client Secret||
+|LOGIN_CHANNELS (1)               |List of enabled login channels, comma separated|`facebook,github,google`|
+|EXTER_HOME_URL (2)               |Exter home url, used as "redirect_uri" for OAuth2||
+|GOOGLE_API_PROJECT_ID (3)        |Google API's project-id||
+|GOOGLE_API_CLIENT_ID (3)         |Google API's client-id||
+|GOOGLE_API_CLIENT_SECRET (3)     |Google API's client-secret||
+|GOOGLE_API_CLIENT_SECRET_JSON (4)|Full content of client secret file||
+|GITHUB_OAUTHAPP_CLIENT_ID (5)    |GitHub OAuth App's Client ID||
+|GITHUB_OAUTHAPP_CLIENT_SECRET (5)|GitHub OAuth App's Client Secret||
+|FACEBOOK_APP_ID (6)              |Facebook App ID||
+|FACEBOOK_APP_SECRET (6)          |Facebook App Secret||
 
-> - (1) As of version `0.2.0`, supported identity sources are `github` and `google`.
-> - (2)(3) Create your Google API project at https://console.developers.google.com/apis/ and generate client secret info on page https://console.developers.google.com/apis/credentials. Either supply full content of the download client secret file in `GOOGLE_API_CLIENT_SECRET_JSON` environment variable; or supply project-id, client-id, client-secret and authorized domains info:
+> - (1) As of version `0.3.0`, supported identity sources are `facebook`, `github` and `google`.
+> - (2) Used as `redirect_uri` for OAuth2 (since `v0.3.0`).
+> - (3)(4) Create your Google API project at https://console.developers.google.com/apis/ and generate client secret info on page https://console.developers.google.com/apis/credentials. Either supply full content of the download client secret file in `GOOGLE_API_CLIENT_SECRET_JSON` environment variable; or supply project-id, client-id, client-secret and authorized domains info:
 >   - `GOOGLE_API_PROJECT_ID`: your Google API's project id
 >   - `GOOGLE_API_CLIENT_ID`: your Google API's client id
 >   - `GOOGLE_API_CLIENT_SECRET`: your Google API's client secret
->   - `GOOGLE_API_APP_DOMAINS`: list of authorized domains, separated by commas or semi-colons. Can be bare domain name or domain name prefixed by protocol. Example: `exteross.gpvcloud.com,http://exteross.mydomain.com;https://exteross.mydomain.net`
-> - (4) Create your GitHub OAuth app at https://github.com/settings/developers
+> - (5) Create your GitHub OAuth app at https://github.com/settings/developers
 >   - Set app's `Authorization callback URL` to `<exter-url>/app/xlogin?cba=gh`
 >   - `GITHUB_OAUTHAPP_CLIENT_ID`: your GitHub OAuth app's `Client ID` value
 >   - `GITHUB_OAUTHAPP_CLIENT_SECRET`: your GitHub OAuth app's `Client Secret` value
+> - (6) Create your Facebook app at https://developers.facebook.com/apps/
+>   - `FACEBOOK_APP_ID`: your Facebook app's `App ID` value
+>   - `FACEBOOK_APP_SECRET`: your Facebook app's `App Secret` value
 
 ## Read more
 
