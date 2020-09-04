@@ -157,7 +157,7 @@ func _doLoginFacebook(_ *itineris.ApiContext, _ *itineris.ApiAuth, accessToken s
 	// firstly exchange for long-live token
 	if token, err := fbExchangeForLongLiveToken(ctx, accessToken); err != nil {
 		if DEBUG {
-			log.Printf("[DEBUG] ERROR _doLoginFacebook: %s / %s", accessToken[len(accessToken)-4:], err)
+			log.Printf("[DEBUG] ERROR _doLoginFacebook: %s / %s", "***"+accessToken[len(accessToken)-4:], err)
 		}
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
@@ -199,9 +199,9 @@ func _doLoginGitHub(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	// firstly exchange authCode for accessToken
-	if token, err := githubOAuthConf.Exchange(ctx, authCode /*, oauth2.AccessTypeOnline*/); err != nil {
+	if token, err := githubOAuthConf.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
 		if DEBUG {
-			log.Printf("[DEBUG] ERROR _doLoginGithub: %s / %s", authCode[len(authCode)-4:], err)
+			log.Printf("[DEBUG] ERROR _doLoginGithub: %s / %s", "***"+authCode[len(authCode)-4:], err)
 		}
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
@@ -250,7 +250,7 @@ func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 	// firstly exchange authCode for accessToken
 	if token, err := googleOAuthConf.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
 		if DEBUG {
-			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s / %s", authCode[len(authCode)-4:], err)
+			log.Printf("[DEBUG] ERROR _doLoginGoogle: %s / %s", "***"+authCode[len(authCode)-4:], err)
 		}
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
 	} else if token == nil {
