@@ -168,6 +168,7 @@ func initEchoServer() {
 	e.GET(fePath, feFunf)
 	e.GET(fePath+"/*", feFunf)
 	// END
+	
 	e.GET("/manifest.json", func(c echo.Context) error {
 		if fcontent, err := ioutil.ReadFile(feDir + "/manifest.json"); err != nil {
 			if os.IsNotExist(err) {
@@ -177,6 +178,17 @@ func initEchoServer() {
 			}
 		} else {
 			return c.JSONBlob(http.StatusOK, fcontent)
+		}
+	})
+	e.GET("/favicon.ico", func(c echo.Context) error {
+		if fcontent, err := ioutil.ReadFile(feDir + "/favicon.ico"); err != nil {
+			if os.IsNotExist(err) {
+				return c.HTML(http.StatusNotFound, "Not found: favicon.ico")
+			} else {
+				return err
+			}
+		} else {
+			return c.Blob(http.StatusOK, "image/x-icon", fcontent)
 		}
 	})
 
