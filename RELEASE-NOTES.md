@@ -1,5 +1,10 @@
 # Exter release notes
 
+## 2020-09-05 - v0.3.1
+
+- Leverage [Gravatar](https://gravatar.com/) for user avatar (used in Exter backend)
+- Fix: access to `/favicon.ico`
+
 ## 2020-09-04 - v0.3.0
 
 - Support login with `Facebook` (EPIC#2).
