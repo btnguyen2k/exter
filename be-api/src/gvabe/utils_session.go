@@ -140,6 +140,15 @@ func createUserAccountFromGoogleProfile(ui *goauthv2.Userinfo) (*user.User, erro
 			u = nil
 		}
 	}
+	// since v0.4.0: fetch display name from GitHub profile
+	if err == nil && u != nil && u.GetDisplayName() == "" {
+		if strings.TrimSpace(ui.Name) != "" {
+			u.SetDisplayName(ui.Name)
+		} else {
+			u.SetDisplayName(extractNameFromEmailAddress(ui.Email))
+		}
+		_, err = userDao.Update(u)
+	}
 	return u, err
 }
 
