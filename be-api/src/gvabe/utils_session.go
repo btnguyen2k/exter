@@ -91,6 +91,16 @@ func createUserAccountFromFacebookProfile(profile map[string]interface{}) (*user
 				u = nil
 			}
 		}
+		// since v0.4.0: fetch display name from Facebook profile
+		if err == nil && u != nil && u.GetDisplayName() == "" {
+			name, err := s.GetValueOfType("name", reddo.TypeString)
+			if err == nil && strings.TrimSpace(name.(string)) != "" {
+				u.SetDisplayName(name.(string))
+			} else {
+				u.SetDisplayName(extractNameFromEmailAddress(email.(string)))
+			}
+			_, err = userDao.Update(u)
+		}
 		return u, err
 	}
 }
