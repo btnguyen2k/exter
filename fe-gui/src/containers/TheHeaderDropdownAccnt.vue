@@ -3,7 +3,7 @@
     <template #toggler>
       <CHeaderNavLink>
         <div class="c-avatar">
-          <img :src="avatar" class="c-avatar-img "/>
+          <img :src="avatar" class="c-avatar-img" :title="displayName"/>
         </div>
       </CHeaderNavLink>
     </template>
@@ -71,16 +71,6 @@ import MD5 from "crypto-js/md5"
 export default {
   name: 'TheHeaderDropdownAccnt',
   data() {
-    // String.prototype.hashCode = function () {
-    //   let hash = 0, i, chr;
-    //   if (this.length === 0) return hash;
-    //   for (i = 0; i < this.length; i++) {
-    //     chr = this.charCodeAt(i);
-    //     hash = ((hash << 5) - hash) + chr;
-    //     hash |= 0; // Convert to 32bit integer
-    //   }
-    //   return hash;
-    // }
     String.prototype.md5 = function () {
       return MD5(this)
     }
@@ -88,7 +78,7 @@ export default {
     let uid = session != null ? session.uid : ""
     return {
       itemsCount: 42,
-      //avatarIndex: 1 + (uid.hashCode() % 8),
+      displayName: session != null ? session.displayName : uid,
       avatar: "https://www.gravatar.com/avatar/" + uid.trim().toLowerCase().md5() + "?s=40"
     }
   },

@@ -32,12 +32,13 @@ var (
 
 // Session captures a user-login-session. Session object is to be serialized and embedded into a SessionClaims.
 type Session struct {
-	ClientId  string    `json:"cid"`  // application's id
-	Channel   string    `json:"chan"` // login source/channel (Google, Facebook, etc)
-	UserId    string    `json:"uid"`  // id of logged-in user
-	CreatedAt time.Time `json:"cat"`  // timestamp when the session is created
-	ExpiredAt time.Time `json:"eat"`  // timestamp when the session expires
-	Data      []byte    `json:"data"` // session's arbitrary data
+	ClientId    string    `json:"cid"`  // application's id
+	Channel     string    `json:"chan"` // login source/channel (Google, Facebook, etc)
+	UserId      string    `json:"uid"`  // id of logged-in user
+	DisplayName string    `json:"name"` // display name of logged-in user
+	CreatedAt   time.Time `json:"cat"`  // timestamp when the session is created
+	ExpiredAt   time.Time `json:"eat"`  // timestamp when the session expires
+	Data        []byte    `json:"data"` // session's arbitrary data
 }
 
 // SessionClaims is an extended structure of JWT's standard claims
@@ -97,7 +98,7 @@ func createUserAccountFromFacebookProfile(profile map[string]interface{}) (*user
 func createUserAccountFromGitHubProfile(ui *github.User) (*user.User, error) {
 	var u *user.User
 	var err error
-	if ui.Email == nil {
+	if ui.Email == nil || strings.TrimSpace(*ui.Email) == "" {
 		return nil, errors.New("github profile does not contain email address")
 	}
 	if u, err = userDao.Get(*ui.Email); err == nil && u == nil {
@@ -106,6 +107,15 @@ func createUserAccountFromGitHubProfile(ui *github.User) (*user.User, error) {
 		if ok, err = userDao.Create(u); err != nil || !ok {
 			u = nil
 		}
+	}
+	// since v0.4.0: fetch display name from GitHub profile
+	if err == nil && u != nil && u.GetDisplayName() == "" {
+		if ui.Name != nil && strings.TrimSpace(*ui.Name) != "" {
+			u.SetDisplayName(*ui.Name)
+		} else {
+			u.SetDisplayName(extractNameFromEmailAddress(*ui.Email))
+		}
+		_, err = userDao.Update(u)
 	}
 	return u, err
 }

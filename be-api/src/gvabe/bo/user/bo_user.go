@@ -38,8 +38,8 @@ func NewUserFromUbo(ubo *henge.UniversalBo) *User {
 }
 
 const (
-	AttrUser_AesKey = "aes_key"
-	AttrUser_Ubo    = "_ubo"
+	AttrUser_AesKey      = "aes_key"
+	AttrUser_DisplayName = "display_name"
 )
 
 // User is the business object
@@ -61,6 +61,23 @@ func (user *User) GetAesKey() string {
 // SetAesKey sets value of user's 'aes-key' attribute
 func (user *User) SetAesKey(v string) *User {
 	user.SetDataAttr(AttrUser_AesKey, strings.TrimSpace(v))
+	return user
+}
+
+// GetDisplayName returns value of user's 'display-name' attribute
+// available since v0.4.0
+func (user *User) GetDisplayName() string {
+	v, err := user.GetDataAttrAs(AttrUser_DisplayName, reddo.TypeString)
+	if err != nil || v == nil {
+		return ""
+	}
+	return v.(string)
+}
+
+// SetDisplayName sets value of user's 'display-name' attribute
+// available since v0.4.0
+func (user *User) SetDisplayName(v string) *User {
+	user.SetDataAttr(AttrUser_DisplayName, strings.TrimSpace(v))
 	return user
 }
 

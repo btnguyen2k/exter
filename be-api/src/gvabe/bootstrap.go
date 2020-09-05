@@ -201,19 +201,6 @@ func initGoogleClientSecret() {
 		if clientSecret == "" {
 			log.Println("[ERROR] No valid GoogleAPI client-secret defined at [gvabe.channels.google.client_secret]")
 		}
-		// appDomainsStr := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.google.app_domains"))
-		// if appDomainsStr == "" {
-		// 	log.Println("[ERROR] No valid GoogleAPI app-domains defined at [gvabe.channels.google.app_domains]")
-		// }
-		// appDomains := make([]string, 0)
-		// for _, s := range regexp.MustCompile("[,; ]+").Split(appDomainsStr, -1) {
-		// 	if strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://") {
-		// 		appDomains = append(appDomains, s)
-		// 	} else {
-		// 		appDomains = append(append(appDomains, "http://"+s), "https://"+s)
-		// 	}
-		// }
-		// appDomainsJs, _ := json.Marshal(appDomains)
 		appDomainsJs, _ := json.Marshal([]string{exterHomeUrl})
 
 		clientSecretJson = fmt.Sprintf(`{
