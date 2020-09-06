@@ -73,6 +73,16 @@ const (
 	loginChannelGoogle   = "google"
 )
 
+// available since v0.4.0
+func extractNameFromEmailAddress(email string) string {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if i := strings.Index(email, "@"); i <= 0 {
+		return email
+	} else {
+		return email[:i]
+	}
+}
+
 func genRsaKey(numBits int) (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, numBits)
 }

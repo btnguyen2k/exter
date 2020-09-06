@@ -88,6 +88,7 @@ func goFetchGoogleProfile(sessId string) {
 			} else {
 				js, _ := json.Marshal(oauth2Token)
 				sess.UserId = u.GetId()
+				sess.DisplayName = u.GetDisplayName()
 				sess.ExpiredAt = oauth2Token.Expiry
 				sess.Data = js
 				claims, err := genLoginClaims(sessId, sess)

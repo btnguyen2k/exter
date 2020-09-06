@@ -79,7 +79,7 @@ func fbGetProfile(ctx context.Context, accessToken string) (map[string]interface
 	}
 	return fbApp.Session(accessToken).WithContext(ctx).Get(
 		"/me",
-		fbv2.Params{"access_token": accessToken, "fields": "email"},
+		fbv2.Params{"access_token": accessToken, "fields": "email,name"},
 	)
 }
 
@@ -118,8 +118,9 @@ func goFetchFacebookProfile(sessId string) {
 				} else {
 					js, _ := json.Marshal(oauth2Token)
 					sess.UserId = u.GetId()
+					sess.DisplayName = u.GetDisplayName()
 					sess.ExpiredAt = oauth2Token.Expiry
-					sess.Data = js
+					sess.Data = js // JSON-serialization of oauth2.Token
 					claims, err := genLoginClaims(sessId, sess)
 					if err != nil {
 						log.Println(fmt.Sprintf("[ERROR] goFetchFacebookProfile(%s) - error generating login token: %e", sessId, err))

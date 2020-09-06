@@ -32,19 +32,21 @@ var (
 
 // Session captures a user-login-session. Session object is to be serialized and embedded into a SessionClaims.
 type Session struct {
-	ClientId  string    `json:"cid"`  // application's id
-	Channel   string    `json:"chan"` // login source/channel (Google, Facebook, etc)
-	UserId    string    `json:"uid"`  // id of logged-in user
-	CreatedAt time.Time `json:"cat"`  // timestamp when the session is created
-	ExpiredAt time.Time `json:"eat"`  // timestamp when the session expires
-	Data      []byte    `json:"data"` // session's arbitrary data
+	ClientId    string    `json:"cid"`  // application's id
+	Channel     string    `json:"chan"` // login source/channel (Google, Facebook, etc)
+	UserId      string    `json:"uid"`  // id of logged-in user
+	DisplayName string    `json:"name"` // display name of logged-in user
+	CreatedAt   time.Time `json:"cat"`  // timestamp when the session is created
+	ExpiredAt   time.Time `json:"eat"`  // timestamp when the session expires
+	Data        []byte    `json:"data"` // session's arbitrary data
 }
 
 // SessionClaims is an extended structure of JWT's standard claims
 type SessionClaims struct {
-	Type   string `json:"type"`           // session type (pre-login or logged-in)
-	UserId string `json:"uid,omitempty"`  // id of logged-in user
-	Data   []byte `json:"data,omitempty"` // session's arbitrary data
+	Type            string `json:"type"`           // session type (pre-login or logged-in)
+	UserId          string `json:"uid,omitempty"`  // id of logged-in user
+	UserDisplayName string `json:"name,omitempty"` // display name of logged-in user
+	Data            []byte `json:"data,omitempty"` // session's arbitrary data
 	jwt.StandardClaims
 }
 
@@ -90,6 +92,16 @@ func createUserAccountFromFacebookProfile(profile map[string]interface{}) (*user
 				u = nil
 			}
 		}
+		// since v0.4.0: fetch display name from Facebook profile
+		if err == nil && u != nil && u.GetDisplayName() == "" {
+			name, err := s.GetValueOfType("name", reddo.TypeString)
+			if err == nil && strings.TrimSpace(name.(string)) != "" {
+				u.SetDisplayName(name.(string))
+			} else {
+				u.SetDisplayName(extractNameFromEmailAddress(email.(string)))
+			}
+			_, err = userDao.Update(u)
+		}
 		return u, err
 	}
 }
@@ -97,7 +109,7 @@ func createUserAccountFromFacebookProfile(profile map[string]interface{}) (*user
 func createUserAccountFromGitHubProfile(ui *github.User) (*user.User, error) {
 	var u *user.User
 	var err error
-	if ui.Email == nil {
+	if ui.Email == nil || strings.TrimSpace(*ui.Email) == "" {
 		return nil, errors.New("github profile does not contain email address")
 	}
 	if u, err = userDao.Get(*ui.Email); err == nil && u == nil {
@@ -106,6 +118,15 @@ func createUserAccountFromGitHubProfile(ui *github.User) (*user.User, error) {
 		if ok, err = userDao.Create(u); err != nil || !ok {
 			u = nil
 		}
+	}
+	// since v0.4.0: fetch display name from GitHub profile
+	if err == nil && u != nil && u.GetDisplayName() == "" {
+		if ui.Name != nil && strings.TrimSpace(*ui.Name) != "" {
+			u.SetDisplayName(*ui.Name)
+		} else {
+			u.SetDisplayName(extractNameFromEmailAddress(*ui.Email))
+		}
+		_, err = userDao.Update(u)
 	}
 	return u, err
 }
@@ -119,6 +140,15 @@ func createUserAccountFromGoogleProfile(ui *goauthv2.Userinfo) (*user.User, erro
 		if ok, err = userDao.Create(u); err != nil || !ok {
 			u = nil
 		}
+	}
+	// since v0.4.0: fetch display name from GitHub profile
+	if err == nil && u != nil && u.GetDisplayName() == "" {
+		if strings.TrimSpace(ui.Name) != "" {
+			u.SetDisplayName(ui.Name)
+		} else {
+			u.SetDisplayName(extractNameFromEmailAddress(ui.Email))
+		}
+		_, err = userDao.Update(u)
 	}
 	return u, err
 }
@@ -147,9 +177,10 @@ func genLoginClaims(id string, sess *Session) (*SessionClaims, error) {
 	}
 	sessData, err = zipAndEncrypt(sessData, []byte(u.GetAesKey()))
 	return &SessionClaims{
-		UserId: sess.UserId,
-		Type:   sessionTypeLogin,
-		Data:   sessData,
+		UserId:          sess.UserId,
+		UserDisplayName: sess.DisplayName,
+		Type:            sessionTypeLogin,
+		Data:            sessData,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  sess.ClientId,
 			ExpiresAt: sess.ExpiredAt.Unix(),
