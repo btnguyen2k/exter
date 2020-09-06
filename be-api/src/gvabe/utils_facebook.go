@@ -120,7 +120,7 @@ func goFetchFacebookProfile(sessId string) {
 					sess.UserId = u.GetId()
 					sess.DisplayName = u.GetDisplayName()
 					sess.ExpiredAt = oauth2Token.Expiry
-					sess.Data = js
+					sess.Data = js // JSON-serialization of oauth2.Token
 					claims, err := genLoginClaims(sessId, sess)
 					if err != nil {
 						log.Println(fmt.Sprintf("[ERROR] goFetchFacebookProfile(%s) - error generating login token: %e", sessId, err))

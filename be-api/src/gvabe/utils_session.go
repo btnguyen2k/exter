@@ -43,9 +43,10 @@ type Session struct {
 
 // SessionClaims is an extended structure of JWT's standard claims
 type SessionClaims struct {
-	Type   string `json:"type"`           // session type (pre-login or logged-in)
-	UserId string `json:"uid,omitempty"`  // id of logged-in user
-	Data   []byte `json:"data,omitempty"` // session's arbitrary data
+	Type            string `json:"type"`           // session type (pre-login or logged-in)
+	UserId          string `json:"uid,omitempty"`  // id of logged-in user
+	UserDisplayName string `json:"name,omitempty"` // display name of logged-in user
+	Data            []byte `json:"data,omitempty"` // session's arbitrary data
 	jwt.StandardClaims
 }
 
@@ -176,9 +177,10 @@ func genLoginClaims(id string, sess *Session) (*SessionClaims, error) {
 	}
 	sessData, err = zipAndEncrypt(sessData, []byte(u.GetAesKey()))
 	return &SessionClaims{
-		UserId: sess.UserId,
-		Type:   sessionTypeLogin,
-		Data:   sessData,
+		UserId:          sess.UserId,
+		UserDisplayName: sess.DisplayName,
+		Type:            sessionTypeLogin,
+		Data:            sessData,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  sess.ClientId,
 			ExpiresAt: sess.ExpiredAt.Unix(),

@@ -1,5 +1,11 @@
 # Exter release notes
 
+## 2020-09-06 - v0.4.0
+
+- AB#15: Fetch display name from Facebook (AB#18), GitHub (AB#17), Google (AB#16).
+- User's display name is returned in session JWT.
+- Fix incorrect redirection when logging into Exter backend.
+
 ## 2020-09-05 - v0.3.1
 
 - Leverage [Gravatar](https://gravatar.com/) for user avatar (used in Exter backend)

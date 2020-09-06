@@ -52,6 +52,7 @@ import router from "@/router";
 const defaultInfoMsg = "Please sign in to continue"
 const waitInfoMsg = "Please wait..."
 const waitLoginInfoMsg = "Logging in, please wait..."
+const invalidReturnUrlErrMsg = "Error: invalid return url"
 
 export default {
   name: 'Login',
@@ -114,7 +115,7 @@ export default {
       facebookInited: false,
       facebookAppId: '',
 
-      returnUrl: this.$route.query.returnUrl ? this.$route.query.returnUrl : "/",
+      returnUrl: this.$route.query.returnUrl ? this.$route.query.returnUrl : "#",
       errorMsg: "",
       infoMsg: defaultInfoMsg,
 
@@ -299,10 +300,17 @@ export default {
     },
     _doSaveLoginSessionAndLogin(token, returnUrl) {
       this.waitCounter = -1
+      if (returnUrl == "" || returnUrl == null || returnUrl == '#') {
+        if (this.app.id != appConfig.APP_ID) {
+          this.errorMsg = invalidReturnUrlErrMsg
+          return
+        } else {
+          returnUrl = this.$router.resolve({name: 'Dashboard'}).href
+        }
+      }
       const jwt = utils.parseJwt(token)
-      utils.saveLoginSession({uid: jwt.payloadObj.uid, token: token})
-      // console.log(returnUrl)
-      window.location.href = returnUrl != "" ? returnUrl : "/"
+      utils.saveLoginSession({uid: jwt.payloadObj.uid, name: jwt.payloadObj.name, token: token})
+      window.location.href = returnUrl
     },
     _doWaitMessage() {
       if (this.waitCounter >= 0) {

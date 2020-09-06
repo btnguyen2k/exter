@@ -78,7 +78,7 @@ export default {
     let uid = session != null ? session.uid : ""
     return {
       itemsCount: 42,
-      displayName: session != null ? session.displayName : uid,
+      displayName: session != null ? session.name : uid,
       avatar: "https://www.gravatar.com/avatar/" + uid.trim().toLowerCase().md5() + "?s=40"
     }
   },
