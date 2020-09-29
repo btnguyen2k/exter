@@ -1,5 +1,9 @@
 # Exter release notes
 
+## 2020-09-28 - v0.4.1
+
+- AB#26: return RSA public key in different formats
+
 ## 2020-09-06 - v0.4.0
 
 - AB#15: Fetch display name from Facebook (AB#18), GitHub (AB#17), Google (AB#16).

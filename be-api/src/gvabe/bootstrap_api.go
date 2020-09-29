@@ -2,9 +2,7 @@ package gvabe
 
 import (
 	"context"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"log"
 	"reflect"
@@ -106,18 +104,6 @@ func apiInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiParams)
 		"description": goapi.AppConfig.GetString("app.desc"),
 	}
 
-	var publicPEM []byte
-	if pubDER, err := x509.MarshalPKIXPublicKey(rsaPubKey); err == nil {
-		pubBlock := pem.Block{
-			Type:    "PUBLIC KEY",
-			Headers: nil,
-			Bytes:   pubDER,
-		}
-		publicPEM = pem.EncodeToMemory(&pubBlock)
-	} else {
-		publicPEM = []byte(err.Error())
-	}
-
 	loginChannels := make([]string, 0)
 	for channel, _ := range enabledLoginChannels {
 		loginChannels = append(loginChannels, channel)
@@ -126,7 +112,8 @@ func apiInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiParams)
 	result := map[string]interface{}{
 		"app":              appInfo,
 		"login_channels":   loginChannels,
-		"rsa_public_key":   string(publicPEM),
+		"rsa_public_key":   string(rsaPubKeyPemPKCS1),
+		"public_key":       string(rsaPubKeyPemPKIX),
 		"google_client_id": googleOAuthConf.ClientID,
 		"github_client_id": githubOAuthConf.ClientID,
 		"facebook_app_id":  fbOAuthConf.ClientID,

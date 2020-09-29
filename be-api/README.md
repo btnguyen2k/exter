@@ -2,10 +2,6 @@
 
 **Admin Control Panel project with Vue-based frontend and Go-based backend using Echo framework** by **Thanh Nguyen <btnguyen2k@gmail.com> - com.github.btnguyen2k**, based on [govueadmin.g8](https://github.com/btnguyen2k/govueadmin.g8).
 
-Copyright (C) by **com.github.btnguyen2k**.
-
-Latest release version: `0.1.0`. See [RELEASE-NOTES.md](../RELEASE-NOTES.md).
-
 ## Getting Started
 
 ### Application Bootstrapper & API Handlers

@@ -57,16 +57,18 @@ func (b *MyBootstrapper) Bootstrap() error {
 }
 
 func initRsaKeys() {
-	rsaPrivKeyFile := goapi.AppConfig.GetString("gvabe.keys.rsa_privkey_file")
+	confKeyRsaPrivKeyFile := "gvabe.keys.rsa_privkey_file"
+	confKeyRsaPrivKeyPass := "gvabe.keys.rsa_privkey_passphrase"
+	rsaPrivKeyFile := goapi.AppConfig.GetString(confKeyRsaPrivKeyFile)
 	if rsaPrivKeyFile == "" {
-		log.Println("WARN: no RSA private key file configured at [gvabe.keys.rsa_privkey_file], generating one...")
+		log.Println(fmt.Sprintf("[WARN] No RSA private key file configured at [%s], generating one...", confKeyRsaPrivKeyFile))
 		privKey, err := genRsaKey(2048)
 		if err != nil {
 			panic(err)
 		}
 		rsaPrivKey = privKey
 	} else {
-		log.Println(fmt.Sprintf("INFO: loading RSA private key from [%s]...", rsaPrivKeyFile))
+		log.Println(fmt.Sprintf("[INFO] Loading RSA private key from [%s]...", rsaPrivKeyFile))
 		content, err := ioutil.ReadFile(rsaPrivKeyFile)
 		if err != nil {
 			panic(err)
@@ -76,9 +78,9 @@ func initRsaKeys() {
 			panic(fmt.Sprintf("cannot decode PEM from file [%s]", rsaPrivKeyFile))
 		}
 		var der []byte
-		passphrase := goapi.AppConfig.GetString("gvabe.keys.rsa_privkey_passphrase")
+		passphrase := goapi.AppConfig.GetString(confKeyRsaPrivKeyPass)
 		if passphrase != "" {
-			log.Println("INFO: RSA private key is pass-phrase protected")
+			log.Println("[INFO] RSA private key is pass-phrase protected")
 			if decrypted, err := x509.DecryptPEMBlock(block, []byte(passphrase)); err != nil {
 				panic(err)
 			} else {
@@ -103,14 +105,28 @@ func initRsaKeys() {
 	}
 
 	rsaPubKey = &rsaPrivKey.PublicKey
-	pubDER := x509.MarshalPKCS1PublicKey(rsaPubKey)
-	pubBlock := pem.Block{
+
+	pubBlockPKCS1 := pem.Block{
 		Type:    "RSA PUBLIC KEY",
 		Headers: nil,
-		Bytes:   pubDER,
+		Bytes:   x509.MarshalPKCS1PublicKey(rsaPubKey),
 	}
-	publicPEM := pem.EncodeToMemory(&pubBlock)
-	log.Println(string(publicPEM))
+	rsaPubKeyPemPKCS1 = pem.EncodeToMemory(&pubBlockPKCS1)
+
+	pubPKIX, _ := x509.MarshalPKIXPublicKey(rsaPubKey)
+	pubBlockPKIX := pem.Block{
+		Type:    "PUBLIC KEY",
+		Headers: nil,
+		Bytes:   pubPKIX,
+	}
+	rsaPubKeyPemPKIX = pem.EncodeToMemory(&pubBlockPKIX)
+	
+	if DEBUG {
+		log.Printf("[DEBUG] Exter public key: {Size: %d / Exponent: %d / Modulus: %x}",
+			rsaPubKey.Size()*8, rsaPubKey.E, rsaPubKey.N)
+		log.Printf("[DEBUG] Exter public key (PKCS1): %s", string(rsaPubKeyPemPKCS1))
+		log.Printf("[DEBUG] Exter public key (PKIX): %s", string(rsaPubKeyPemPKIX))
+	}
 }
 
 func initCaches() {
