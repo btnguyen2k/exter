@@ -60,8 +60,9 @@ var (
 	userDao    user.UserDao
 	sessionDao session.SessionDao
 
-	rsaPrivKey *rsa.PrivateKey
-	rsaPubKey  *rsa.PublicKey
+	rsaPrivKey                          *rsa.PrivateKey
+	rsaPubKey                           *rsa.PublicKey
+	rsaPubKeyPemPKCS1, rsaPubKeyPemPKIX []byte
 
 	sessionCache         mico.ICache
 	preLoginSessionCache mico.ICache

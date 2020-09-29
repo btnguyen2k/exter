@@ -86,7 +86,8 @@ Output: Exter's public info in JON format:
       "shortname": "exter",
       "version": "Exter's version string"
     },
-    "rsa_public_key": "Exter's RSA public key"
+    "rsa_public_key": "Exter's RSA public key (PKCS1)"
+    "public_key": "Exter's RSA public key (PKIX)"
   },
 }
 ```
