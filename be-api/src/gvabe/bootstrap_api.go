@@ -340,7 +340,7 @@ func apiVerifyLoginToken(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *it
 
 	// also verify 'return-url'
 	returnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
-	if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
+	if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" && app.GetId() != systemAppId {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
 	}
 
