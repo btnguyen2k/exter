@@ -1,5 +1,10 @@
 # Exter release notes
 
+## 2020-10-02 - v0.4.2
+
+- AB#27: (bugfix) Redirect to application only with 'login' token.
+
+
 ## 2020-09-28 - v0.4.1
 
 - AB#26: return RSA public key in different formats
