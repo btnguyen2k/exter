@@ -284,10 +284,8 @@ func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris
 	}
 
 	returnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
-	if returnUrl != "" {
-		if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
-			return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
-		}
+	if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
 	}
 
 	source := _extractParam(params, "source", reddo.TypeString, "", nil)
@@ -342,10 +340,8 @@ func apiVerifyLoginToken(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *it
 
 	// also verify 'return-url'
 	returnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
-	if returnUrl != "" {
-		if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
-			return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
-		}
+	if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
 	}
 
 	// thirdly verify the session

@@ -56,6 +56,11 @@ const invalidReturnUrlErrMsg = "Error: invalid return url"
 
 export default {
   name: 'Login',
+  computed: {
+    returnUrl() {
+      return this.$route.query.returnUrl ? this.$route.query.returnUrl : ''
+    }
+  },
   data() {
     this.infoMsg = waitInfoMsg
     let appId = this.$route.query.app ? this.$route.query.app : appConfig.APP_ID
@@ -115,7 +120,6 @@ export default {
       facebookInited: false,
       facebookAppId: '',
 
-      returnUrl: this.$route.query.returnUrl ? this.$route.query.returnUrl : "#",
       errorMsg: "",
       infoMsg: defaultInfoMsg,
 
@@ -285,8 +289,7 @@ export default {
               this.infoMsg = defaultInfoMsg
               this.waitCounter = -1
             } else {
-              let returnUrl = apiRes.extras.return_url
-              this._doSaveLoginSessionAndLogin(apiRes.data, returnUrl)
+              this._doSaveLoginSessionAndLogin(apiRes.data, apiRes.extras.return_url)
             }
           },
           (err) => {
@@ -300,7 +303,7 @@ export default {
     },
     _doSaveLoginSessionAndLogin(token, returnUrl) {
       this.waitCounter = -1
-      if (returnUrl == "" || returnUrl == null || returnUrl == '#') {
+      if (returnUrl == null || returnUrl == "" || returnUrl == '#') {
         if (this.app.id != appConfig.APP_ID) {
           this.errorMsg = invalidReturnUrlErrMsg
           return
@@ -332,12 +335,11 @@ export default {
               this.infoMsg = defaultInfoMsg
               this.waitCounter = -1
             } else {
-              let returnUrl = apiRes.extras.return_url
               const jwt = utils.parseJwt(apiRes.data)
               if (jwt.payloadObj.type == "pre_login") {
-                this._waitPreLogin(apiRes.data, returnUrl)
+                this._waitPreLogin(apiRes.data, this.returnUrl)
               } else {
-                this._doSaveLoginSessionAndLogin(apiRes.data, returnUrl)
+                this._doSaveLoginSessionAndLogin(apiRes.data, apiRes.extras.return_url)
               }
             }
           },
