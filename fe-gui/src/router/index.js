@@ -101,7 +101,7 @@ function configRoutes() {
                             meta: {label: 'App List'},
                             name: 'MyApps',
                             component: MyApps,
-                            props: true,
+                            // props: true,
                         },
                         {
                             path: '_register',

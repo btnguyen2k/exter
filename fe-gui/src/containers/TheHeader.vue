@@ -14,12 +14,12 @@
         -->
         <CHeaderNav class="d-md-down-none mr-auto">
             <CHeaderNavItem class="px-3">
-                <CHeaderNavLink to="/dashboard">
+                <CHeaderNavLink :to="{name:'Dashboard'}">
                     Dashboard
                 </CHeaderNavLink>
             </CHeaderNavItem>
             <CHeaderNavItem class="px-3">
-                <CHeaderNavLink to="/myapps" exact>
+                <CHeaderNavLink :to="{name:'MyApps'}" exact>
                     My Apps
                 </CHeaderNavLink>
             </CHeaderNavItem>
