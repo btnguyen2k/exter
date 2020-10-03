@@ -28,6 +28,11 @@
                     <CIcon name="cib-google"/>
                     Login with Google
                   </CButton>
+                  <CRow v-if="cancelUrl!=''">
+                    <CCol col="12" class="text-right">
+                      <CButton color="link" class="px-0" :href="cancelUrl">Cancel</CButton>
+                    </CCol>
+                  </CRow>
                 </CForm>
               </CCardBody>
             </CCard>
@@ -59,7 +64,11 @@ export default {
   computed: {
     returnUrl() {
       return this.$route.query.returnUrl ? this.$route.query.returnUrl : ''
-    }
+    },
+    cancelUrl() {
+      let urlCancelUrl = this.$route.query.cancelUrl ? this.$route.query.cancelUrl : ''
+      return urlCancelUrl != '' ? urlCancelUrl : (this.app.config?this.app.config.curl:'')
+    },
   },
   data() {
     this.infoMsg = waitInfoMsg

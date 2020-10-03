@@ -2,6 +2,6 @@
     "name": "Exter",
     "shortname": "exter",
     "initial": "E",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "Exter is an identity gateway that allows application to authenticate users using various identity sources"
 }
