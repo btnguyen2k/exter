@@ -49,6 +49,7 @@ type AppAttrsPublic struct {
 	IsActive         bool            `json:"actv"` // is this app active or not
 	Description      string          `json:"desc"` // description text
 	DefaultReturnUrl string          `json:"rurl"` // default return url after login
+	DefaultCancelUrl string          `json:"curl"` // default cancel url after login
 	IdentitySources  map[string]bool `json:"isrc"` // sources of identity
 	Tags             []string        `json:"tags"` // arbitrary tags
 	RsaPublicKey     string          `json:"rpub"` // RSA public key in ASCII-armor format
@@ -59,6 +60,7 @@ func (apub AppAttrsPublic) clone() AppAttrsPublic {
 		IsActive:         apub.IsActive,
 		Description:      apub.Description,
 		DefaultReturnUrl: apub.DefaultReturnUrl,
+		DefaultCancelUrl: apub.DefaultCancelUrl,
 		RsaPublicKey:     apub.RsaPublicKey,
 	}
 	if apub.IdentitySources != nil {
@@ -120,6 +122,41 @@ func (app *App) GenerateReturnUrl(preferredReturnUrl string) string {
 		return ""
 	}
 	return preferredReturnUrl
+}
+
+// GenerateCancelUrl validates 'preferredCancelUrl' and builds "cancel url" for the app.
+//
+//	- if 'preferredCancelUrl' is invalid, this function returns empty string
+func (app *App) GenerateCancelUrl(preferredCancelUrl string) string {
+	preferredCancelUrl = strings.TrimSpace(preferredCancelUrl)
+	if preferredCancelUrl == "" {
+		return app.attrsPublic.DefaultCancelUrl
+	}
+	urlPreferredCancelUrl, err := url.Parse(preferredCancelUrl)
+	if err != nil {
+		log.Println("[WARN] Preferred return url is invalid: " + preferredCancelUrl)
+		return ""
+	}
+	urlDefaultCancelUrl, err := url.Parse(strings.TrimSpace(app.attrsPublic.DefaultCancelUrl))
+	if err != nil {
+		log.Println("[WARN] Default cancel url is invalid: " + app.attrsPublic.DefaultCancelUrl)
+		return ""
+	}
+	if !urlDefaultCancelUrl.IsAbs() {
+		if urlPreferredCancelUrl.IsAbs() {
+			log.Printf("[WARN] Preferred cancel url [%s] is not valid against app's default one [%s]", preferredCancelUrl, app.attrsPublic.DefaultCancelUrl)
+			return ""
+		}
+		return preferredCancelUrl
+	}
+	if !urlPreferredCancelUrl.IsAbs() {
+		return urlDefaultCancelUrl.Scheme + "://" + urlDefaultCancelUrl.Host + "/" + strings.TrimPrefix(preferredCancelUrl, "/")
+	}
+	if urlDefaultCancelUrl.Host != urlPreferredCancelUrl.Host {
+		log.Printf("[WARN] Preferred cancel url [%s] is not valid against app's default one [%s]", preferredCancelUrl, app.attrsPublic.DefaultCancelUrl)
+		return ""
+	}
+	return preferredCancelUrl
 }
 
 // MarshalJSON implements json.encode.Marshaler.MarshalJSON

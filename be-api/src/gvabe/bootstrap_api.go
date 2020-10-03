@@ -470,6 +470,10 @@ func _extractAppParams(ctx *itineris.ApiContext, params *itineris.ApiParams) (*a
 	if defaultReturnUrl != "" && !regexp.MustCompile("^(?i)https?://.*$").Match([]byte(defaultReturnUrl.(string))) {
 		return nil, itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Invalid value for parameter [default_return_url]")
 	}
+	defaultCancelUrl := _extractParam(params, "default_cancel_url", reddo.TypeString, "", nil)
+	if defaultCancelUrl != "" && !regexp.MustCompile("^(?i)https?://.*$").Match([]byte(defaultCancelUrl.(string))) {
+		return nil, itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Invalid value for parameter [default_cancel_url]")
+	}
 	tagsStr := _extractParam(params, "tags", reddo.TypeString, "", nil)
 	tags := regexp.MustCompile("[,;]+").Split(tagsStr.(string), -1)
 	for i, tag := range tags {
@@ -495,6 +499,7 @@ func _extractAppParams(ctx *itineris.ApiContext, params *itineris.ApiParams) (*a
 		IsActive:         isActive.(bool),
 		Description:      desc.(string),
 		DefaultReturnUrl: defaultReturnUrl.(string),
+		DefaultCancelUrl: defaultCancelUrl.(string),
 		IdentitySources:  idSources.(map[string]bool),
 		Tags:             tags,
 		RsaPublicKey:     rsaPubicKeyPem.(string),

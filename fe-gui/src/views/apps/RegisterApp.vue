@@ -114,6 +114,7 @@ export default {
         is_active: this.form.isActive,
         id: this.form.id, description: this.form.description,
         default_return_url: this.form.defaultReturnUrl,
+        default_cancel_url: this.form.defaultCancelUrl,
         rsa_public_key: this.form.rsaPublicKey,
         tags: this.form.tags,
         id_sources: this.form.idSources,
