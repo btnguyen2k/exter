@@ -37,28 +37,32 @@ router.beforeEach((to, from, next) => {
         if (session == null) {
             //redirect to login page if not logged in
             return next({name: "Login", query: {returnUrl: router.resolve(to, from).href, app: appConfig.APP_ID}})
-            //return next({name: "Login", query: {returnUrl: router.options.base+"#"+to.fullPath, app: appConfig.APP_ID}})
         }
         let lastUserTokenCheck = utils.localStorageGetAsInt(utils.lskeyLoginSessionLastCheck)
         if (lastUserTokenCheck + 60 < utils.getUnixTimestamp()) {
             lastUserTokenCheck = utils.getUnixTimestamp()
-            //let uid = session.uid
             let token = session.token
             clientUtils.apiDoPost(clientUtils.apiVerifyLoginToken, {app: appConfig.APP_ID, token: token},
                 (apiRes) => {
                     if (apiRes.status != 200) {
                         //redirect to login page if session verification failed
                         console.error("Session verification failed: " + JSON.stringify(apiRes))
-                        return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_ID}})
+                        return next({
+                            name: "Login",
+                            query: {returnUrl: router.resolve(to, from).href, app: appConfig.APP_ID}
+                        })
                     } else {
                         utils.localStorageSet(utils.lskeyLoginSessionLastCheck, lastUserTokenCheck)
                         next()
                     }
                 },
                 (err) => {
-                    console.error("Session verification error: " + err)
                     //redirect to login page if cannot verify session
-                    return next({name: "Login", query: {returnUrl: to.fullPath, app: appConfig.APP_ID}})
+                    console.error("Session verification error: " + err)
+                    return next({
+                        name: "Login",
+                        query: {returnUrl: router.resolve(to, from).href, app: appConfig.APP_ID}
+                    })
                 })
         } else {
             next()
@@ -97,7 +101,7 @@ function configRoutes() {
                             meta: {label: 'App List'},
                             name: 'MyApps',
                             component: MyApps,
-                            props: true,
+                            props: true, //for passing flash message
                         },
                         {
                             path: '_register',
