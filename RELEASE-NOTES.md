@@ -1,5 +1,11 @@
 # Exter release notes
 
+## 2020-11-02 - v0.5.0
+
+- EP#3: support login with LinkedIn (AB#9, AB#10)
+- EP#15: fetch display name from LinkedIn (AB#19)
+
+
 ## 2020-10-02 - v0.4.2
 
 - AB#27: (bugfix) Redirect to application only with 'login' token.

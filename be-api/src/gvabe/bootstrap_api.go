@@ -110,13 +110,14 @@ func apiInfo(_ *itineris.ApiContext, _ *itineris.ApiAuth, _ *itineris.ApiParams)
 	}
 	sort.Strings(loginChannels)
 	result := map[string]interface{}{
-		"app":              appInfo,
-		"login_channels":   loginChannels,
-		"rsa_public_key":   string(rsaPubKeyPemPKCS1),
-		"public_key":       string(rsaPubKeyPemPKIX),
-		"google_client_id": googleOAuthConf.ClientID,
-		"github_client_id": githubOAuthConf.ClientID,
-		"facebook_app_id":  fbOAuthConf.ClientID,
+		"app":                appInfo,
+		"login_channels":     loginChannels,
+		"rsa_public_key":     string(rsaPubKeyPemPKCS1),
+		"public_key":         string(rsaPubKeyPemPKIX),
+		"facebook_app_id":    fbOAuthConf.ClientID,
+		"github_client_id":   githubOAuthConf.ClientID,
+		"google_client_id":   googleOAuthConf.ClientID,
+		"linkedin_client_id": linkedinOAuthConf.ClientID,
 	}
 
 	return itineris.NewApiResult(itineris.StatusOk).SetData(result)
@@ -267,6 +268,50 @@ func _doLoginGoogle(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string
 	}
 }
 
+func _doLoginLinkedin(_ *itineris.ApiContext, _ *itineris.ApiAuth, authCode string, app *app.App, returnUrl string) *itineris.ApiResult {
+	if DEBUG {
+		log.Printf("[DEBUG] START _doLoginLinkedin")
+		t := time.Now().UnixNano()
+		defer func() {
+			d := time.Now().UnixNano() - t
+			log.Printf("[DEBUG] END _doLoginLinkedin: %d ms", d/1000000)
+		}()
+	}
+
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	// firstly exchange authCode for accessToken
+	if token, err := linkedinOAuthConf.Exchange(ctx, authCode, oauth2.AccessTypeOnline); err != nil {
+		if DEBUG {
+			log.Printf("[DEBUG] ERROR _doLoginLinkedin: %s / %s", "***"+authCode[len(authCode)-4:], err)
+		}
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(err.Error())
+	} else if token == nil {
+		return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage("Error: exchanged token is nil")
+	} else {
+		now := time.Now()
+		// secondly embed accessToken into exter's session as a JWT
+		js, _ := json.Marshal(token)
+		claims, err := genPreLoginClaims(&Session{
+			ClientId:  app.GetId(),
+			Channel:   loginChannelLinkedin,
+			CreatedAt: now,
+			ExpiredAt: token.Expiry,
+			Data:      js, // JSON-serialization of oauth2.Token
+		})
+		if err != nil {
+			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+		}
+		_, jwt, err := saveSession(claims)
+		if err != nil {
+			return itineris.NewApiResult(itineris.StatusErrorServer).SetMessage(err.Error())
+		}
+		// lastly use accessToken to fetch LinkedIn profile info
+		go goFetchLinkedInProfile(claims.Id)
+		returnUrl = strings.ReplaceAll(returnUrl, "${token}", jwt)
+		return itineris.NewApiResult(itineris.StatusOk).SetData(jwt).SetExtras(map[string]interface{}{apiResultExtraReturnUrl: returnUrl})
+	}
+}
+
 /*
 apiLogin handles API call "login".
 
@@ -300,6 +345,9 @@ func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris
 	case loginChannelFacebook:
 		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
 		return _doLoginFacebook(ctx, auth, authCode.(string), app, returnUrl.(string))
+	case loginChannelLinkedin:
+		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
+		return _doLoginLinkedin(ctx, auth, authCode.(string), app, returnUrl.(string))
 	}
 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("Login source is not supported: %s", source))
 }

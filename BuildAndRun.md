@@ -110,7 +110,7 @@ On developer environment you can either run Exter as a container from [Docker im
 
 |Env variable                     |Description                              |Default value   |
 |---------------------------------|-----------------------------------------|----------------|
-|LOGIN_CHANNELS (1)               |List of enabled login channels, comma separated|`facebook,github,google`|
+|LOGIN_CHANNELS (1)               |List of enabled login channels, comma separated|`facebook,github,google,linkedin`|
 |EXTER_HOME_URL (2)               |Exter home url, used as "redirect_uri" for OAuth2||
 |GOOGLE_API_PROJECT_ID (3)        |Google API's project-id||
 |GOOGLE_API_CLIENT_ID (3)         |Google API's client-id||
@@ -120,8 +120,11 @@ On developer environment you can either run Exter as a container from [Docker im
 |GITHUB_OAUTHAPP_CLIENT_SECRET (5)|GitHub OAuth App's Client Secret||
 |FACEBOOK_APP_ID (6)              |Facebook App ID||
 |FACEBOOK_APP_SECRET (6)          |Facebook App Secret||
+|LINKEDIN_CLIENT_ID (7)           |LinkedIn OAuth App's Client ID||
+|LINKEDIN_CLIENT_SECRET (7)       |LinkedIn OAuth App's Client Secret||
+|LINKEDIN_REDIRECT_URI (8)        |Redirect uri for LinkedIn OAuth flow||
 
-> - (1) As of version `0.3.0`, supported identity sources are `facebook`, `github` and `google`.
+> - (1) As of version `0.5.0`, supported identity sources are `facebook`, `github`, `google` and `linkedin`.
 > - (2) Used as `redirect_uri` for OAuth2 (since `v0.3.0`).
 > - (3)(4) Create your Google API project at https://console.developers.google.com/apis/ and generate client secret info on page https://console.developers.google.com/apis/credentials. Either supply full content of the download client secret file in `GOOGLE_API_CLIENT_SECRET_JSON` environment variable; or supply project-id, client-id, client-secret and authorized domains info:
 >   - `GOOGLE_API_PROJECT_ID`: your Google API's project id
@@ -134,6 +137,11 @@ On developer environment you can either run Exter as a container from [Docker im
 > - (6) Create your Facebook app at https://developers.facebook.com/apps/
 >   - `FACEBOOK_APP_ID`: your Facebook app's `App ID` value
 >   - `FACEBOOK_APP_SECRET`: your Facebook app's `App Secret` value
+> - (7)(8) Create your LinkedIn app with `Sign In with LinkedIn` product at https://www.linkedin.com/developers/
+>   - Set app's `Authorized redirect URL` to `<exter-url>/app/xlogin?cba=ln`
+>   - `LINKEDIN_CLIENT_ID`: your LinkedIn OAuth app's `Client ID` value
+>   - `LINKEDIN_CLIENT_SECRET`: your LinkedIn OAuth app's `Client Secret` value
+>   - `LINKEDIN_REDIRECT_URI`: same as the `Authorized redirect URL` above
 
 ## Read more
 
