@@ -72,6 +72,7 @@ const (
 	loginChannelFacebook = "facebook"
 	loginChannelGithub   = "github"
 	loginChannelGoogle   = "google"
+	loginChannelLinkedin = "linkedin"
 )
 
 // available since v0.4.0

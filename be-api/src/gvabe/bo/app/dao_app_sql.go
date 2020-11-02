@@ -1,8 +1,6 @@
 package app
 
 import (
-	"log"
-
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/prom"
@@ -78,7 +76,6 @@ func (dao *AppDaoSql) GetUserApps(u *user.User) ([]*App, error) {
 	} else {
 		result := make([]*App, 0)
 		for _, app := range appList {
-			log.Printf("App: %v - User %v\n", app.ownerId, u.GetId())
 			if app.ownerId == u.GetId() {
 				result = append(result, app)
 			}

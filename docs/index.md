@@ -5,7 +5,8 @@ Supported identity sources:
 - [x] Facebook
 - [x] GitHub
 - [x] Google
-- [ ] Linkedin
+- [x] Linkedin
+- [ ] Twitter
 
 ## ExterOSS
 

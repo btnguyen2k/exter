@@ -5,9 +5,10 @@ Supported identity sources:
 - [x] Facebook
 - [x] GitHub
 - [x] Google
-- [ ] Linkedin
+- [x] Linkedin
+- [ ] Twitter
 
-Latest release [`v0.4.2`](RELEASE-NOTES.md).
+Latest release [`v0.5.0`](RELEASE-NOTES.md).
 
 You can [deploy Exter](BuildAndRun.md) on your own infrastructure, on-premises or cloud. Or leverage the [pre-hosted Exter](https://btnguyen2k.github.io/exter/).
 

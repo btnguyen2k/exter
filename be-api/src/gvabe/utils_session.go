@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btnguyen2k/consu/gjrc"
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/consu/semita"
 	"github.com/dgrijalva/jwt-go"
@@ -104,6 +105,51 @@ func createUserAccountFromFacebookProfile(profile map[string]interface{}) (*user
 		}
 		return u, err
 	}
+}
+
+func createUserAccountFromLinkedInProfile(gjrcClient *gjrc.Gjrc) (*user.User, error) {
+	var u *user.User
+	var err error
+	var email interface{}
+
+	// fetch email address
+	respEmail := gjrcClient.Get("https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))")
+	if respEmail.Error() != nil {
+		return nil, respEmail.Error()
+	}
+	if email, err = respEmail.GetValueAsType("elements[0].handle~.emailAddress", reddo.TypeString); err != nil {
+		return nil, respEmail.Error()
+	} else if email == "" {
+		return nil, errors.New("linkedin profile does not contain email address")
+	}
+
+	if u, err = userDao.Get(email.(string)); err == nil && u == nil {
+		u = user.NewUser(goapi.AppVersionNumber, email.(string))
+		var ok bool
+		if ok, err = userDao.Create(u); err != nil || !ok {
+			u = nil
+		}
+	}
+	if err == nil && u != nil && u.GetDisplayName() == "" {
+		// fetch public lite profile (name & id)
+		respMe := gjrcClient.Get("https://api.linkedin.com/v2/me")
+		firstName, err := respMe.GetValueAsType("localizedFirstName", reddo.TypeString)
+		if err != nil {
+			firstName = ""
+		}
+		lastName, err := respMe.GetValueAsType("localizedLastName", reddo.TypeString)
+		if err != nil {
+			lastName = ""
+		}
+		displayName := firstName.(string) + " " + lastName.(string)
+		if strings.TrimSpace(displayName) != "" {
+			u.SetDisplayName(displayName)
+		} else {
+			u.SetDisplayName(extractNameFromEmailAddress(email.(string)))
+		}
+		_, err = userDao.Update(u)
+	}
+	return u, err
 }
 
 func createUserAccountFromGitHubProfile(ui *github.User) (*user.User, error) {

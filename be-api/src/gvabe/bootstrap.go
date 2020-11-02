@@ -49,6 +49,7 @@ func (b *MyBootstrapper) Bootstrap() error {
 	initFacebookAppSecret()
 	initGithubClientSecret()
 	initGoogleClientSecret()
+	initLinkedinClientSecret()
 	initCaches()
 	initDaos()
 	initApiHandlers(goapi.ApiRouter)
@@ -120,7 +121,7 @@ func initRsaKeys() {
 		Bytes:   pubPKIX,
 	}
 	rsaPubKeyPemPKIX = pem.EncodeToMemory(&pubBlockPKIX)
-	
+
 	if DEBUG {
 		log.Printf("[DEBUG] Exter public key: {Size: %d / Exponent: %d / Modulus: %x}",
 			rsaPubKey.Size()*8, rsaPubKey.E, rsaPubKey.N)
@@ -247,5 +248,31 @@ func initGoogleClientSecret() {
 	var err error
 	if googleOAuthConf, err = google.ConfigFromJSON([]byte(clientSecretJson)); err != nil {
 		panic(err)
+	}
+}
+
+// available since v0.5.0
+func initLinkedinClientSecret() {
+	if !enabledLoginChannels[loginChannelLinkedin] {
+		return
+	}
+	clientId := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.linkedin.client_id"))
+	if clientId == "" {
+		log.Println("[ERROR] No valid LinkedIn OAuth app client-id defined at [gvabe.channels.linkedin.client_id]")
+	}
+	clientSecret := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.linkedin.client_secret"))
+	if clientSecret == "" {
+		log.Println("[ERROR] No valid LinkedIn OAuth app client-secret defined at [gvabe.channels.linkedin.client_secret]")
+	}
+	redirectUri := strings.TrimSpace(goapi.AppConfig.GetString("gvabe.channels.linkedin.redirect_uri"))
+	if redirectUri == "" {
+		log.Println("[ERROR] No valid LinkedIn OAuth app redirect-uri defined at [gvabe.channels.linkedin.redirect_uri]")
+		redirectUri = exterHomeUrl
+	}
+	linkedinOAuthConf.ClientID = clientId
+	linkedinOAuthConf.ClientSecret = clientSecret
+	linkedinOAuthConf.RedirectURL = redirectUri
+	if DEBUG && clientId != "" && clientSecret != "" {
+		log.Printf("[DEBUG] initLinkedinClientSecret: %s/%s/%s", clientId, "***"+clientSecret[len(clientSecret)-4:], redirectUri)
 	}
 }
