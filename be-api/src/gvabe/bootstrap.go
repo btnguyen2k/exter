@@ -21,7 +21,6 @@ import (
 	"golang.org/x/oauth2/google"
 
 	"main/src/goapi"
-	"main/src/mico"
 )
 
 type MyBootstrapper struct {
@@ -50,7 +49,7 @@ func (b *MyBootstrapper) Bootstrap() error {
 	initGithubClientSecret()
 	initGoogleClientSecret()
 	initLinkedinClientSecret()
-	initCaches()
+	// initCaches()
 	initDaos()
 	initApiHandlers(goapi.ApiRouter)
 	initApiFilters(goapi.ApiRouter)
@@ -130,11 +129,11 @@ func initRsaKeys() {
 	}
 }
 
-func initCaches() {
-	cacheConfig := &mico.CacheConfig{}
-	sessionCache = mico.NewMemoryCache(cacheConfig)
-	preLoginSessionCache = mico.NewMemoryCache(cacheConfig)
-}
+// func initCaches() {
+// 	cacheConfig := &mico.CacheConfig{}
+// sessionCache = mico.NewMemoryCache(cacheConfig)
+// preLoginSessionCache = mico.NewMemoryCache(cacheConfig)
+// }
 
 func initLoginChannels() {
 	loginChannels := regexp.MustCompile("[,;\\s]+").Split(goapi.AppConfig.GetString("gvabe.login_channels"), -1)

@@ -1,6 +1,8 @@
 package user
 
 import (
+	"fmt"
+
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/prom"
@@ -8,35 +10,36 @@ import (
 	"github.com/btnguyen2k/henge"
 )
 
-// NewUserDaoSql is helper method to create SQL-implementation of UserDao.
-func NewUserDaoSql(sqlc *prom.SqlConnect, tableName string) UserDao {
-	dao := &UserDaoSql{}
-	dao.UniversalDao = henge.NewUniversalDaoSql(sqlc, tableName, true, nil)
+// NewUserDaoAwsDynamodb is helper method to create AWS DynamoDB-implementation of UserDao.
+func NewUserDaoAwsDynamodb(dync *prom.AwsDynamodbConnect, tableName string) UserDao {
+	dao := &UserDaoAwsDynamodb{}
+	dao.UniversalDao = henge.NewUniversalDaoDynamodb(dync, tableName, nil)
 	return dao
 }
 
-// UserDaoSql is SQL-implementation of UserDao.
-type UserDaoSql struct {
+// UserDaoAwsDynamodb is AWS DynamoDB-implementation of UserDao.
+type UserDaoAwsDynamodb struct {
 	henge.UniversalDao
 }
 
 // GdaoCreateFilter implements IGenericDao.GdaoCreateFilter.
-func (dao *UserDaoSql) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-	return map[string]interface{}{henge.SqlColId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
+func (dao *UserDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
+	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
 }
 
 // Delete implements UserDao.Delete.
-func (dao *UserDaoSql) Delete(bo *User) (bool, error) {
+func (dao *UserDaoAwsDynamodb) Delete(bo *User) (bool, error) {
 	return dao.UniversalDao.Delete(bo.UniversalBo)
 }
 
 // Create implements UserDao.Create.
-func (dao *UserDaoSql) Create(bo *User) (bool, error) {
+func (dao *UserDaoAwsDynamodb) Create(bo *User) (bool, error) {
 	return dao.UniversalDao.Create(bo.sync().UniversalBo)
 }
 
 // Get implements UserDao.Get.
-func (dao *UserDaoSql) Get(id string) (*User, error) {
+func (dao *UserDaoAwsDynamodb) Get(id string) (*User, error) {
+	fmt.Println(id, dao.UniversalDao)
 	ubo, err := dao.UniversalDao.Get(id)
 	if err != nil {
 		return nil, err
@@ -45,7 +48,7 @@ func (dao *UserDaoSql) Get(id string) (*User, error) {
 }
 
 // GetN implements UserDao.GetN.
-func (dao *UserDaoSql) GetN(fromOffset, maxNumRows int) ([]*User, error) {
+func (dao *UserDaoAwsDynamodb) GetN(fromOffset, maxNumRows int) ([]*User, error) {
 	uboList, err := dao.UniversalDao.GetN(fromOffset, maxNumRows, nil, nil)
 	if err != nil {
 		return nil, err
@@ -59,11 +62,11 @@ func (dao *UserDaoSql) GetN(fromOffset, maxNumRows int) ([]*User, error) {
 }
 
 // GetAll implements UserDao.GetAll.
-func (dao *UserDaoSql) GetAll() ([]*User, error) {
+func (dao *UserDaoAwsDynamodb) GetAll() ([]*User, error) {
 	return dao.GetN(0, 0)
 }
 
 // Update implements UserDao.Update.
-func (dao *UserDaoSql) Update(bo *User) (bool, error) {
+func (dao *UserDaoAwsDynamodb) Update(bo *User) (bool, error) {
 	return dao.UniversalDao.Update(bo.sync().UniversalBo)
 }

@@ -5,78 +5,153 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
+
+	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/godror/godror"
+	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/mattn/go-sqlite3"
 
 	"main/src/goapi"
 	"main/src/gvabe/bo/app"
 	"main/src/gvabe/bo/session"
 	"main/src/gvabe/bo/user"
-	"main/src/henge"
 )
 
 func _createSqlConnect(dbtype string) *prom.SqlConnect {
+	var poolOpts *prom.SqlPoolOptions = nil
+	timezone := goapi.AppConfig.GetString("timezone")
+	urlTimezone := strings.ReplaceAll(timezone, "/", "%2f")
+	var dsn, driver string
+	var dbflavor = prom.FlavorDefault
 	switch dbtype {
 	case "sqlite":
+		driver = "sqlite3"
+		dbflavor = prom.FlavorSqlite
 		dir := goapi.AppConfig.GetString("gvabe.db.sqlite.directory")
+		os.MkdirAll(dir, 0711)
 		dbname := goapi.AppConfig.GetString("gvabe.db.sqlite.dbname")
-		return henge.NewSqliteConnection(dir, dbname)
+		dsn = dir + "/" + dbname + ".db"
 	case "pg", "pgsql", "postgres", "postgresql":
-		url := goapi.AppConfig.GetString("gvabe.db.pgsql.url")
-		return henge.NewPgsqlConnection(url, goapi.AppConfig.GetString("timezone"))
+		driver = "pgx"
+		dbflavor = prom.FlavorPgSql
+		dsn = goapi.AppConfig.GetString("gvabe.db.pgsql.url")
 	}
-	panic(fmt.Sprintf("unknown databbase type: %s", dbtype))
+	if driver != "" && dsn != "" {
+		dsn = strings.ReplaceAll(dsn, "${loc}", urlTimezone)
+		dsn = strings.ReplaceAll(dsn, "${tz}", urlTimezone)
+		dsn = strings.ReplaceAll(dsn, "${timezone}", urlTimezone)
+		sqlc, err := prom.NewSqlConnectWithFlavor(driver, dsn, 2345, poolOpts, dbflavor)
+		if err != nil {
+			panic(err)
+		}
+		return sqlc
+	}
+	return nil
 }
 
-func _createAppDao(sqlc *prom.SqlConnect) app.AppDao {
+func _createAwsDynamodbConnect(dbtype string) *prom.AwsDynamodbConnect {
+	switch dbtype {
+	case "dynamodb", "awsdynamodb", "aws_dynamodb", "aws-dynamodb":
+		region := goapi.AppConfig.GetString("gvabe.db.dynamodb.region")
+		cfg := &aws.Config{
+			Region:      aws.String(region),
+			Credentials: credentials.NewEnvCredentials(),
+		}
+		endpoint := goapi.AppConfig.GetString("gvabe.db.dynamodb.endpoint")
+		if endpoint != "" {
+			cfg.Endpoint = aws.String(endpoint)
+			if strings.HasPrefix(endpoint, "http://") {
+				cfg.DisableSSL = aws.Bool(true)
+			}
+		}
+		adc, err := prom.NewAwsDynamodbConnect(cfg, nil, nil, 2345)
+		if err != nil {
+			panic(err)
+		}
+		return adc
+	}
+	return nil
+}
+
+func _createAppDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) app.AppDao {
+	return app.NewAppDaoAwsDynamodb(dync, app.TableApp)
+}
+func _createAppDaoSql(sqlc *prom.SqlConnect) app.AppDao {
 	return app.NewAppDaoSql(sqlc, app.TableApp)
 }
 
-func _createUserDao(sqlc *prom.SqlConnect) user.UserDao {
+func _createUserDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) user.UserDao {
+	return user.NewUserDaoAwsDynamodb(dync, user.TableUser)
+}
+func _createUserDaoSql(sqlc *prom.SqlConnect) user.UserDao {
 	return user.NewUserDaoSql(sqlc, user.TableUser)
 }
 
-func _createSessionDao(sqlc *prom.SqlConnect) session.SessionDao {
+func _createSessionDaoSql(sqlc *prom.SqlConnect) session.SessionDao {
 	return session.NewSessionDaoSql(sqlc, session.TableSession)
+}
+
+func _createSessionDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) session.SessionDao {
+	return session.NewSessionDaoAwsDynamodb(dync, session.TableSession)
 }
 
 func initDaos() {
 	dbtype := strings.ToLower(goapi.AppConfig.GetString("gvabe.db.type"))
 	sqlc := _createSqlConnect(dbtype)
+	dync := _createAwsDynamodbConnect(dbtype)
+	if sqlc == nil && dync == nil {
+		panic(fmt.Sprintf("unsupported database type: %s", dbtype))
+	}
 	switch dbtype {
 	case "sqlite":
 		henge.InitSqliteTable(sqlc, user.TableUser, nil)
-		henge.InitSqliteTable(sqlc, app.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(32)"})
-		henge.CreateIndex(sqlc, app.TableApp, false, []string{app.ColApp_UserId})
+		henge.InitSqliteTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
 		henge.InitSqliteTable(sqlc, session.TableSession, map[string]string{
-			session.ColSession_IdSource:    "VARCHAR(32)",
-			session.ColSession_AppId:       "VARCHAR(32)",
-			session.ColSession_UserId:      "VARCHAR(32)",
-			session.ColSession_SessionType: "VARCHAR(32)",
-			session.ColSession_Expiry:      "DATETIME",
+			session.SqlCol_Session_IdSource:    "VARCHAR(32)",
+			session.SqlCol_Session_AppId:       "VARCHAR(32)",
+			session.SqlCol_Session_UserId:      "VARCHAR(32)",
+			session.SqlCol_Session_SessionType: "VARCHAR(32)",
+			session.SqlCol_Session_Expiry:      "DATETIME",
 		})
-		henge.CreateIndex(sqlc, session.TableSession, false, []string{session.ColSession_IdSource})
-		henge.CreateIndex(sqlc, session.TableSession, false, []string{session.ColSession_AppId})
-		henge.CreateIndex(sqlc, session.TableSession, false, []string{session.ColSession_Expiry})
 	case "pg", "pgsql", "postgres", "postgresql":
 		henge.InitPgsqlTable(sqlc, user.TableUser, nil)
-		henge.InitPgsqlTable(sqlc, app.TableApp, map[string]string{app.ColApp_UserId: "VARCHAR(32)"})
-		henge.CreateIndex(sqlc, app.TableApp, false, []string{app.ColApp_UserId})
+		henge.InitPgsqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
 		henge.InitPgsqlTable(sqlc, session.TableSession, map[string]string{
-			session.ColSession_IdSource:    "VARCHAR(32)",
-			session.ColSession_AppId:       "VARCHAR(32)",
-			session.ColSession_UserId:      "VARCHAR(32)",
-			session.ColSession_SessionType: "VARCHAR(32)",
-			session.ColSession_Expiry:      "TIMESTAMP WITH TIME ZONE",
+			session.SqlCol_Session_IdSource:    "VARCHAR(32)",
+			session.SqlCol_Session_AppId:       "VARCHAR(32)",
+			session.SqlCol_Session_UserId:      "VARCHAR(32)",
+			session.SqlCol_Session_SessionType: "VARCHAR(32)",
+			session.SqlCol_Session_Expiry:      "DATETIME",
 		})
-		henge.CreateIndex(sqlc, session.TableSession, false, []string{session.ColSession_IdSource})
-		henge.CreateIndex(sqlc, session.TableSession, false, []string{session.ColSession_AppId})
-		henge.CreateIndex(sqlc, session.TableSession, false, []string{session.ColSession_Expiry})
 	}
-	userDao = _createUserDao(sqlc)
-	appDao = _createAppDao(sqlc)
-	sessionDao = _createSessionDao(sqlc)
+
+	if sqlc != nil {
+		henge.CreateIndexSql(sqlc, app.TableApp, false, []string{app.SqlCol_App_UserId})
+		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlCol_Session_IdSource})
+		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlCol_Session_AppId})
+		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlCol_Session_Expiry})
+
+		userDao = _createUserDaoSql(sqlc)
+		appDao = _createAppDaoSql(sqlc)
+		sessionDao = _createSessionDaoSql(sqlc)
+	}
+	if dync != nil {
+		henge.InitDynamodbTable(dync, user.TableUser, 2, 1)
+		henge.InitDynamodbTable(dync, app.TableApp, 2, 1)
+		henge.InitDynamodbTable(dync, session.TableSession, 4, 2)
+
+		userDao = _createUserDaoAwsDynamodb(dync)
+		appDao = _createAppDaoAwsDynamodb(dync)
+		sessionDao = _createSessionDaoAwsDynamodb(dync)
+	}
 
 	_initUsers()
 	_initApps()

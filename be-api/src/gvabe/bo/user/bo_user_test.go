@@ -11,8 +11,8 @@ func TestNewUser(t *testing.T) {
 	if user == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
-	if appVersion := user.GetAppVersion(); appVersion != 1357 {
-		t.Fatalf("%s failed: expected bo's id to be %#v but received %#v", name, 1357, appVersion)
+	if tagVersion := user.GetTagVersion(); tagVersion != 1357 {
+		t.Fatalf("%s failed: expected bo's id to be %#v but received %#v", name, 1357, tagVersion)
 	}
 	if id := user.GetId(); id != "btnguyen2k" {
 		t.Fatalf("%s failed: expected bo's id to be %#v but received %#v", name, "id", id)
@@ -33,8 +33,8 @@ func TestUser_json(t *testing.T) {
 	if user1.GetId() != user2.GetId() {
 		t.Fatalf("%s failed: expected %#v but received %#v", name, user1.GetId(), user2.GetId())
 	}
-	if user1.GetAppVersion() != user2.GetAppVersion() {
-		t.Fatalf("%s failed: expected %#v but received %#v", name, user1.GetAppVersion(), user2.GetAppVersion())
+	if user1.GetTagVersion() != user2.GetTagVersion() {
+		t.Fatalf("%s failed: expected %#v but received %#v", name, user1.GetTagVersion(), user2.GetTagVersion())
 	}
 	if user1.GetAesKey() != user2.GetAesKey() {
 		t.Fatalf("%s failed: expected %#v but received %#v", name, user1.GetAesKey(), user1.GetAesKey())

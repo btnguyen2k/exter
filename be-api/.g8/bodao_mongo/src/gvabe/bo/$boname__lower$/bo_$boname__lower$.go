@@ -25,10 +25,10 @@ type $boname;format="Camel"$Dao interface {
 	// Get retrieves a business object from storage
 	Get(id string) (*$boname;format="Camel"$, error)
 
-	// GetN retrieves N business objects from storage
+	// getN retrieves N business objects from storage
 	GetN(fromOffset, maxNumRows int) ([]*$boname;format="Camel"$, error)
 
-	// GetAll retrieves all availables business objects from storage
+	// getAll retrieves all availables business objects from storage
 	GetAll() ([]*$boname;format="Camel"$, error)
 
 	// Update modifies an existing business object

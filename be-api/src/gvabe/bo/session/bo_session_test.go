@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"main/src/henge"
+	"github.com/btnguyen2k/henge"
 )
 
 func TestNewSession(t *testing.T) {
@@ -15,8 +15,8 @@ func TestNewSession(t *testing.T) {
 	if session == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
-	if appVersion := session.GetAppVersion(); appVersion != 1357 {
-		t.Fatalf("%s failed: expected app-version to be %#v but received %#v", name, 1357, appVersion)
+	if tagVersion := session.GetTagVersion(); tagVersion != 1357 {
+		t.Fatalf("%s failed: expected app-version to be %#v but received %#v", name, 1357, tagVersion)
 	}
 	if id := session.GetId(); id != "1" {
 		t.Fatalf("%s failed: id to be %#v but received %#v", name, "id", id)
@@ -53,8 +53,8 @@ func TestSession_json(t *testing.T) {
 	if sess1.GetId() != sess2.GetId() {
 		t.Fatalf("%s failed [Id]: expected %#v but received %#v", name, sess1.GetId(), sess2.GetId())
 	}
-	if sess1.GetAppVersion() != sess2.GetAppVersion() {
-		t.Fatalf("%s failed [AppVersion]: expected %#v but received %#v", name, sess1.GetAppVersion(), sess2.GetAppVersion())
+	if sess1.GetTagVersion() != sess2.GetTagVersion() {
+		t.Fatalf("%s failed [AppVersion]: expected %#v but received %#v", name, sess1.GetTagVersion(), sess2.GetTagVersion())
 	}
 	if sess1.GetIdSource() != sess2.GetIdSource() {
 		t.Fatalf("%s failed [IdSource]: expected %#v but received %#v", name, sess1.GetIdSource(), sess2.GetIdSource())

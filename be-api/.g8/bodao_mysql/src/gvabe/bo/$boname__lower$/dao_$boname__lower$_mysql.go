@@ -132,7 +132,7 @@ func (dao *$boname;format="Camel"$DaoMysql) Get(id string) (*$boname;format="Cam
 	return dao.toBo(gbo), nil
 }
 
-// GetN implements $boname;format="Camel"$Dao.GetN
+// getN implements $boname;format="Camel"$Dao.getN
 func (dao *$boname;format="Camel"$DaoMysql) GetN(fromOffset, maxNumRows int) ([]*$boname;format="Camel"$, error) {
 	// order ascending by "id" column
 	ordering := (&sql.GenericSorting{Flavor: dao.GetSqlFlavor()}).Add(colMysql$boname;format="Camel"$Id)
@@ -148,7 +148,7 @@ func (dao *$boname;format="Camel"$DaoMysql) GetN(fromOffset, maxNumRows int) ([]
 	return result, nil
 }
 
-// GetAll implements $boname;format="Camel"$Dao.GetAll
+// getAll implements $boname;format="Camel"$Dao.getAll
 func (dao *$boname;format="Camel"$DaoMysql) GetAll() ([]*$boname;format="Camel"$, error) {
 	return dao.GetN(0, 0)
 }
