@@ -1,10 +1,13 @@
 # Exter release notes
 
+## 2020-11-xx - v0.6.0
+
+- AB#31: support AWS DynamoDB.
+
 ## 2020-11-02 - v0.5.0
 
-- EP#3: support login with LinkedIn (AB#9, AB#10)
-- EP#15: fetch display name from LinkedIn (AB#19)
-
+- EP#3: support login with LinkedIn (AB#9, AB#10).
+- EP#15: fetch display name from LinkedIn (AB#19).
 
 ## 2020-10-02 - v0.4.2
 
