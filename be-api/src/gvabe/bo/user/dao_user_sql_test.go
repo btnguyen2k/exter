@@ -1,189 +1,351 @@
 package user
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
+	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/godror/godror"
+	_ "github.com/jackc/pgx/v4/stdlib"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
-	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
-	awsAccessKeyId := strings.ReplaceAll(os.Getenv("AWS_ACCESS_KEY_ID"), `"`, "")
-	awsSecretAccessKey := strings.ReplaceAll(os.Getenv("AWS_SECRET_ACCESS_KEY"), `"`, "")
-	if awsRegion == "" || awsAccessKeyId == "" || awsSecretAccessKey == "" {
-		t.Skipf("%s skipped", testName)
-		return nil
+func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *prom.SqlPoolOptions) (*prom.SqlConnect, error) {
+	os.Remove(url)
+	sqlc, err := prom.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom.FlavorSqlite)
+	if err == nil && sqlc != nil {
+		loc, _ := time.LoadLocation(timezone)
+		sqlc.SetLocation(loc)
 	}
-	cfg := &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewEnvCredentials(),
-	}
-	if awsDynamodbEndpoint := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_ENDPOINT"), `"`, ""); awsDynamodbEndpoint != "" {
-		cfg.Endpoint = aws.String(awsDynamodbEndpoint)
-		if strings.HasPrefix(awsDynamodbEndpoint, "http://") {
-			cfg.DisableSSL = aws.Bool(true)
-		}
-	}
-	adc, err := prom.NewAwsDynamodbConnect(cfg, nil, nil, 10000)
-	if err != nil {
-		t.Fatalf("%s/%s failed: %s", testName, "NewAwsDynamodbConnect", err)
-	}
-	return adc
+	return sqlc, err
 }
 
-const tableNameDynamodb = "exter_test_user"
+func newSqlConnectMssql(driver, url, timezone string, timeoutMs int, poolOptions *prom.SqlPoolOptions) (*prom.SqlConnect, error) {
+	sqlc, err := prom.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom.FlavorMsSql)
+	if err == nil && sqlc != nil {
+		loc, _ := time.LoadLocation(timezone)
+		sqlc.SetLocation(loc)
+	}
+	return sqlc, err
+}
 
-func TestNewUserDaoAwsDynamodb(t *testing.T) {
-	name := "TestNewUserDaoAwsDynamodb"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := NewUserDaoAwsDynamodb(adc, tableNameDynamodb)
-	if userDao == nil {
-		t.Fatalf("%s failed: nil", name)
+func newSqlConnectMysql(driver, url, timezone string, timeoutMs int, poolOptions *prom.SqlPoolOptions) (*prom.SqlConnect, error) {
+	urlTimezone := strings.ReplaceAll(timezone, "/", "%2f")
+	url = strings.ReplaceAll(url, "${loc}", urlTimezone)
+	url = strings.ReplaceAll(url, "${tz}", urlTimezone)
+	url = strings.ReplaceAll(url, "${timezone}", urlTimezone)
+	sqlc, err := prom.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom.FlavorMySql)
+	if err == nil && sqlc != nil {
+		loc, _ := time.LoadLocation(timezone)
+		sqlc.SetLocation(loc)
+	}
+	return sqlc, err
+}
+
+func newSqlConnectOracle(driver, url, timezone string, timeoutMs int, poolOptions *prom.SqlPoolOptions) (*prom.SqlConnect, error) {
+	sqlc, err := prom.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom.FlavorOracle)
+	if err == nil && sqlc != nil {
+		loc, _ := time.LoadLocation(timezone)
+		sqlc.SetLocation(loc)
+	}
+	return sqlc, err
+}
+
+func newSqlConnectPgsql(driver, url, timezone string, timeoutMs int, poolOptions *prom.SqlPoolOptions) (*prom.SqlConnect, error) {
+	sqlc, err := prom.NewSqlConnectWithFlavor(driver, url, timeoutMs, poolOptions, prom.FlavorPgSql)
+	if err == nil && sqlc != nil {
+		loc, _ := time.LoadLocation(timezone)
+		sqlc.SetLocation(loc)
+	}
+	return sqlc, err
+}
+
+const (
+	envSqliteDriver = "SQLITE_DRIVER"
+	envSqliteUrl    = "SQLITE_URL"
+	envMssqlDriver  = "MSSQL_DRIVER"
+	envMssqlUrl     = "MSSQL_URL"
+	envMysqlDriver  = "MYSQL_DRIVER"
+	envMysqlUrl     = "MYSQL_URL"
+	envOracleDriver = "ORACLE_DRIVER"
+	envOracleUrl    = "ORACLE_URL"
+	envPgsqlDriver  = "PGSQL_DRIVER"
+	envPgsqlUrl     = "PGSQL_URL"
+	tableNameSql    = "exter_test_user"
+	timezoneSql     = "Asia/Ho_Chi_Minh"
+)
+
+type sqlDriverAndUrl struct {
+	driver, url string
+}
+
+func newSqlDriverAndUrl(driver, url string) sqlDriverAndUrl {
+	return sqlDriverAndUrl{driver: strings.Trim(driver, `"`), url: strings.Trim(url, `"`)}
+}
+
+func sqlGetUrlFromEnv() map[string]sqlDriverAndUrl {
+	urlMap := make(map[string]sqlDriverAndUrl)
+	if os.Getenv(envSqliteDriver) != "" && os.Getenv(envSqliteUrl) != "" {
+		urlMap["sqlite"] = newSqlDriverAndUrl(os.Getenv(envSqliteDriver), os.Getenv(envSqliteUrl))
+	}
+	if os.Getenv(envMssqlDriver) != "" && os.Getenv(envMssqlUrl) != "" {
+		urlMap["mssql"] = newSqlDriverAndUrl(os.Getenv(envMssqlDriver), os.Getenv(envMssqlUrl))
+	}
+	if os.Getenv(envMysqlDriver) != "" && os.Getenv(envMysqlUrl) != "" {
+		urlMap["mysql"] = newSqlDriverAndUrl(os.Getenv(envMysqlDriver), os.Getenv(envMysqlUrl))
+	}
+	if os.Getenv(envOracleDriver) != "" && os.Getenv(envOracleUrl) != "" {
+		urlMap["oracle"] = newSqlDriverAndUrl(os.Getenv(envOracleDriver), os.Getenv(envOracleUrl))
+	}
+	if os.Getenv(envPgsqlDriver) != "" && os.Getenv(envPgsqlUrl) != "" {
+		urlMap["pgsql"] = newSqlDriverAndUrl(os.Getenv(envPgsqlDriver), os.Getenv(envPgsqlUrl))
+	}
+	return urlMap
+}
+
+func TestNewUserDaoSql(t *testing.T) {
+	name := "TestNewUserDaoSql"
+	urlMap := sqlGetUrlFromEnv()
+	if len(urlMap) == 0 {
+		t.Skipf("%s skipped", name)
+	}
+	for k, info := range urlMap {
+		var sqlc *prom.SqlConnect
+		var err error
+		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mssql":
+			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mysql":
+			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "oracle":
+			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
+		case "pgsql":
+			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		default:
+			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+		}
+		if err != nil {
+			t.Fatalf("%s failed: error [%e]", name+"/"+k, err)
+		} else if sqlc == nil {
+			t.Fatalf("%s failed: nil", name+"/"+k)
+		}
+		userDao := NewUserDaoSql(sqlc, tableNameSql)
+		if userDao == nil {
+			t.Fatalf("%s failed: nil", name+"/"+k)
+		}
 	}
 }
 
-func _initUserDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) UserDao {
-	adc.DeleteTable(nil, tableNameDynamodb)
-	henge.InitDynamodbTable(adc, tableNameDynamodb, 2, 2)
-	return NewUserDaoAwsDynamodb(adc, tableNameDynamodb)
+func _initUserDaoSql(t *testing.T, testName string, sqlc *prom.SqlConnect) UserDao {
+	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tableNameSql))
+	switch sqlc.GetDbFlavor() {
+	case prom.FlavorPgSql:
+		henge.InitPgsqlTable(sqlc, tableNameSql, nil)
+	case prom.FlavorMsSql:
+		henge.InitMssqlTable(sqlc, tableNameSql, nil)
+	case prom.FlavorMySql:
+		henge.InitMysqlTable(sqlc, tableNameSql, nil)
+	case prom.FlavorOracle:
+		henge.InitOracleTable(sqlc, tableNameSql, nil)
+	case prom.FlavorSqlite:
+		henge.InitSqliteTable(sqlc, tableNameSql, nil)
+	default:
+		t.Fatalf("%s failed: unknown database type %#v", testName, sqlc.GetDbFlavor())
+	}
+	return NewUserDaoSql(sqlc, tableNameSql)
 }
 
-func TestUserDaoAwsDynamodb_Create(t *testing.T) {
-	name := "TestAppDaoAwsDynamodb_Create"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := _initUserDaoDynamodb(t, name, adc)
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
+func TestUserDaoSql_Create(t *testing.T) {
+	name := "TestUserDaoSql_Create"
+	urlMap := sqlGetUrlFromEnv()
+	if len(urlMap) == 0 {
+		t.Skipf("%s skipped", name)
 	}
-}
-
-func TestUserDaoAwsDynamodb_Get(t *testing.T) {
-	name := "TestUserDaoAwsDynamodb_Get"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := _initUserDaoDynamodb(t, name, adc)
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-	if u, err := userDao.Get("not_found"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u != nil {
-		t.Fatalf("%s failed: user %s should not exist", name, "not_found")
-	}
-
-	if u, err := userDao.Get("btnguyen2k"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u == nil {
-		t.Fatalf("%s failed: nil", name)
-	} else {
-		if v := u.GetId(); v != "btnguyen2k" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
+	for k, info := range urlMap {
+		var sqlc *prom.SqlConnect
+		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mssql":
+			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mysql":
+			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "oracle":
+			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
+		case "pgsql":
+			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		default:
+			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
-		if v := u.GetTagVersion(); v != 1357 {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
-		}
-		if v := u.GetDisplayName(); v != "Thanh Nguyen" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "Thanh Nguyen", v)
-		}
-		if v := u.GetAesKey(); v != "aeskey" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "aeskey", v)
+		userDao := _initUserDaoSql(t, name, sqlc)
+		u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
+		ok, err := userDao.Create(u)
+		if err != nil || !ok {
+			t.Fatalf("%s failed: %#v / %s", name, ok, err)
 		}
 	}
 }
 
-// func TestAppDaoAwsDynamodb_Delete(t *testing.T) {
-// 	name := "TestAppDaoAwsDynamodb_Delete"
-// 	adc := _createAwsDynamodbConnect(t, name)
-// 	appDao := _initAppDaoDynamodb(t, name, adc)
-//
-// 	appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
-// 	app, err := appDao.Get("exter")
-// 	if err != nil {
-// 		t.Fatalf("%s failed: %s", name, err)
-// 	} else if app == nil {
-// 		t.Fatalf("%s failed: nil", name)
-// 	}
-//
-// 	ok, err := appDao.Delete(app)
-// 	if err != nil {
-// 		t.Fatalf("%s failed: %s", name, err)
-// 	} else if !ok {
-// 		t.Fatalf("%s failed: cannot delete app [%s]", name, app.GetId())
-// 	}
-//
-// 	app, err = appDao.Get("exter")
-// 	if app, err := appDao.Get("exter"); err != nil {
-// 		t.Fatalf("%s failed: %s", name, err)
-// 	} else if app != nil {
-// 		t.Fatalf("%s failed: app %s should not exist", name, "exter")
-// 	}
-// }
-//
-// func TestAppDaoAwsDynamodb_Update(t *testing.T) {
-// 	name := "TestAppDaoAwsDynamodb_Update"
-// 	adc := _createAwsDynamodbConnect(t, name)
-// 	appDao := _initAppDaoDynamodb(t, name, adc)
-//
-// 	app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
-// 	appDao.Create(app)
-//
-// 	app.SetOwnerId("nbthanh")
-// 	app.SetTagVersion(2468)
-// 	app.attrsPublic.Description = "App description"
-// 	ok, err := appDao.Update(app)
-// 	if err != nil || !ok {
-// 		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-// 	}
-//
-// 	if app, err := appDao.Get("exter"); err != nil {
-// 		t.Fatalf("%s failed: %s", name, err)
-// 	} else if app == nil {
-// 		t.Fatalf("%s failed: nil", name)
-// 	} else {
-// 		if v := app.GetId(); v != "exter" {
-// 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "exter", v)
-// 		}
-// 		if v := app.GetTagVersion(); v != 2468 {
-// 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 2468, v)
-// 		}
-// 		if v := app.GetOwnerId(); v != "nbthanh" {
-// 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "nbthanh", v)
-// 		}
-// 		if v := app.GetAttrsPublic().Description; v != "App description" {
-// 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "App description", v)
-// 		}
-// 	}
-// }
-//
-// func TestAppDaoAwsDynamodb_GetUserApps(t *testing.T) {
-// 	name := "TestAppDaoAwsDynamodb_GetUserApps"
-// 	adc := _createAwsDynamodbConnect(t, name)
-// 	appDao := _initAppDaoDynamodb(t, name, adc)
-//
-// 	for i := 0; i < 10; i++ {
-// 		app := NewApp(uint64(i), strconv.Itoa(i), strconv.Itoa(i%3), "App #"+strconv.Itoa(i))
-// 		appDao.Create(app)
-// 	}
-//
-// 	u := user.NewUser(123, "2")
-// 	appList, err := appDao.GetUserApps(u)
-// 	if err != nil {
-// 		t.Fatalf("%s failed: %s", name, err)
-// 	}
-// 	if len(appList) != 3 {
-// 		t.Fatalf("%s failed: expected %#v apps but received %#v", name, 3, len(appList))
-// 	}
-// 	for _, app := range appList {
-// 		if app.GetOwnerId() != "2" {
-// 			t.Fatalf("%s failed: app %#v does not belong to user %#v", name, app.GetId(), "2")
-// 		}
-// 	}
-// }
+func TestUserDaoSql_Get(t *testing.T) {
+	name := "TestUserDaoSql_Get"
+	urlMap := sqlGetUrlFromEnv()
+	if len(urlMap) == 0 {
+		t.Skipf("%s skipped", name)
+	}
+	for k, info := range urlMap {
+		var sqlc *prom.SqlConnect
+		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mssql":
+			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mysql":
+			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "oracle":
+			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
+		case "pgsql":
+			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		default:
+			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+		}
+		userDao := _initUserDaoSql(t, name, sqlc)
+		u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
+		ok, err := userDao.Create(u)
+		if err != nil || !ok {
+			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+		}
+		if u, err := userDao.Get("not_found"); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		} else if u != nil {
+			t.Fatalf("%s failed: user %s should not exist", name, "not_found")
+		}
+
+		if u, err := userDao.Get("btnguyen2k"); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		} else if u == nil {
+			t.Fatalf("%s failed: nil", name)
+		} else {
+			if v := u.GetId(); v != "btnguyen2k" {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
+			}
+			if v := u.GetTagVersion(); v != 1357 {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
+			}
+			if v := u.GetDisplayName(); v != "Thanh Nguyen" {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "Thanh Nguyen", v)
+			}
+			if v := u.GetAesKey(); v != "aeskey" {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "aeskey", v)
+			}
+		}
+	}
+}
+
+func TestUserDaoSql_Delete(t *testing.T) {
+	name := "TestUserDaoSql_Delete"
+	urlMap := sqlGetUrlFromEnv()
+	if len(urlMap) == 0 {
+		t.Skipf("%s skipped", name)
+	}
+	for k, info := range urlMap {
+		var sqlc *prom.SqlConnect
+		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mssql":
+			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mysql":
+			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "oracle":
+			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
+		case "pgsql":
+			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		default:
+			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+		}
+		userDao := _initUserDaoSql(t, name, sqlc)
+
+		u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
+		ok, err := userDao.Create(u)
+		if err != nil || !ok {
+			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+		}
+
+		ok, err = userDao.Delete(u)
+		if err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		} else if !ok {
+			t.Fatalf("%s failed: cannot delete user [%s]", name, u.GetId())
+		}
+
+		u, err = userDao.Get("btnguyen2k")
+		if app, err := userDao.Get("exter"); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		} else if app != nil {
+			t.Fatalf("%s failed: user %s should not exist", name, "userDao")
+		}
+	}
+}
+
+func TestUserDaoUser_Update(t *testing.T) {
+	name := "TestUserDaoUser_Update"
+	urlMap := sqlGetUrlFromEnv()
+	if len(urlMap) == 0 {
+		t.Skipf("%s skipped", name)
+	}
+	for k, info := range urlMap {
+		var sqlc *prom.SqlConnect
+		switch k {
+		case "sqlite", "sqlite3":
+			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mssql":
+			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "mysql":
+			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
+		case "oracle":
+			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
+		case "pgsql":
+			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
+		default:
+			t.Fatalf("%s failed: unknown database type [%s]", name, k)
+		}
+		userDao := _initUserDaoSql(t, name, sqlc)
+
+		u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
+		userDao.Create(u)
+
+		u.SetDisplayName("nbthanh")
+		u.SetAesKey("newaeskey")
+		ok, err := userDao.Update(u)
+		if err != nil || !ok {
+			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+		}
+
+		if u, err := userDao.Get("btnguyen2k"); err != nil {
+			t.Fatalf("%s failed: %s", name, err)
+		} else if u == nil {
+			t.Fatalf("%s failed: nil", name)
+		} else {
+			if v := u.GetId(); v != "btnguyen2k" {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
+			}
+			if v := u.GetTagVersion(); v != 1357 {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
+			}
+			if v := u.GetDisplayName(); v != "nbthanh" {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "nbthanh", v)
+			}
+			if v := u.GetAesKey(); v != "newaeskey" {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "newaeskey", v)
+			}
+		}
+	}
+}
