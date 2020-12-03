@@ -15,11 +15,11 @@ type UserDao interface {
 	// Get retrieves a business object from storage.
 	Get(username string) (*User, error)
 
-	// GetN retrieves N business objects from storage.
-	GetN(fromOffset, maxNumRows int) ([]*User, error)
-
-	// GetAll retrieves all available business objects from storage.
-	GetAll() ([]*User, error)
+	// // getN retrieves N business objects from storage.
+	// getN(fromOffset, maxNumRows int) ([]*User, error)
+	//
+	// // getAll retrieves all available business objects from storage.
+	// getAll() ([]*User, error)
 
 	// Update modifies an existing business object.
 	Update(bo *User) (bool, error)

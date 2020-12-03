@@ -1,8 +1,6 @@
 package user
 
 import (
-	"fmt"
-
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/prom"
@@ -39,7 +37,6 @@ func (dao *UserDaoAwsDynamodb) Create(bo *User) (bool, error) {
 
 // Get implements UserDao.Get.
 func (dao *UserDaoAwsDynamodb) Get(id string) (*User, error) {
-	fmt.Println(id, dao.UniversalDao)
 	ubo, err := dao.UniversalDao.Get(id)
 	if err != nil {
 		return nil, err
@@ -47,8 +44,8 @@ func (dao *UserDaoAwsDynamodb) Get(id string) (*User, error) {
 	return NewUserFromUbo(ubo), nil
 }
 
-// GetN implements UserDao.GetN.
-func (dao *UserDaoAwsDynamodb) GetN(fromOffset, maxNumRows int) ([]*User, error) {
+// getN implements UserDao.getN.
+func (dao *UserDaoAwsDynamodb) getN(fromOffset, maxNumRows int) ([]*User, error) {
 	uboList, err := dao.UniversalDao.GetN(fromOffset, maxNumRows, nil, nil)
 	if err != nil {
 		return nil, err
@@ -61,9 +58,9 @@ func (dao *UserDaoAwsDynamodb) GetN(fromOffset, maxNumRows int) ([]*User, error)
 	return result, nil
 }
 
-// GetAll implements UserDao.GetAll.
-func (dao *UserDaoAwsDynamodb) GetAll() ([]*User, error) {
-	return dao.GetN(0, 0)
+// getAll implements UserDao.getAll.
+func (dao *UserDaoAwsDynamodb) getAll() ([]*User, error) {
+	return dao.getN(0, 0)
 }
 
 // Update implements UserDao.Update.

@@ -28,25 +28,53 @@ func NewUserFromUbo(ubo *henge.UniversalBo) *User {
 	if ubo == nil {
 		return nil
 	}
-	user := User{UniversalBo: ubo.Clone()}
+	user := User{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &user); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewUserFromUbo - error unmarshalling JSON data: %s", err))
 		log.Print(err)
 		return nil
 	}
-	// user.UniversalBo = ubo.Clone()
+	user.UniversalBo = ubo.Clone()
 	return &user
 }
 
 const (
 	AttrUser_AesKey      = "aes_key"
 	AttrUser_DisplayName = "display_name"
+	AttrUser_Ubo         = "_ubo"
 )
 
 // User is the business object.
 // User inherits unique id from bo.UniversalBo. Email address is used to uniquely identify user (e.g. user-id is email address).
 type User struct {
 	*henge.UniversalBo `json:"_ubo"`
+}
+
+// MarshalJSON implements json.encode.Marshaler.MarshalJSON.
+//	TODO: lock for read?
+func (user *User) MarshalJSON() ([]byte, error) {
+	user.sync()
+	m := map[string]interface{}{
+		AttrUser_Ubo: user.UniversalBo.Clone(),
+	}
+	return json.Marshal(m)
+}
+
+// UnmarshalJSON implements json.decode.Unmarshaler.UnmarshalJSON.
+//	TODO: lock for write?
+func (user *User) UnmarshalJSON(data []byte) error {
+	var m map[string]interface{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		return err
+	}
+	if m[AttrUser_Ubo] != nil {
+		js, _ := json.Marshal(m[AttrUser_Ubo])
+		if err := json.Unmarshal(js, &user.UniversalBo); err != nil {
+			return err
+		}
+	}
+	user.sync()
+	return nil
 }
 
 // GetAesKey returns value of user's 'aes-key' attribute.
