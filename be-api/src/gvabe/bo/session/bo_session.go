@@ -37,13 +37,13 @@ func NewSessionFromUbo(ubo *henge.UniversalBo) *Session {
 	if ubo == nil {
 		return nil
 	}
-	sess := Session{UniversalBo: ubo.Clone()}
+	sess := Session{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &sess); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewSessionFromUbo - error unmarshalling JSON data: %e", err))
 		log.Print(err)
 		return nil
 	}
-	// sess.UniversalBo = ubo.Clone()
+	sess.UniversalBo = ubo.Clone()
 	if sessionType, err := sess.GetExtraAttrAs(FieldSession_SessionType, reddo.TypeString); err == nil {
 		sess.sessionType = sessionType.(string)
 	}
