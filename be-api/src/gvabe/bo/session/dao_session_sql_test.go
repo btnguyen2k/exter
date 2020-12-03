@@ -139,7 +139,7 @@ func TestNewSessionDaoSql(t *testing.T) {
 		}
 		appDao := NewSessionDaoSql(sqlc, tableNameSql)
 		if appDao == nil {
-			t.Fatalf("%s failed: nil", name)
+			t.Fatalf("%s failed: nil", name+"/"+k)
 		}
 	}
 }
@@ -220,7 +220,7 @@ func TestSessionDaoSql_Save(t *testing.T) {
 		sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 		ok, err := sessDao.Save(sess)
 		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+			t.Fatalf("%s failed: %#v / %s", name+"/"+k, ok, err)
 		}
 	}
 }
@@ -248,17 +248,17 @@ func TestSessionDaoSql_Get(t *testing.T) {
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
 		sessDao := _initSessionDaoSql(t, name, sqlc)
-		expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
+		expiry := time.Now().Round(time.Second).Add(5 * time.Minute)
 		sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 		ok, err := sessDao.Save(sess)
 		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+			t.Fatalf("%s failed: %#v / %s", name+"/"+k, ok, err)
 		}
 
 		if sess, err := sessDao.Get("not_found"); err != nil {
 			t.Fatalf("%s failed: %s", name, err)
 		} else if sess != nil {
-			t.Fatalf("%s failed: session %s should not exist", name, "not_found")
+			t.Fatalf("%s failed: session %s should not exist", name+"/"+k, "not_found")
 		}
 
 		if sess, err := sessDao.Get("1"); err != nil {
@@ -267,28 +267,29 @@ func TestSessionDaoSql_Get(t *testing.T) {
 			t.Fatalf("%s failed: nil", name)
 		} else {
 			if v := sess.GetId(); v != "1" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "1", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "1", v)
 			}
 			if v := sess.GetTagVersion(); v != 1357 {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, 1357, v)
 			}
 			if v := sess.GetSessionType(); v != "login" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "login", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "login", v)
 			}
 			if v := sess.GetIdSource(); v != "local" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "local", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "local", v)
 			}
 			if v := sess.GetAppId(); v != "exter" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "exter", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "exter", v)
 			}
 			if v := sess.GetUserId(); v != "btnguyen2k" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "btnguyen2k", v)
 			}
 			if v := sess.GetSessionData(); v != "session-data" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "session-data", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "session-data", v)
 			}
-			if v := sess.GetExpiry(); v.Unix() != expiry.Unix() {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, expiry, v)
+			loc, _ := time.LoadLocation(timezoneSql)
+			if v := sess.GetExpiry().In(loc); v.Unix() != expiry.In(loc).Unix() {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, expiry.In(loc).Format(time.RFC3339), v.In(loc).Format(time.RFC3339))
 			}
 		}
 	}
@@ -321,23 +322,23 @@ func TestSessionDaoSql_Delete(t *testing.T) {
 		sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 		ok, err := sessDao.Save(sess)
 		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+			t.Fatalf("%s failed: %#v / %s", name+"/"+k, ok, err)
 		}
 		if sess, err := sessDao.Get("1"); err != nil {
-			t.Fatalf("%s failed: %s", name, err)
+			t.Fatalf("%s failed: %s", name+"/"+k, err)
 		} else if sess == nil {
-			t.Fatalf("%s failed: nill", name)
+			t.Fatalf("%s failed: nill", name+"/"+k)
 		}
 
 		ok, err = sessDao.Delete(sess)
 		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+			t.Fatalf("%s failed: %#v / %s", name+"/"+k, ok, err)
 		}
 
 		if sess, err := sessDao.Get("1"); err != nil {
-			t.Fatalf("%s failed: %s", name, err)
+			t.Fatalf("%s failed: %s", name+"/"+k, err)
 		} else if sess != nil {
-			t.Fatalf("%s failed: session %s should not exist", name, "not_found")
+			t.Fatalf("%s failed: session %s should not exist", name+"/"+k, "not_found")
 		}
 	}
 }
@@ -365,54 +366,56 @@ func TestSessionDaoSql_Update(t *testing.T) {
 			t.Fatalf("%s failed: unknown database type [%s]", name, k)
 		}
 		sessDao := _initSessionDaoSql(t, name, sqlc)
-		expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
+		expiry := time.Now().Round(time.Second).Add(5 * time.Minute)
 
 		sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 		ok, err := sessDao.Save(sess)
 		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+			t.Fatalf("%s failed: %#v / %s", name+"/"+k, ok, err)
 		}
 
+		expiry = expiry.Add(1 * time.Hour)
 		sess.SetTagVersion(2468)
 		sess.SetSessionType("pre-login")
 		sess.SetIdSource("external")
 		sess.SetAppId("myapp")
 		sess.SetUserId("nbthanh")
 		sess.SetSessionData("data")
-		sess.SetExpiry(expiry.Add(1 * time.Hour))
+		sess.SetExpiry(expiry)
 		ok, err = sessDao.Save(sess)
 		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
+			t.Fatalf("%s failed: %#v / %s", name+"/"+k, ok, err)
 		}
 
 		if sess, err := sessDao.Get("1"); err != nil {
-			t.Fatalf("%s failed: %s", name, err)
+			t.Fatalf("%s failed: %s", name+"/"+k, err)
 		} else if sess == nil {
-			t.Fatalf("%s failed: nil", name)
+			t.Fatalf("%s failed: nil", name+"/"+k)
 		} else {
 			if v := sess.GetId(); v != "1" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "1", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "1", v)
 			}
 			if v := sess.GetTagVersion(); v != 2468 {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 2468, v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, 2468, v)
 			}
 			if v := sess.GetSessionType(); v != "pre-login" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "pre-login", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "pre-login", v)
 			}
 			if v := sess.GetIdSource(); v != "external" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "external", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "external", v)
 			}
 			if v := sess.GetAppId(); v != "myapp" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "myapp", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "myapp", v)
 			}
 			if v := sess.GetUserId(); v != "nbthanh" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "nbthanh", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "nbthanh", v)
 			}
 			if v := sess.GetSessionData(); v != "data" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "data", v)
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, "data", v)
 			}
-			if v := sess.GetExpiry(); v.Unix() != expiry.Add(1*time.Hour).Unix() {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, expiry.Add(1*time.Hour), v)
+			loc, _ := time.LoadLocation(timezoneSql)
+			if v := sess.GetExpiry().In(loc); v.Unix() != expiry.In(loc).Unix() {
+				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name+"/"+k, expiry.In(loc).Format(time.RFC3339), v.In(loc).Format(time.RFC3339))
 			}
 		}
 	}
