@@ -29,7 +29,6 @@ import (
 	"main/src/gvabe/bo/app"
 	"main/src/gvabe/bo/session"
 	"main/src/gvabe/bo/user"
-	"main/src/mico"
 )
 
 var DEBUG = false
@@ -64,8 +63,8 @@ var (
 	rsaPubKey                           *rsa.PublicKey
 	rsaPubKeyPemPKCS1, rsaPubKeyPemPKIX []byte
 
-	sessionCache         mico.ICache
-	preLoginSessionCache mico.ICache
+	// sessionCache         mico.ICache
+	// preLoginSessionCache mico.ICache
 )
 
 const (

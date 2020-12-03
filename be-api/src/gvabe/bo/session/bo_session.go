@@ -10,14 +10,15 @@ import (
 
 	"github.com/btnguyen2k/consu/reddo"
 
-	"main/src/henge"
+	"github.com/btnguyen2k/henge"
+
 	"main/src/utils"
 )
 
-// NewSession is helper function to create new Session bo
+// NewSession is helper function to create new Session bo.
 func NewSession(appVersion uint64, id, sessionType, idSource, appId, userId, sessionData string, expiry time.Time) *Session {
 	sess := &Session{
-		UniversalBo: *henge.NewUniversalBo(id, appVersion),
+		UniversalBo: henge.NewUniversalBo(id, appVersion),
 		sessionData: strings.TrimSpace(sessionData),
 		idSource:    strings.TrimSpace(strings.ToLower(idSource)),
 		appId:       strings.TrimSpace(strings.ToLower(appId)),
@@ -31,18 +32,18 @@ func NewSession(appVersion uint64, id, sessionType, idSource, appId, userId, ses
 	return sess.sync()
 }
 
-// NewSessionFromUbo is helper function to create new Session bo from a universal bo
+// NewSessionFromUbo is helper function to create new Session bo from a universal bo.
 func NewSessionFromUbo(ubo *henge.UniversalBo) *Session {
 	if ubo == nil {
 		return nil
 	}
-	sess := Session{}
+	sess := Session{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &sess); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewSessionFromUbo - error unmarshalling JSON data: %e", err))
 		log.Print(err)
 		return nil
 	}
-	sess.UniversalBo = *ubo.Clone()
+	sess.UniversalBo = ubo.Clone()
 	if sessionType, err := sess.GetExtraAttrAs(FieldSession_SessionType, reddo.TypeString); err == nil {
 		sess.sessionType = sessionType.(string)
 	}
@@ -75,19 +76,19 @@ const (
 	AttrSession_Data = "data"
 )
 
-// Session is the business object
-//	- Session inherits unique id from bo.UniversalBo
+// Session is the business object.
+// Session inherits unique id from bo.UniversalBo.
 type Session struct {
-	henge.UniversalBo `json:"_ubo"`
-	sessionData       string    `json:"data"`
-	idSource          string    `json:"isrc"` // identity source
-	appId             string    `json:"aid"`  // id of application that is owner of the session
-	userId            string    `json:"uid"`  // id of user that is owner of the session
-	sessionType       string    `json:"type"` // session type
-	expiry            time.Time `json:"eat"`  // timestamp when the session expires
+	*henge.UniversalBo `json:"_ubo"`
+	sessionData        string    `json:"data"`
+	idSource           string    `json:"isrc"` // identity source
+	appId              string    `json:"aid"`  // id of application that is owner of the session
+	userId             string    `json:"uid"`  // id of user that is owner of the session
+	sessionType        string    `json:"type"` // session type
+	expiry             time.Time `json:"eat"`  // timestamp when the session expires
 }
 
-// MarshalJSON implements json.encode.Marshaler.MarshalJSON
+// MarshalJSON implements json.encode.Marshaler.MarshalJSON.
 //	TODO: lock for read?
 func (sess *Session) MarshalJSON() ([]byte, error) {
 	sess.sync()
@@ -102,7 +103,7 @@ func (sess *Session) MarshalJSON() ([]byte, error) {
 	return json.Marshal(m)
 }
 
-// UnmarshalJSON implements json.decode.Unmarshaler.UnmarshalJSON
+// UnmarshalJSON implements json.decode.Unmarshaler.UnmarshalJSON.
 //	TODO: lock for write?
 func (sess *Session) UnmarshalJSON(data []byte) error {
 	var m map[string]interface{}
@@ -140,73 +141,73 @@ func (sess *Session) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// GetIdSource returns session's 'id-source' value
+// GetIdSource returns session's 'id-source' value.
 func (sess *Session) GetIdSource() string {
 	return sess.idSource
 }
 
-// SetIdSource sets session's 'id-source' value
+// SetIdSource sets session's 'id-source' value.
 func (sess *Session) SetIdSource(value string) *Session {
 	sess.idSource = strings.TrimSpace(strings.ToLower(value))
 	return sess
 }
 
-// GetAppId returns session's 'app-id' value
+// GetAppId returns session's 'app-id' value.
 func (sess *Session) GetAppId() string {
 	return sess.appId
 }
 
-// SetAppId sets session's 'app-id' value
+// SetAppId sets session's 'app-id' value.
 func (sess *Session) SetAppId(value string) *Session {
 	sess.appId = strings.TrimSpace(strings.ToLower(value))
 	return sess
 }
 
-// GetUserId returns session's 'user-id' value
+// GetUserId returns session's 'user-id' value.
 func (sess *Session) GetUserId() string {
 	return sess.userId
 }
 
-// SetUserId sets session's 'user-id' value
+// SetUserId sets session's 'user-id' value.
 func (sess *Session) SetUserId(value string) *Session {
 	sess.userId = strings.TrimSpace(strings.ToLower(value))
 	return sess
 }
 
-// GetSessionType returns session's 'session-type' value
+// GetSessionType returns session's 'session-type' value.
 func (sess *Session) GetSessionType() string {
 	return sess.sessionType
 }
 
-// SetSessionType sets session's 'session-type' value
+// SetSessionType sets session's 'session-type' value.
 func (sess *Session) SetSessionType(value string) *Session {
 	sess.sessionType = strings.TrimSpace(value)
 	return sess
 }
 
-// GetSessionData returns session's 'session-data' value
+// GetSessionData returns session's 'session-data' value.
 func (sess *Session) GetSessionData() string {
 	return sess.sessionData
 }
 
-// SetSessionData sets session's 'session-data' value
+// SetSessionData sets session's 'session-data' value.
 func (sess *Session) SetSessionData(value string) *Session {
 	sess.sessionData = strings.TrimSpace(value)
 	return sess
 }
 
-// GetExpiry returns session's 'expiry' value
+// GetExpiry returns session's 'expiry' value.
 func (sess *Session) GetExpiry() time.Time {
 	return sess.expiry
 }
 
-// SetExpiry sets session's 'expiry' value
+// SetExpiry sets session's 'expiry' value.
 func (sess *Session) SetExpiry(value time.Time) *Session {
 	sess.expiry = value
 	return sess
 }
 
-// IsExpired returns true if the session expired, false otherwise
+// IsExpired returns true if the session expired, false otherwise.
 func (sess *Session) IsExpired() bool {
 	return sess.expiry.Before(time.Now())
 }
@@ -220,22 +221,4 @@ func (sess *Session) sync() *Session {
 	sess.SetDataAttr(AttrSession_Data, sess.sessionData)
 	sess.UniversalBo.Sync()
 	return sess
-}
-
-// SessionDao defines API to access Session storage
-type SessionDao interface {
-	// Delete removes the specified business object from storage
-	Delete(bo *Session) (bool, error)
-
-	// // Create persists a new business object to storage
-	// Create(bo *Session) (bool, error)
-
-	// Get retrieves a business object from storage
-	Get(id string) (*Session, error)
-
-	// // Update modifies an existing business object
-	// Update(bo *Session) (bool, error)
-
-	// Save persists a new business object to storage or update an existing one
-	Save(bo *Session) (bool, error)
 }

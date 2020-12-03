@@ -91,7 +91,7 @@ func (dao *$boname;format="Camel"$DaoMongo) Get(id string) (*$boname;format="Cam
 	return dao.toBo(gbo), nil
 }
 
-// GetN implements $boname;format="Camel"$Dao.GetN
+// getN implements $boname;format="Camel"$Dao.getN
 func (dao *$boname;format="Camel"$DaoMongo) GetN(fromOffset, maxNumRows int) ([]*$boname;format="Camel"$, error) {
 	// order ascending by "id" column
 	ordering := map[string]int{field$boname;format="Camel"$Id: 1}
@@ -107,7 +107,7 @@ func (dao *$boname;format="Camel"$DaoMongo) GetN(fromOffset, maxNumRows int) ([]
 	return result, nil
 }
 
-// GetAll implements $boname;format="Camel"$Dao.GetAll
+// getAll implements $boname;format="Camel"$Dao.getAll
 func (dao *$boname;format="Camel"$DaoMongo) GetAll() ([]*$boname;format="Camel"$, error) {
 	return dao.GetN(0, 0)
 }
