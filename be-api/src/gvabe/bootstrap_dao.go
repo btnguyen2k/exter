@@ -119,7 +119,7 @@ func initDaos() {
 			session.SqlCol_Session_AppId:       "VARCHAR(32)",
 			session.SqlCol_Session_UserId:      "VARCHAR(32)",
 			session.SqlCol_Session_SessionType: "VARCHAR(32)",
-			session.SqlCol_Session_Expiry:      "DATETIME",
+			session.SqlCol_Session_Expiry:      "TIMESTAMP",
 		})
 	case "pg", "pgsql", "postgres", "postgresql":
 		henge.InitPgsqlTable(sqlc, user.TableUser, nil)
@@ -129,7 +129,37 @@ func initDaos() {
 			session.SqlCol_Session_AppId:       "VARCHAR(32)",
 			session.SqlCol_Session_UserId:      "VARCHAR(32)",
 			session.SqlCol_Session_SessionType: "VARCHAR(32)",
+			session.SqlCol_Session_Expiry:      "TIMESTAMP WITH TIME ZONE",
+		})
+	case "mysql":
+		henge.InitMysqlTable(sqlc, user.TableUser, nil)
+		henge.InitMysqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
+		henge.InitMysqlTable(sqlc, session.TableSession, map[string]string{
+			session.SqlCol_Session_IdSource:    "VARCHAR(32)",
+			session.SqlCol_Session_AppId:       "VARCHAR(32)",
+			session.SqlCol_Session_UserId:      "VARCHAR(32)",
+			session.SqlCol_Session_SessionType: "VARCHAR(32)",
 			session.SqlCol_Session_Expiry:      "DATETIME",
+		})
+	case "mssql":
+		henge.InitMssqlTable(sqlc, user.TableUser, nil)
+		henge.InitMssqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "NVARCHAR(32)"})
+		henge.InitMssqlTable(sqlc, session.TableSession, map[string]string{
+			session.SqlCol_Session_IdSource:    "NVARCHAR(32)",
+			session.SqlCol_Session_AppId:       "NVARCHAR(32)",
+			session.SqlCol_Session_UserId:      "NVARCHAR(32)",
+			session.SqlCol_Session_SessionType: "NVARCHAR(32)",
+			session.SqlCol_Session_Expiry:      "DATETIMEOFFSET",
+		})
+	case "oracle":
+		henge.InitOracleTable(sqlc, user.TableUser, nil)
+		henge.InitOracleTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "NVARCHAR2(32)"})
+		henge.InitOracleTable(sqlc, session.TableSession, map[string]string{
+			session.SqlCol_Session_IdSource:    "NVARCHAR2(32)",
+			session.SqlCol_Session_AppId:       "NVARCHAR2(32)",
+			session.SqlCol_Session_UserId:      "NVARCHAR2(32)",
+			session.SqlCol_Session_SessionType: "NVARCHAR2(32)",
+			session.SqlCol_Session_Expiry:      "TIMESTAMP WITH TIME ZONE",
 		})
 	}
 

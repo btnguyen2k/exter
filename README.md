@@ -12,6 +12,8 @@ Latest release [`v0.5.0`](RELEASE-NOTES.md).
 
 You can [deploy Exter](BuildAndRun.md) on your own infrastructure, on-premises or cloud. Or leverage the [pre-hosted Exter](https://btnguyen2k.github.io/exter/).
 
+[![codecov](https://codecov.io/gh/btnguyen2k/exter/branch/master/graph/badge.svg?token=4HRLXGOB2M)](https://codecov.io/gh/btnguyen2k/exter)
+
 ## How Exter works
 
 The authentication (login) flow is as the following:
