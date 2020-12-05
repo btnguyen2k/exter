@@ -21,6 +21,16 @@ secret:
   EXTER_AWS_ACCESS_KEY_ID: "enter-value"
   EXTER_AWS_SECRET_ACCESS_KEY: "enter-value"
   EXTER_RSA_PRIVKEY_PASSPHRASE: "enter-value"
+  EXTER_GOOGLE_API_PROJECT_ID: "enter-value"
+  EXTER_GOOGLE_API_CLIENT_ID: "enter-value"
+  EXTER_GOOGLE_API_CLIENT_SECRET: "enter-value"
+  EXTER_GITHUB_OAUTHAPP_CLIENT_ID: "enter-value"
+  EXTER_GITHUB_OAUTHAPP_CLIENT_SECRET: "enter-value"
+  EXTER_FACEBOOK_APP_ID: "enter-value"
+  EXTER_FACEBOOK_APP_SECRET: "enter-value"
+  EXTER_LINKEDIN_CLIENT_ID: "enter-value"
+  EXTER_LINKEDIN_CLIENT_SECRET: "enter-value"
+  EXTER_LINKEDIN_REDIRECT_URI: "enter-value
 
 image:
   repository: exter
