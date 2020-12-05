@@ -168,18 +168,19 @@ func initEchoServer() {
 	e.GET(fePath, feFunf)
 	e.GET(fePath+"/*", feFunf)
 	// END
-	
-	e.GET("/manifest.json", func(c echo.Context) error {
-		if fcontent, err := ioutil.ReadFile(feDir + "/manifest.json"); err != nil {
-			if os.IsNotExist(err) {
-				return c.HTML(http.StatusNotFound, "Not found: manifest.json")
-			} else {
-				return err
-			}
-		} else {
-			return c.JSONBlob(http.StatusOK, fcontent)
-		}
-	})
+
+	// e.GET("/manifest.json", func(c echo.Context) error {
+	// 	if fcontent, err := ioutil.ReadFile(feDir + "/manifest.json"); err != nil {
+	// 		if os.IsNotExist(err) {
+	// 			return c.HTML(http.StatusNotFound, "Not found: manifest.json")
+	// 		} else {
+	// 			return err
+	// 		}
+	// 	} else {
+	// 		return c.JSONBlob(http.StatusOK, fcontent)
+	// 	}
+	// })
+	// handle special request /favicon.ico
 	e.GET("/favicon.ico", func(c echo.Context) error {
 		if fcontent, err := ioutil.ReadFile(feDir + "/favicon.ico"); err != nil {
 			if os.IsNotExist(err) {
