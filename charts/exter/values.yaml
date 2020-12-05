@@ -6,6 +6,10 @@ name: exter
 httpPort: 8000
 replicaCount: 1
 
+secret:
+  EXTER_HOME_URL: "enter-value"
+  EXTER_INIT_SYSTEM_OWNER_ID: "enter-value"
+
 image:
   repository: exter
   pullPolicy: Always

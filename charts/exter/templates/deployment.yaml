@@ -1,3 +1,11 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "exter.name" . }}
+type: Opaque
+stringData:
+    EXTER_INIT_SYSTEM_OWNER_ID: {{ .Values.secret.EXTER_INIT_SYSTEM_OWNER_ID }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -46,6 +54,17 @@ spec:
               port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: EXTER_HOME_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_HOME_URL
+            - name: INIT_SYSTEM_OWNER_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_INIT_SYSTEM_OWNER_ID
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
