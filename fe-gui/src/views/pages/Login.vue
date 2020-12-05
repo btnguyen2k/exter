@@ -155,8 +155,10 @@ export default {
     switch (callbackAction) {
       case 'gh':
         this._doLoginGitHubCallback()
+        break
       case 'ln':
         this._doLoginLinkedInCallback()
+        break
     }
 
     const vue = this

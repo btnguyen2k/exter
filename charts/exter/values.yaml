@@ -1,0 +1,100 @@
+# Default values for exter.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+name: exter
+httpPort: 8000
+replicaCount: 1
+
+extercfg:
+  debug: false
+  secret_name_keys: "name-of-k8s-secret-that-store-Exter-keys"
+  secret_mountpath_keys: "path-to-mount-secrets-as-files"
+  rsa_privkey_file: "location-to-RSA-private-key"
+
+secret:
+  EXTER_TIMEZONE: "enter-value"
+  EXTER_HOME_URL: "enter-value"
+  EXTER_INIT_SYSTEM_OWNER_ID: "enter-value"
+  EXTER_DB_TYPE: "enter-value"
+  EXTER_DB_PGSQL_URL: "enter-value"
+  EXTER_DB_DYNAMODB_REGION: "enter-value"
+  EXTER_AWS_ACCESS_KEY_ID: "enter-value"
+  EXTER_AWS_SECRET_ACCESS_KEY: "enter-value"
+  EXTER_RSA_PRIVKEY_PASSPHRASE: "enter-value"
+  EXTER_GOOGLE_API_PROJECT_ID: "enter-value"
+  EXTER_GOOGLE_API_CLIENT_ID: "enter-value"
+  EXTER_GOOGLE_API_CLIENT_SECRET: "enter-value"
+  EXTER_GITHUB_OAUTHAPP_CLIENT_ID: "enter-value"
+  EXTER_GITHUB_OAUTHAPP_CLIENT_SECRET: "enter-value"
+  EXTER_FACEBOOK_APP_ID: "enter-value"
+  EXTER_FACEBOOK_APP_SECRET: "enter-value"
+  EXTER_LINKEDIN_CLIENT_ID: "enter-value"
+  EXTER_LINKEDIN_CLIENT_SECRET: "enter-value"
+  EXTER_LINKEDIN_REDIRECT_URI: "enter-value"
+
+image:
+  repository: exter
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: latest
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 2000
+
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: false
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: "enter.your.domainname"
+      paths: []
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 8Mi
+  limits:
+    cpu: 100m
+    memory: 64Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
