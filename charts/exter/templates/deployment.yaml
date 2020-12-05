@@ -130,7 +130,7 @@ spec:
                   name: {{ include "exter.name" . }}
                   key: EXTER_RSA_PRIVKEY_PASSPHRASE
             - name: RSA_PRIVKEY_FILE
-              value: {{ .Values.exter.rsa_privkey_file }}
+              value: '{{ .Values.exter.rsa_privkey_file }}'
             - name: GOOGLE_API_PROJECT_ID
               valueFrom:
                 secretKeyRef:
