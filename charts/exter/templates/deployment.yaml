@@ -4,8 +4,14 @@ metadata:
   name: {{ include "exter.name" . }}
 type: Opaque
 stringData:
-    EXTER_HOME_URL: {{ .Values.secret.EXTER_HOME_URL }}    
+    EXTER_TIMEZONE: {{ .Values.secret.EXTER_TIMEZONE }}
+    EXTER_HOME_URL: {{ .Values.secret.EXTER_HOME_URL }}
     EXTER_INIT_SYSTEM_OWNER_ID: {{ .Values.secret.EXTER_INIT_SYSTEM_OWNER_ID }}
+    EXTER_DB_TYPE: {{ .Values.secret.EXTER_DB_TYPE }}
+    EXTER_DB_PGSQL_URL: {{ .Values.secret.EXTER_DB_PGSQL_URL }}
+    EXTER_DB_DYNAMODB_REGION: {{ .Values.secret.EXTER_DB_DYNAMODB_REGION }}
+    EXTER_AWS_ACCESS_KEY_ID: {{ .Values.secret.EXTER_AWS_ACCESS_KEY_ID }}
+    EXTER_AWS_SECRET_ACCESS_KEY: {{ .Values.secret.EXTER_AWS_SECRET_ACCESS_KEY }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -56,6 +62,11 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
+            - name: TIMEZONE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: TIMEZONE
             - name: EXTER_HOME_URL
               valueFrom:
                 secretKeyRef:
@@ -66,6 +77,31 @@ spec:
                 secretKeyRef:
                   name: {{ include "exter.name" . }}
                   key: EXTER_INIT_SYSTEM_OWNER_ID
+            - name: DB_TYPE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_DB_TYPE
+            - name: DB_PGSQL_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_DB_PGSQL_URL
+            - name: DB_DYNAMODB_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_DB_DYNAMODB_REGION
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_AWS_SECRET_ACCESS_KEY
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

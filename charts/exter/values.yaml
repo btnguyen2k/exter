@@ -7,8 +7,14 @@ httpPort: 8000
 replicaCount: 1
 
 secret:
+  EXTER_TIMEZONE: "enter-value"
   EXTER_HOME_URL: "enter-value"
   EXTER_INIT_SYSTEM_OWNER_ID: "enter-value"
+  EXTER_DB_TYPE: "enter-value"
+  EXTER_DB_PGSQL_URL: "enter-value"
+  EXTER_DB_DYNAMODB_REGION: "enter-value"
+  EXTER_AWS_ACCESS_KEY_ID: "enter-value"
+  EXTER_AWS_SECRET_ACCESS_KEY: "enter-value"
 
 image:
   repository: exter
