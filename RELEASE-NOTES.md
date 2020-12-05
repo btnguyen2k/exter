@@ -3,8 +3,8 @@
 ## 2020-12-xx - v0.6.0
 
 - AB#31: support AWS DynamoDB.
-- Fix AB#34: Display favicon on browser.
-- Fix AB#35: Fix bug `403: Return url [] is not allowed for app [exter]`.
+- Fix AB#34: Fix bug `403: Return url [] is not allowed for app [exter]`.
+- Fix AB#35: Display favicon on browser.
 
 ## 2020-11-02 - v0.5.0
 
