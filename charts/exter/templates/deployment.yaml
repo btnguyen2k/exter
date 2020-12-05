@@ -4,8 +4,8 @@ metadata:
   name: {{ include "exter.name" . }}
 type: Opaque
 stringData:
-  EXTER_TIMEZONE: {{ .Values.secret.EXTER_TIMEZONE }}
-  EXTER_HOME_URL: {{ .Values.secret.EXTER_HOME_URL }}
+  EXTER_TIMEZONE: '{{ .Values.secret.EXTER_TIMEZONE }}'
+  EXTER_HOME_URL: '{{ .Values.secret.EXTER_HOME_URL }}'
   EXTER_INIT_SYSTEM_OWNER_ID: '{{ .Values.secret.EXTER_INIT_SYSTEM_OWNER_ID }}'
   EXTER_DB_TYPE: '{{ .Values.secret.EXTER_DB_TYPE }}'
   EXTER_DB_PGSQL_URL: '{{ .Values.secret.EXTER_DB_PGSQL_URL }}'
