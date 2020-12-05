@@ -30,7 +30,7 @@ secret:
   EXTER_FACEBOOK_APP_SECRET: "enter-value"
   EXTER_LINKEDIN_CLIENT_ID: "enter-value"
   EXTER_LINKEDIN_CLIENT_SECRET: "enter-value"
-  EXTER_LINKEDIN_REDIRECT_URI: "enter-value
+  EXTER_LINKEDIN_REDIRECT_URI: "enter-value"
 
 image:
   repository: exter
