@@ -12,6 +12,7 @@ stringData:
     EXTER_DB_DYNAMODB_REGION: {{ .Values.secret.EXTER_DB_DYNAMODB_REGION }}
     EXTER_AWS_ACCESS_KEY_ID: {{ .Values.secret.EXTER_AWS_ACCESS_KEY_ID }}
     EXTER_AWS_SECRET_ACCESS_KEY: {{ .Values.secret.EXTER_AWS_SECRET_ACCESS_KEY }}
+    EXTER_RSA_PRIVKEY_PASSPHRASE: {{ .Values.secret.EXTER_RSA_PRIVKEY_PASSPHRASE }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -102,6 +103,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "exter.name" . }}
                   key: EXTER_AWS_SECRET_ACCESS_KEY
+            - name: RSA_PRIVKEY_PASSPHRASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "exter.name" . }}
+                  key: EXTER_RSA_PRIVKEY_PASSPHRASE
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
