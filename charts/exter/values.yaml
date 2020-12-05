@@ -7,7 +7,6 @@ httpPort: 8000
 replicaCount: 1
 
 extercfg:
-  debug: false
   secret_name_keys: "name-of-k8s-secret-that-store-Exter-keys"
   secret_mountpath_keys: "path-to-mount-secrets-as-files"
   rsa_privkey_file: "location-to-RSA-private-key"
