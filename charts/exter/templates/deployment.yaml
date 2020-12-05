@@ -42,12 +42,20 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: keys
+          secret:
+            secretName: {{ .Values.exter.secret_name_keys }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            - name: keys
+              mountPath: {{ .Values.exter.secret_mountpath_keys }}
+              readOnly: true
           ports:
             - name: http
               containerPort: {{ .Values.httpPort }}
@@ -108,6 +116,8 @@ spec:
                 secretKeyRef:
                   name: {{ include "exter.name" . }}
                   key: EXTER_RSA_PRIVKEY_PASSPHRASE
+            - name: RSA_PRIVKEY_FILE
+              value: /etc/{{ include "exter.name" . }}/keys/exter_priv.pem
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
