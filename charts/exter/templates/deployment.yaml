@@ -4,25 +4,25 @@ metadata:
   name: {{ include "exter.name" . }}
 type: Opaque
 stringData:
-    EXTER_TIMEZONE: {{ .Values.secret.EXTER_TIMEZONE }}
-    EXTER_HOME_URL: {{ .Values.secret.EXTER_HOME_URL }}
-    EXTER_INIT_SYSTEM_OWNER_ID: {{ .Values.secret.EXTER_INIT_SYSTEM_OWNER_ID }}
-    EXTER_DB_TYPE: {{ .Values.secret.EXTER_DB_TYPE }}
-    EXTER_DB_PGSQL_URL: {{ .Values.secret.EXTER_DB_PGSQL_URL }}
-    EXTER_DB_DYNAMODB_REGION: {{ .Values.secret.EXTER_DB_DYNAMODB_REGION }}
-    EXTER_AWS_ACCESS_KEY_ID: {{ .Values.secret.EXTER_AWS_ACCESS_KEY_ID }}
-    EXTER_AWS_SECRET_ACCESS_KEY: {{ .Values.secret.EXTER_AWS_SECRET_ACCESS_KEY }}
-    EXTER_RSA_PRIVKEY_PASSPHRASE: {{ .Values.secret.EXTER_RSA_PRIVKEY_PASSPHRASE }}
-    EXTER_GOOGLE_API_PROJECT_ID: {{ .Values.secret.EXTER_GOOGLE_API_PROJECT_ID }}
-    EXTER_GOOGLE_API_CLIENT_ID: {{ .Values.secret.EXTER_GOOGLE_API_CLIENT_ID }}
-    EXTER_GOOGLE_API_CLIENT_SECRET: {{ .Values.secret.EXTER_GOOGLE_API_CLIENT_SECRET }}
-    EXTER_GITHUB_OAUTHAPP_CLIENT_ID: {{ .Values.secret.EXTER_GITHUB_OAUTHAPP_CLIENT_ID }}
-    EXTER_GITHUB_OAUTHAPP_CLIENT_SECRET: {{ .Values.secret.EXTER_GITHUB_OAUTHAPP_CLIENT_SECRET }}
-    EXTER_FACEBOOK_APP_ID: {{ .Values.secret.EXTER_FACEBOOK_APP_ID }}
-    EXTER_FACEBOOK_APP_SECRET: {{ .Values.secret.EXTER_FACEBOOK_APP_SECRET }}
-    EXTER_LINKEDIN_CLIENT_ID: {{ .Values.secret.EXTER_LINKEDIN_CLIENT_ID }}
-    EXTER_LINKEDIN_CLIENT_SECRET: {{ .Values.secret.EXTER_LINKEDIN_CLIENT_SECRET }}
-    EXTER_LINKEDIN_REDIRECT_URI: {{ .Values.secret.EXTER_LINKEDIN_REDIRECT_URI }}
+    EXTER_TIMEZONE: '{{ .Values.secret.EXTER_TIMEZONE }}'
+    EXTER_HOME_URL: '{{ .Values.secret.EXTER_HOME_URL }}'
+    EXTER_INIT_SYSTEM_OWNER_ID: '{{ .Values.secret.EXTER_INIT_SYSTEM_OWNER_ID }}'
+    EXTER_DB_TYPE: '{{ .Values.secret.EXTER_DB_TYPE }}'
+    EXTER_DB_PGSQL_URL: '{{ .Values.secret.EXTER_DB_PGSQL_URL }}'
+    EXTER_DB_DYNAMODB_REGION: '{{ .Values.secret.EXTER_DB_DYNAMODB_REGION }}'
+    EXTER_AWS_ACCESS_KEY_ID: '{{ .Values.secret.EXTER_AWS_ACCESS_KEY_ID }}'
+    EXTER_AWS_SECRET_ACCESS_KEY: '{{ .Values.secret.EXTER_AWS_SECRET_ACCESS_KEY }}'
+    EXTER_RSA_PRIVKEY_PASSPHRASE: '{{ .Values.secret.EXTER_RSA_PRIVKEY_PASSPHRASE }}'
+    EXTER_GOOGLE_API_PROJECT_ID: '{{ .Values.secret.EXTER_GOOGLE_API_PROJECT_ID }}'
+    EXTER_GOOGLE_API_CLIENT_ID: '{{ .Values.secret.EXTER_GOOGLE_API_CLIENT_ID }}'
+    EXTER_GOOGLE_API_CLIENT_SECRET: '{{ .Values.secret.EXTER_GOOGLE_API_CLIENT_SECRET }}'
+    EXTER_GITHUB_OAUTHAPP_CLIENT_ID: '{{ .Values.secret.EXTER_GITHUB_OAUTHAPP_CLIENT_ID }}'
+    EXTER_GITHUB_OAUTHAPP_CLIENT_SECRET: '{{ .Values.secret.EXTER_GITHUB_OAUTHAPP_CLIENT_SECRET }}'
+    EXTER_FACEBOOK_APP_ID: '{{ .Values.secret.EXTER_FACEBOOK_APP_ID }}'
+    EXTER_FACEBOOK_APP_SECRET: '{{ .Values.secret.EXTER_FACEBOOK_APP_SECRET }}'
+    EXTER_LINKEDIN_CLIENT_ID: '{{ .Values.secret.EXTER_LINKEDIN_CLIENT_ID }}'
+    EXTER_LINKEDIN_CLIENT_SECRET: '{{ .Values.secret.EXTER_LINKEDIN_CLIENT_SECRET }}'
+    EXTER_LINKEDIN_REDIRECT_URI: '{{ .Values.secret.EXTER_LINKEDIN_REDIRECT_URI }}'
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -83,7 +83,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: DEBUG
-              value: {{ .Values.exter.debug }}
+              value: '{{ .Values.exter.debug }}'
             - name: TIMEZONE
               valueFrom:
                 secretKeyRef:
