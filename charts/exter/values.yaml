@@ -6,6 +6,12 @@ name: exter
 httpPort: 8000
 replicaCount: 1
 
+extercfg:
+  debug: false
+  secret_name_keys: "name-of-k8s-secret-that-store-Exter-keys"
+  secret_mountpath_keys: "path-to-mount-secrets-as-files"
+  rsa_privkey_file: "location-to-RSA-private-key"
+
 secret:
   EXTER_TIMEZONE: "enter-value"
   EXTER_HOME_URL: "enter-value"
@@ -15,6 +21,17 @@ secret:
   EXTER_DB_DYNAMODB_REGION: "enter-value"
   EXTER_AWS_ACCESS_KEY_ID: "enter-value"
   EXTER_AWS_SECRET_ACCESS_KEY: "enter-value"
+  EXTER_RSA_PRIVKEY_PASSPHRASE: "enter-value"
+  EXTER_GOOGLE_API_PROJECT_ID: "enter-value"
+  EXTER_GOOGLE_API_CLIENT_ID: "enter-value"
+  EXTER_GOOGLE_API_CLIENT_SECRET: "enter-value"
+  EXTER_GITHUB_OAUTHAPP_CLIENT_ID: "enter-value"
+  EXTER_GITHUB_OAUTHAPP_CLIENT_SECRET: "enter-value"
+  EXTER_FACEBOOK_APP_ID: "enter-value"
+  EXTER_FACEBOOK_APP_SECRET: "enter-value"
+  EXTER_LINKEDIN_CLIENT_ID: "enter-value"
+  EXTER_LINKEDIN_CLIENT_SECRET: "enter-value"
+  EXTER_LINKEDIN_REDIRECT_URI: "enter-value"
 
 image:
   repository: exter
