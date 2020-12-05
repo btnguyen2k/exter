@@ -83,7 +83,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: DEBUG
-              value: {{ .Values.extercfg.debug }}
+              value: '{{ .Values.extercfg.debug }}'
             - name: TIMEZONE
               valueFrom:
                 secretKeyRef:
