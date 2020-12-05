@@ -4,6 +4,7 @@ metadata:
   name: {{ include "exter.name" . }}
 type: Opaque
 stringData:
+    EXTER_HOME_URL: {{ .Values.secret.EXTER_HOME_URL }}    
     EXTER_INIT_SYSTEM_OWNER_ID: {{ .Values.secret.EXTER_INIT_SYSTEM_OWNER_ID }}
 ---
 apiVersion: apps/v1
