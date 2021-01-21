@@ -1,8 +1,6 @@
 package session
 
 import (
-	"github.com/btnguyen2k/consu/reddo"
-	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/prom"
 
 	"github.com/btnguyen2k/henge"
@@ -19,10 +17,10 @@ type SessionDaoAwsDynamodb struct {
 	henge.UniversalDao
 }
 
-// GdaoCreateFilter implements IGenericDao.GdaoCreateFilter
-func (dao *SessionDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
-}
+// // GdaoCreateFilter implements IGenericDao.GdaoCreateFilter
+// func (dao *SessionDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
+// 	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
+// }
 
 // Delete implements SessionDao.Delete.
 func (dao *SessionDaoAwsDynamodb) Delete(sess *Session) (bool, error) {
@@ -32,10 +30,7 @@ func (dao *SessionDaoAwsDynamodb) Delete(sess *Session) (bool, error) {
 // Get implements SessionDao.Get.
 func (dao *SessionDaoAwsDynamodb) Get(id string) (*Session, error) {
 	ubo, err := dao.UniversalDao.Get(id)
-	if err != nil {
-		return nil, err
-	}
-	return NewSessionFromUbo(ubo), nil
+	return NewSessionFromUbo(ubo), err
 }
 
 // Update implements SessionDao.Save.

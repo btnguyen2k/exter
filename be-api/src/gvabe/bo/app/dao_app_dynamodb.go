@@ -1,8 +1,6 @@
 package app
 
 import (
-	"github.com/btnguyen2k/consu/reddo"
-	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/prom"
 
 	"github.com/btnguyen2k/henge"
@@ -21,10 +19,10 @@ type AppDaoAwsDynamodb struct {
 	henge.UniversalDao
 }
 
-// GdaoCreateFilter implements IGenericDao.GdaoCreateFilter.
-func (dao *AppDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
-}
+// // GdaoCreateFilter implements IGenericDao.GdaoCreateFilter.
+// func (dao *AppDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
+// 	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
+// }
 
 // Delete implements AppDao.Delete.
 func (dao *AppDaoAwsDynamodb) Delete(bo *App) (bool, error) {
@@ -39,10 +37,7 @@ func (dao *AppDaoAwsDynamodb) Create(bo *App) (bool, error) {
 // Get implements AppDao.Get.
 func (dao *AppDaoAwsDynamodb) Get(id string) (*App, error) {
 	ubo, err := dao.UniversalDao.Get(id)
-	if err != nil {
-		return nil, err
-	}
-	return NewAppFromUbo(ubo), nil
+	return NewAppFromUbo(ubo), err
 }
 
 // getN implements AppDao.getN.

@@ -40,7 +40,7 @@ func NewSessionFromUbo(ubo *henge.UniversalBo) *Session {
 	sess := Session{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &sess); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewSessionFromUbo - error unmarshalling JSON data: %e", err))
-		log.Print(err)
+		// log.Print(err)
 		return nil
 	}
 	sess.UniversalBo = ubo.Clone()
@@ -59,7 +59,7 @@ func NewSessionFromUbo(ubo *henge.UniversalBo) *Session {
 	if expiry, err := sess.GetExtraAttrAsTimeWithLayout(FieldSession_Expiry, henge.TimeLayout); err == nil {
 		sess.expiry = expiry
 	}
-	if data, err := sess.GetDataAttrAs(AttrSession_Data, reddo.TypeString); err == nil {
+	if data, err := sess.GetDataAttrAs(AttrSession_Data, reddo.TypeString); err == nil && data != nil {
 		sess.sessionData = data.(string)
 	}
 	return &sess

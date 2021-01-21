@@ -31,7 +31,7 @@ func NewUserFromUbo(ubo *henge.UniversalBo) *User {
 	user := User{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &user); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewUserFromUbo - error unmarshalling JSON data: %s", err))
-		log.Print(err)
+		// log.Print(err)
 		return nil
 	}
 	user.UniversalBo = ubo.Clone()
