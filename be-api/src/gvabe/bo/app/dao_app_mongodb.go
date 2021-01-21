@@ -1,6 +1,8 @@
 package app
 
 import (
+	"strings"
+
 	"github.com/btnguyen2k/prom"
 
 	"github.com/btnguyen2k/henge"
@@ -8,40 +10,40 @@ import (
 	"main/src/gvabe/bo/user"
 )
 
-const (
-	SqlCol_App_UserId = "zuid"
-)
-
-// NewAppDaoSql is helper method to create SQL-implementation of AppDao.
-func NewAppDaoSql(sqlc *prom.SqlConnect, tableName string) AppDao {
-	dao := &AppDaoSql{}
-	dao.UniversalDao = henge.NewUniversalDaoSql(sqlc, tableName, true, map[string]string{SqlCol_App_UserId: FieldApp_OwnerId})
+// NewAppDaoMongo is helper method to create MongoDB-implementation of AppDao.
+//
+// Available: since v0.6.0
+func NewAppDaoMongo(mc *prom.MongoConnect, collectionName string) AppDao {
+	txMode := strings.Index(strings.ToLower(mc.GetUrl()), "replicaset=") > 0
+	dao := &AppDaoMongo{UniversalDao: henge.NewUniversalDaoMongo(mc, collectionName, txMode)}
 	return dao
 }
 
-// AppDaoSql is SQL-implementation of AppDao.
-type AppDaoSql struct {
+// AppDaoMongo is MongoDB-implementation of AppDao.
+//
+// Available: since v0.6.0
+type AppDaoMongo struct {
 	henge.UniversalDao
 }
 
 // Delete implements AppDao.Delete.
-func (dao *AppDaoSql) Delete(bo *App) (bool, error) {
+func (dao *AppDaoMongo) Delete(bo *App) (bool, error) {
 	return dao.UniversalDao.Delete(bo.UniversalBo)
 }
 
 // Create implements AppDao.Create.
-func (dao *AppDaoSql) Create(bo *App) (bool, error) {
+func (dao *AppDaoMongo) Create(bo *App) (bool, error) {
 	return dao.UniversalDao.Create(bo.sync().UniversalBo)
 }
 
 // Get implements AppDao.Get.
-func (dao *AppDaoSql) Get(id string) (*App, error) {
+func (dao *AppDaoMongo) Get(id string) (*App, error) {
 	ubo, err := dao.UniversalDao.Get(id)
 	return NewAppFromUbo(ubo), err
 }
 
 // getN implements AppDao.getN.
-func (dao *AppDaoSql) getN(fromOffset, maxNumRows int) ([]*App, error) {
+func (dao *AppDaoMongo) getN(fromOffset, maxNumRows int) ([]*App, error) {
 	uboList, err := dao.UniversalDao.GetN(fromOffset, maxNumRows, nil, nil)
 	if err != nil {
 		return nil, err
@@ -55,12 +57,12 @@ func (dao *AppDaoSql) getN(fromOffset, maxNumRows int) ([]*App, error) {
 }
 
 // getAll implements AppDao.getAll.
-func (dao *AppDaoSql) getAll() ([]*App, error) {
+func (dao *AppDaoMongo) getAll() ([]*App, error) {
 	return dao.getN(0, 0)
 }
 
 // GetUserApps implements AppDao.GetUserApps.
-func (dao *AppDaoSql) GetUserApps(u *user.User) ([]*App, error) {
+func (dao *AppDaoMongo) GetUserApps(u *user.User) ([]*App, error) {
 	if appList, err := dao.getAll(); err != nil {
 		return nil, err
 	} else {
@@ -75,6 +77,6 @@ func (dao *AppDaoSql) GetUserApps(u *user.User) ([]*App, error) {
 }
 
 // Update implements AppDao.Update.
-func (dao *AppDaoSql) Update(bo *App) (bool, error) {
+func (dao *AppDaoMongo) Update(bo *App) (bool, error) {
 	return dao.UniversalDao.Update(bo.sync().UniversalBo)
 }

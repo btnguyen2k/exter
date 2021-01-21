@@ -17,11 +17,6 @@ type SessionDaoAwsDynamodb struct {
 	henge.UniversalDao
 }
 
-// // GdaoCreateFilter implements IGenericDao.GdaoCreateFilter
-// func (dao *SessionDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-// 	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
-// }
-
 // Delete implements SessionDao.Delete.
 func (dao *SessionDaoAwsDynamodb) Delete(sess *Session) (bool, error) {
 	return dao.UniversalDao.Delete(sess.UniversalBo)

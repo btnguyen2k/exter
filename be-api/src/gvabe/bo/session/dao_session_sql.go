@@ -32,11 +32,6 @@ type SessionDaoSql struct {
 	henge.UniversalDao
 }
 
-// // GdaoCreateFilter implements IGenericDao.GdaoCreateFilter.
-// func (dao *SessionDaoSql) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-// 	return map[string]interface{}{henge.SqlColId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
-// }
-
 // Delete implements SessionDao.Delete.
 func (dao *SessionDaoSql) Delete(sess *Session) (bool, error) {
 	return dao.UniversalDao.Delete(sess.UniversalBo)

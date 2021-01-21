@@ -6,64 +6,45 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 )
 
-func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
-	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
-	awsAccessKeyId := strings.ReplaceAll(os.Getenv("AWS_ACCESS_KEY_ID"), `"`, "")
-	awsSecretAccessKey := strings.ReplaceAll(os.Getenv("AWS_SECRET_ACCESS_KEY"), `"`, "")
-	if awsRegion == "" || awsAccessKeyId == "" || awsSecretAccessKey == "" {
+func _createMongoConnect(t *testing.T, testName string) *prom.MongoConnect {
+	mongoDb := strings.ReplaceAll(os.Getenv("MONGO_DB"), `"`, "")
+	mongoUrl := strings.ReplaceAll(os.Getenv("MONGO_URL"), `"`, "")
+	if mongoDb == "" || mongoUrl == "" {
 		t.Skipf("%s skipped", testName)
 		return nil
 	}
-	cfg := &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewEnvCredentials(),
-	}
-	if awsDynamodbEndpoint := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_ENDPOINT"), `"`, ""); awsDynamodbEndpoint != "" {
-		cfg.Endpoint = aws.String(awsDynamodbEndpoint)
-		if strings.HasPrefix(awsDynamodbEndpoint, "http://") {
-			cfg.DisableSSL = aws.Bool(true)
-		}
-	}
-	adc, err := prom.NewAwsDynamodbConnect(cfg, nil, nil, 10000)
+	mc, err := prom.NewMongoConnect(mongoUrl, mongoDb, 10000)
 	if err != nil {
-		t.Fatalf("%s/%s failed: %s", testName, "NewAwsDynamodbConnect", err)
+		t.Fatalf("%s/%s failed: %s", testName, "NewMongoConnect", err)
 	}
-	return adc
+	return mc
 }
 
-const tableNameDynamodb = "exter_test_session"
+const collectionNameMongo = "exter_test_session"
 
-func TestNewSessionDaoAwsDynamodb(t *testing.T) {
-	name := "TestNewSessionDaoAwsDynamodb"
-	adc := _createAwsDynamodbConnect(t, name)
-	appDao := NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
+func TestNewSessionDaoMongo(t *testing.T) {
+	name := "TestNewSessionDaoMongo"
+	mc := _createMongoConnect(t, name)
+	appDao := NewSessionDaoMongo(mc, collectionNameMongo)
 	if appDao == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
 
-func _initSessionDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
-	adc.DeleteTable(nil, tableNameDynamodb)
-	henge.InitDynamodbTables(adc, tableNameDynamodb, &henge.HengeDynamodbTablesSpec{
-		MainTableRcu:    2,
-		MainTableWcu:    2,
-		CreateUidxTable: true,
-		UidxTableRcu:    2,
-		UidxTableWcu:    2,
-	})
-	return NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
+func _initSessionDaoMongo(t *testing.T, testName string, mc *prom.MongoConnect) SessionDao {
+	mc.GetCollection(collectionNameMongo).Drop(nil)
+	henge.InitMongoCollection(mc, collectionNameMongo)
+	return NewSessionDaoMongo(mc, collectionNameMongo)
 }
 
-func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Save"
-	adc := _createAwsDynamodbConnect(t, name)
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func TestSessionDaoMongo_Save(t *testing.T) {
+	name := "TestSessionDaoMongo_Save"
+	mc := _createMongoConnect(t, name)
+	sessDao := _initSessionDaoMongo(t, name, mc)
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 	ok, err := sessDao.Save(sess)
@@ -72,10 +53,10 @@ func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
 	}
 }
 
-func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Get"
-	adc := _createAwsDynamodbConnect(t, name)
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func TestSessionDaoMongo_Get(t *testing.T) {
+	name := "TestSessionDaoMongo_Get"
+	mc := _createMongoConnect(t, name)
+	sessDao := _initSessionDaoMongo(t, name, mc)
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 	ok, err := sessDao.Save(sess)
@@ -121,10 +102,10 @@ func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
 	}
 }
 
-func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Delete"
-	adc := _createAwsDynamodbConnect(t, name)
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func TestSessionDaoMongo_Delete(t *testing.T) {
+	name := "TestSessionDaoMongo_Delete"
+	mc := _createMongoConnect(t, name)
+	sessDao := _initSessionDaoMongo(t, name, mc)
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 	ok, err := sessDao.Save(sess)
@@ -149,10 +130,10 @@ func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
 	}
 }
 
-func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Update"
-	adc := _createAwsDynamodbConnect(t, name)
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func TestSessionDaoMongo_Update(t *testing.T) {
+	name := "TestSessionDaoMongo_Update"
+	mc := _createMongoConnect(t, name)
+	sessDao := _initSessionDaoMongo(t, name, mc)
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
