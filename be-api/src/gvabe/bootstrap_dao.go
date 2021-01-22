@@ -81,8 +81,25 @@ func _createAwsDynamodbConnect(dbtype string) *prom.AwsDynamodbConnect {
 	return nil
 }
 
+func _createMongoConnect(dbtype string) *prom.MongoConnect {
+	switch dbtype {
+	case "mongo", "mongodb":
+		db := goapi.AppConfig.GetString("gvabe.db.mongodb.db")
+		url := goapi.AppConfig.GetString("gvabe.db.mongodb.url")
+		mc, err := prom.NewMongoConnect(url, db, 2345)
+		if err != nil {
+			panic(err)
+		}
+		return mc
+	}
+	return nil
+}
+
 func _createAppDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) app.AppDao {
 	return app.NewAppDaoAwsDynamodb(dync, app.TableApp)
+}
+func _createAppDaoMongodb(mc *prom.MongoConnect) app.AppDao {
+	return app.NewAppDaoMongo(mc, app.TableApp)
 }
 func _createAppDaoSql(sqlc *prom.SqlConnect) app.AppDao {
 	return app.NewAppDaoSql(sqlc, app.TableApp)
@@ -91,23 +108,29 @@ func _createAppDaoSql(sqlc *prom.SqlConnect) app.AppDao {
 func _createUserDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) user.UserDao {
 	return user.NewUserDaoAwsDynamodb(dync, user.TableUser)
 }
+func _createUserDaoMongodb(mc *prom.MongoConnect) user.UserDao {
+	return user.NewUserDaoMongo(mc, user.TableUser)
+}
 func _createUserDaoSql(sqlc *prom.SqlConnect) user.UserDao {
 	return user.NewUserDaoSql(sqlc, user.TableUser)
 }
 
-func _createSessionDaoSql(sqlc *prom.SqlConnect) session.SessionDao {
-	return session.NewSessionDaoSql(sqlc, session.TableSession)
-}
-
 func _createSessionDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) session.SessionDao {
 	return session.NewSessionDaoAwsDynamodb(dync, session.TableSession)
+}
+func _createSessionDaoMongodb(mc *prom.MongoConnect) session.SessionDao {
+	return session.NewSessionDaoMongo(mc, session.TableSession)
+}
+func _createSessionDaoSql(sqlc *prom.SqlConnect) session.SessionDao {
+	return session.NewSessionDaoSql(sqlc, session.TableSession)
 }
 
 func initDaos() {
 	dbtype := strings.ToLower(goapi.AppConfig.GetString("gvabe.db.type"))
 	sqlc := _createSqlConnect(dbtype)
 	dync := _createAwsDynamodbConnect(dbtype)
-	if sqlc == nil && dync == nil {
+	mc := _createMongoConnect(dbtype)
+	if sqlc == nil && dync == nil && mc == nil {
 		panic(fmt.Sprintf("unsupported database type: %s", dbtype))
 	}
 	switch dbtype {
@@ -174,13 +197,43 @@ func initDaos() {
 		sessionDao = _createSessionDaoSql(sqlc)
 	}
 	if dync != nil {
-		henge.InitDynamodbTable(dync, user.TableUser, 2, 1)
 		henge.InitDynamodbTable(dync, app.TableApp, 2, 1)
 		henge.InitDynamodbTable(dync, session.TableSession, 4, 2)
+		henge.InitDynamodbTable(dync, user.TableUser, 2, 1)
 
 		userDao = _createUserDaoAwsDynamodb(dync)
 		appDao = _createAppDaoAwsDynamodb(dync)
 		sessionDao = _createSessionDaoAwsDynamodb(dync)
+	}
+	if mc != nil {
+		henge.InitMongoCollection(mc, app.TableApp)
+		henge.InitMongoCollection(mc, session.TableSession)
+		henge.InitMongoCollection(mc, user.TableUser)
+
+		mc.CreateCollectionIndexes(app.TableApp, []interface{}{
+			map[string]interface{}{
+				"key":  map[string]interface{}{app.FieldApp_OwnerId: 1},
+				"name": "idx_ownerid",
+			},
+		})
+		mc.CreateCollectionIndexes(session.TableSession, []interface{}{
+			map[string]interface{}{
+				"key":  map[string]interface{}{session.FieldSession_IdSource: 1},
+				"name": "idx_idsource",
+			},
+			map[string]interface{}{
+				"key":  map[string]interface{}{session.FieldSession_AppId: 1},
+				"name": "idx_appid",
+			},
+			map[string]interface{}{
+				"key":  map[string]interface{}{session.FieldSession_Expiry: 1},
+				"name": "idx_expiry",
+			},
+		})
+
+		userDao = _createUserDaoMongodb(mc)
+		appDao = _createAppDaoMongodb(mc)
+		sessionDao = _createSessionDaoMongodb(mc)
 	}
 
 	_initUsers()
