@@ -5,64 +5,45 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 )
 
-func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
-	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
-	awsAccessKeyId := strings.ReplaceAll(os.Getenv("AWS_ACCESS_KEY_ID"), `"`, "")
-	awsSecretAccessKey := strings.ReplaceAll(os.Getenv("AWS_SECRET_ACCESS_KEY"), `"`, "")
-	if awsRegion == "" || awsAccessKeyId == "" || awsSecretAccessKey == "" {
+func _createMongoConnect(t *testing.T, testName string) *prom.MongoConnect {
+	mongoDb := strings.ReplaceAll(os.Getenv("MONGO_DB"), `"`, "")
+	mongoUrl := strings.ReplaceAll(os.Getenv("MONGO_URL"), `"`, "")
+	if mongoDb == "" || mongoUrl == "" {
 		t.Skipf("%s skipped", testName)
 		return nil
 	}
-	cfg := &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewEnvCredentials(),
-	}
-	if awsDynamodbEndpoint := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_ENDPOINT"), `"`, ""); awsDynamodbEndpoint != "" {
-		cfg.Endpoint = aws.String(awsDynamodbEndpoint)
-		if strings.HasPrefix(awsDynamodbEndpoint, "http://") {
-			cfg.DisableSSL = aws.Bool(true)
-		}
-	}
-	adc, err := prom.NewAwsDynamodbConnect(cfg, nil, nil, 10000)
+	mc, err := prom.NewMongoConnect(mongoUrl, mongoDb, 10000)
 	if err != nil {
-		t.Fatalf("%s/%s failed: %s", testName, "NewAwsDynamodbConnect", err)
+		t.Fatalf("%s/%s failed: %s", testName, "NewMongoConnect", err)
 	}
-	return adc
+	return mc
 }
 
-const tableNameDynamodb = "exter_test_user"
+const collectionNameMongo = "exter_test_user"
 
-func TestNewUserDaoAwsDynamodb(t *testing.T) {
-	name := "TestNewUserDaoAwsDynamodb"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := NewUserDaoAwsDynamodb(adc, tableNameDynamodb)
+func TestNewUserDaoMongo(t *testing.T) {
+	name := "TestNewUserDaoMongo"
+	mc := _createMongoConnect(t, name)
+	userDao := NewUserDaoMongo(mc, collectionNameMongo)
 	if userDao == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
 
-func _initUserDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) UserDao {
-	adc.DeleteTable(nil, tableNameDynamodb)
-	henge.InitDynamodbTables(adc, tableNameDynamodb, &henge.HengeDynamodbTablesSpec{
-		MainTableRcu:    2,
-		MainTableWcu:    2,
-		CreateUidxTable: true,
-		UidxTableRcu:    2,
-		UidxTableWcu:    2,
-	})
-	return NewUserDaoAwsDynamodb(adc, tableNameDynamodb)
+func _initUserDaoMongo(t *testing.T, testName string, mc *prom.MongoConnect) UserDao {
+	mc.GetCollection(collectionNameMongo).Drop(nil)
+	henge.InitMongoCollection(mc, collectionNameMongo)
+	return NewUserDaoMongo(mc, collectionNameMongo)
 }
 
-func TestUserDaoAwsDynamodb_Create(t *testing.T) {
-	name := "TestAppDaoAwsDynamodb_Create"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := _initUserDaoDynamodb(t, name, adc)
+func TestUserDaoMongo_Create(t *testing.T) {
+	name := "TestUserDaoMongo_Create"
+	mc := _createMongoConnect(t, name)
+	userDao := _initUserDaoMongo(t, name, mc)
 	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
 	ok, err := userDao.Create(u)
 	if err != nil || !ok {
@@ -70,10 +51,10 @@ func TestUserDaoAwsDynamodb_Create(t *testing.T) {
 	}
 }
 
-func TestUserDaoAwsDynamodb_Get(t *testing.T) {
-	name := "TestUserDaoAwsDynamodb_Get"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := _initUserDaoDynamodb(t, name, adc)
+func TestUserDaoMongo_Get(t *testing.T) {
+	name := "TestUserDaoMongo_Get"
+	mc := _createMongoConnect(t, name)
+	userDao := _initUserDaoMongo(t, name, mc)
 	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
 	ok, err := userDao.Create(u)
 	if err != nil || !ok {
@@ -105,10 +86,10 @@ func TestUserDaoAwsDynamodb_Get(t *testing.T) {
 	}
 }
 
-func TestUserDaoAwsDynamodb_Delete(t *testing.T) {
-	name := "TestUserDaoAwsDynamodb_Delete"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := _initUserDaoDynamodb(t, name, adc)
+func TestUserDaoMongo_Delete(t *testing.T) {
+	name := "TestUserDaoMongo_Delete"
+	mc := _createMongoConnect(t, name)
+	userDao := _initUserDaoMongo(t, name, mc)
 
 	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
 	ok, err := userDao.Create(u)
@@ -131,10 +112,10 @@ func TestUserDaoAwsDynamodb_Delete(t *testing.T) {
 	}
 }
 
-func TestUserDaoAwsDynamodb_Update(t *testing.T) {
-	name := "TestUserDaoAwsDynamodb_Update"
-	adc := _createAwsDynamodbConnect(t, name)
-	userDao := _initUserDaoDynamodb(t, name, adc)
+func TestUserDaoMongo_Update(t *testing.T) {
+	name := "TestUserDaoMongo_Update"
+	mc := _createMongoConnect(t, name)
+	userDao := _initUserDaoMongo(t, name, mc)
 
 	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
 	userDao.Create(u)

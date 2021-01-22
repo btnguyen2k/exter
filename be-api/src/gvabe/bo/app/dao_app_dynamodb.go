@@ -19,11 +19,6 @@ type AppDaoAwsDynamodb struct {
 	henge.UniversalDao
 }
 
-// // GdaoCreateFilter implements IGenericDao.GdaoCreateFilter.
-// func (dao *AppDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-// 	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
-// }
-
 // Delete implements AppDao.Delete.
 func (dao *AppDaoAwsDynamodb) Delete(bo *App) (bool, error) {
 	return dao.UniversalDao.Delete(bo.UniversalBo)
