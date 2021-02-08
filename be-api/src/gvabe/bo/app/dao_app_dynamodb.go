@@ -10,13 +10,16 @@ import (
 
 // NewAppDaoAwsDynamodb is helper method to create AWS DynamoDB-implementation of AppDao.
 func NewAppDaoAwsDynamodb(dync *prom.AwsDynamodbConnect, tableName string) AppDao {
-	dao := &AppDaoAwsDynamodb{UniversalDao: henge.NewUniversalDaoDynamodb(dync, tableName, nil)}
+	var spec *henge.DynamodbDaoSpec = nil
+	dao := &AppDaoAwsDynamodb{UniversalDao: henge.NewUniversalDaoDynamodb(dync, tableName, spec)}
+	dao.spec = spec
 	return dao
 }
 
 // AppDaoAwsDynamodb is AWS DynamoDB-implementation of AppDao.
 type AppDaoAwsDynamodb struct {
 	henge.UniversalDao
+	spec *henge.DynamodbDaoSpec
 }
 
 // Delete implements AppDao.Delete.
@@ -26,7 +29,11 @@ func (dao *AppDaoAwsDynamodb) Delete(bo *App) (bool, error) {
 
 // Create implements AppDao.Create.
 func (dao *AppDaoAwsDynamodb) Create(bo *App) (bool, error) {
-	return dao.UniversalDao.Create(bo.sync().UniversalBo)
+	ubo := bo.sync().UniversalBo
+	if dao.spec != nil && dao.spec.PkPrefix != "" {
+		ubo.SetExtraAttr(dao.spec.PkPrefix, dao.spec.PkPrefixValue)
+	}
+	return dao.UniversalDao.Create(ubo)
 }
 
 // Get implements AppDao.Get.
