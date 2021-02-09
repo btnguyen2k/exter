@@ -20,6 +20,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"main/src/goapi"
+	"main/src/gvabe/bo"
 	"main/src/gvabe/bo/app"
 	"main/src/gvabe/bo/session"
 	"main/src/gvabe/bo/user"
@@ -60,6 +61,8 @@ func _createSqlConnect(dbtype string) *prom.SqlConnect {
 func _createAwsDynamodbConnect(dbtype string) *prom.AwsDynamodbConnect {
 	switch dbtype {
 	case "dynamodb", "awsdynamodb", "aws_dynamodb", "aws-dynamodb":
+		daoMultitenant = goapi.AppConfig.GetBoolean("gvabe.db.dynamodb.multitenant", true)
+
 		region := goapi.AppConfig.GetString("gvabe.db.dynamodb.region")
 		cfg := &aws.Config{
 			Region:      aws.String(region),
@@ -95,9 +98,9 @@ func _createMongoConnect(dbtype string) *prom.MongoConnect {
 	return nil
 }
 
-func _createAppDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) app.AppDao {
-	return app.NewAppDaoAwsDynamodb(dync, app.TableApp)
-}
+// func _createAppDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) app.AppDao {
+// 	return app.NewAppDaoAwsDynamodb(dync, app.TableApp)
+// }
 func _createAppDaoMongodb(mc *prom.MongoConnect) app.AppDao {
 	return app.NewAppDaoMongo(mc, app.TableApp)
 }
@@ -105,9 +108,9 @@ func _createAppDaoSql(sqlc *prom.SqlConnect) app.AppDao {
 	return app.NewAppDaoSql(sqlc, app.TableApp)
 }
 
-func _createUserDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) user.UserDao {
-	return user.NewUserDaoAwsDynamodb(dync, user.TableUser)
-}
+// func _createUserDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) user.UserDao {
+// 	return user.NewUserDaoAwsDynamodb(dync, user.TableUser)
+// }
 func _createUserDaoMongodb(mc *prom.MongoConnect) user.UserDao {
 	return user.NewUserDaoMongo(mc, user.TableUser)
 }
@@ -115,9 +118,9 @@ func _createUserDaoSql(sqlc *prom.SqlConnect) user.UserDao {
 	return user.NewUserDaoSql(sqlc, user.TableUser)
 }
 
-func _createSessionDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) session.SessionDao {
-	return session.NewSessionDaoAwsDynamodb(dync, session.TableSession)
-}
+// func _createSessionDaoAwsDynamodb(dync *prom.AwsDynamodbConnect) session.SessionDao {
+// 	return session.NewSessionDaoAwsDynamodb(dync, session.TableSession)
+// }
 func _createSessionDaoMongodb(mc *prom.MongoConnect) session.SessionDao {
 	return session.NewSessionDaoMongo(mc, session.TableSession)
 }
@@ -197,13 +200,24 @@ func initDaos() {
 		sessionDao = _createSessionDaoSql(sqlc)
 	}
 	if dync != nil {
-		henge.InitDynamodbTable(dync, app.TableApp, 2, 1)
-		henge.InitDynamodbTable(dync, session.TableSession, 4, 2)
-		henge.InitDynamodbTable(dync, user.TableUser, 2, 1)
+		spec := &henge.DynamodbTablesSpec{MainTableRcu: 2, MainTableWcu: 1, CreateUidxTable: false}
+		if daoMultitenant {
+			spec.MainTablePkPrefix = bo.DynamodbMultitenantPkName
+			spec.MainTableCustomAttrs = []prom.AwsDynamodbNameAndType{{Name: bo.DynamodbMultitenantPkName, Type: prom.AwsAttrTypeString}}
+			henge.InitDynamodbTables(dync, bo.DynamodbMultitenantTableName, spec)
 
-		userDao = _createUserDaoAwsDynamodb(dync)
-		appDao = _createAppDaoAwsDynamodb(dync)
-		sessionDao = _createSessionDaoAwsDynamodb(dync)
+			appDao = app.NewAppDaoMultitenantAwsDynamodb(dync, bo.DynamodbMultitenantTableName)
+			sessionDao = session.NewSessionDaoMultitenantAwsDynamodb(dync, bo.DynamodbMultitenantTableName)
+			userDao = user.NewUserDaoMultitenantAwsDynamodb(dync, bo.DynamodbMultitenantTableName)
+		} else {
+			henge.InitDynamodbTables(dync, app.TableApp, spec)
+			henge.InitDynamodbTables(dync, session.TableSession, spec)
+			henge.InitDynamodbTables(dync, user.TableUser, spec)
+
+			appDao = app.NewAppDaoAwsDynamodb(dync, bo.DynamodbMultitenantTableName)
+			sessionDao = session.NewSessionDaoAwsDynamodb(dync, bo.DynamodbMultitenantTableName)
+			userDao = user.NewUserDaoAwsDynamodb(dync, bo.DynamodbMultitenantTableName)
+		}
 	}
 	if mc != nil {
 		henge.InitMongoCollection(mc, app.TableApp)

@@ -1,5 +1,6 @@
 package bo
 
 const (
-	DynamodbMultitenantPkName = "__mtpk"
+	DynamodbMultitenantTableName = "exter_mt"
+	DynamodbMultitenantPkName    = "__mtpk"
 )
