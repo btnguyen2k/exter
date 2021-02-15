@@ -3,6 +3,8 @@ package user
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/btnguyen2k/henge"
 )
 
 func TestNewUser(t *testing.T) {
@@ -16,6 +18,23 @@ func TestNewUser(t *testing.T) {
 	}
 	if id := user.GetId(); id != "btnguyen2k" {
 		t.Fatalf("%s failed: expected bo's id to be %#v but received %#v", name, "id", id)
+	}
+}
+
+func TestNewUserFromUbo(t *testing.T) {
+	name := "TestNewUserFromUbo"
+	if user := NewUserFromUbo(nil); user != nil {
+		t.Fatalf("%s failed: expected nil but received %#v", name, user)
+	}
+
+	ubo := henge.NewUniversalBo("id", 0)
+	if user := NewUserFromUbo(ubo); user == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	ubo.SetDataJson("invalid json string")
+	if user := NewUserFromUbo(ubo); user != nil {
+		t.Fatalf("%s failed: expected nil but received %#v", name, user)
 	}
 }
 

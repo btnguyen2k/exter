@@ -11,7 +11,16 @@ import (
 func TestNewSession(t *testing.T) {
 	name := "TestNewSession"
 	now := time.Now()
-	session := NewSession(1357, "1", "login", "google", "test", "btnguyen2k", "My session data", now.Add(5*time.Minute))
+
+	session := NewSession(1357, "", "login", "google", "test", "btnguyen2k", "My session data", now.Add(5*time.Minute))
+	if session == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+	if session.GetId() == "" {
+		t.Fatalf("%s failed: empty id", name)
+	}
+
+	session = NewSession(1357, "1", "login", "google", "test", "btnguyen2k", "My session data", now.Add(5*time.Minute))
 	if session == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
@@ -35,6 +44,23 @@ func TestNewSession(t *testing.T) {
 	}
 	if data := session.GetSessionData(); data != "My session data" {
 		t.Fatalf("%s failed: expected session-data to be %#v but received %#v", name, "My session data", data)
+	}
+}
+
+func TestNewSessionFromUbo(t *testing.T) {
+	name := "TestNewSessionFromUbo"
+	if sess := NewSessionFromUbo(nil); sess != nil {
+		t.Fatalf("%s failed: expected nil but received %#v", name, sess)
+	}
+
+	ubo := henge.NewUniversalBo("id", 0)
+	if sess := NewSessionFromUbo(ubo); sess == nil {
+		t.Fatalf("%s failed: nil", name)
+	}
+
+	ubo.SetDataJson("invalid json string")
+	if sess := NewSessionFromUbo(ubo); sess != nil {
+		t.Fatalf("%s failed: expected nil but received %#v", name, sess)
 	}
 }
 
@@ -76,5 +102,14 @@ func TestSession_json(t *testing.T) {
 	}
 	if sess1.GetChecksum() != sess2.GetChecksum() {
 		t.Fatalf("%s failed [Checksum]: expected %#v but received %#v", name, sess1.GetChecksum(), sess2.GetChecksum())
+	}
+}
+
+func TestSession_IsExpired(t *testing.T) {
+	name := "TestSession_IsExpired"
+	now := time.Now()
+	sess := NewSession(1357, "1", "login", "google", "test", "btnguyen2k", "My session data", now.Add(-5*time.Minute))
+	if !sess.IsExpired() {
+		t.Fatalf("%s failed: session should already expire", name)
 	}
 }
