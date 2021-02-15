@@ -8,13 +8,16 @@ import (
 
 // NewSessionDaoAwsDynamodb is helper method to create AWS DynamoDB-implementation of SessionDao.
 func NewSessionDaoAwsDynamodb(dync *prom.AwsDynamodbConnect, tableName string) SessionDao {
-	dao := &SessionDaoAwsDynamodb{UniversalDao: henge.NewUniversalDaoDynamodb(dync, tableName, nil)}
+	var spec *henge.DynamodbDaoSpec = nil
+	dao := &SessionDaoAwsDynamodb{UniversalDao: henge.NewUniversalDaoDynamodb(dync, tableName, spec)}
+	dao.spec = spec
 	return dao
 }
 
 // SessionDaoAwsDynamodb is AWS DynamoDB-implementation of SessionDao.
 type SessionDaoAwsDynamodb struct {
 	henge.UniversalDao
+	spec *henge.DynamodbDaoSpec
 }
 
 // Delete implements SessionDao.Delete.
@@ -30,6 +33,10 @@ func (dao *SessionDaoAwsDynamodb) Get(id string) (*Session, error) {
 
 // Update implements SessionDao.Save.
 func (dao *SessionDaoAwsDynamodb) Save(sess *Session) (bool, error) {
-	ok, _, err := dao.UniversalDao.Save(sess.sync().UniversalBo)
+	ubo := sess.sync().UniversalBo
+	if dao.spec != nil && dao.spec.PkPrefix != "" {
+		ubo.SetExtraAttr(dao.spec.PkPrefix, dao.spec.PkPrefixValue)
+	}
+	ok, _, err := dao.UniversalDao.Save(ubo)
 	return ok, err
 }
