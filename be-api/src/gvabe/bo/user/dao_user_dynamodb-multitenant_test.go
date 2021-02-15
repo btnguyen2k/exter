@@ -3,7 +3,6 @@ package user
 import (
 	"testing"
 
-	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
@@ -23,12 +22,8 @@ func TestNewUserDaoMultitenantAwsDynamodb(t *testing.T) {
 }
 
 func _initUserDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) UserDao {
-	err := adc.DeleteTable(nil, tableNameMultitenantDynamodb)
-	if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
-		t.Fatalf("%s failed: %s", testName, err)
-	}
-	_waitForTable(adc, tableNameMultitenantDynamodb, []string{""}, 1)
-	err = henge.InitDynamodbTables(adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
+	_deleteTableWithWait(t, testName, adc, tableNameMultitenantDynamodb)
+	_createTableWithWait(t, testName, adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
 		MainTableRcu:         2,
 		MainTableWcu:         2,
 		MainTableCustomAttrs: []prom.AwsDynamodbNameAndType{{Name: bo.DynamodbMultitenantPkName, Type: prom.AwsAttrTypeString}},
@@ -37,10 +32,6 @@ func _initUserDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.Aw
 		UidxTableRcu:         2,
 		UidxTableWcu:         2,
 	})
-	if err != nil {
-		t.Fatalf("%s failed: %s", testName, err)
-	}
-	_waitForTable(adc, tableNameMultitenantDynamodb, []string{"ACTIVE"}, 1)
 	return NewUserDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
 }
 

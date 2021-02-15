@@ -1,7 +1,6 @@
 package session
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -23,14 +22,33 @@ func _inSlide(item string, slide []string) bool {
 	return false
 }
 
-func _waitForTable(adc *prom.AwsDynamodbConnect, table string, statusList []string, delay int) {
-	time.Sleep(5 * time.Second)
-	for status, err := adc.GetTableStatus(nil, table); !_inSlide(status, statusList) && err == nil; {
-		fmt.Printf("\tTable [%s] status: %v - %e\n", table, status, err)
-		if delay > 0 {
-			time.Sleep(time.Duration(delay) * time.Second)
+func _deleteTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string) {
+	statusList := []string{""}
+	for {
+		if status, err := adc.GetTableStatus(nil, table); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		} else if _inSlide(status, statusList) {
+			return
 		}
-		status, err = adc.GetTableStatus(nil, table)
+		err := adc.DeleteTable(nil, table)
+		if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		}
+	}
+}
+
+func _createTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string, spec *henge.DynamodbTablesSpec) {
+	statusList := []string{"ACTIVE"}
+	for {
+		if status, err := adc.GetTableStatus(nil, table); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		} else if _inSlide(status, statusList) {
+			return
+		}
+		err := henge.InitDynamodbTables(adc, table, spec)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		}
 	}
 }
 
@@ -71,22 +89,14 @@ func TestNewSessionDaoAwsDynamodb(t *testing.T) {
 }
 
 func _initSessionDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
-	err := adc.DeleteTable(nil, tableNameDynamodb)
-	if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
-		t.Fatalf("%s failed: %s", testName, err)
-	}
-	_waitForTable(adc, tableNameDynamodb, []string{""}, 1)
-	err = henge.InitDynamodbTables(adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
+	_deleteTableWithWait(t, testName, adc, tableNameDynamodb)
+	_createTableWithWait(t, testName, adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
 		MainTableRcu:    2,
 		MainTableWcu:    2,
 		CreateUidxTable: true,
 		UidxTableRcu:    2,
 		UidxTableWcu:    2,
 	})
-	if err != nil {
-		t.Fatalf("%s failed: %s", testName, err)
-	}
-	_waitForTable(adc, tableNameDynamodb, []string{"ACTIVE"}, 1)
 	return NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
 }
 
