@@ -7,6 +7,8 @@ import (
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
+
 	"main/src/gvabe/bo"
 	"main/src/gvabe/bo/user"
 )
@@ -24,8 +26,12 @@ func TestNewAppDaoMultitenantAwsDynamodb(t *testing.T) {
 }
 
 func _initAppDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) AppDao {
-	adc.DeleteTable(nil, tableNameMultitenantDynamodb)
-	henge.InitDynamodbTables(adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
+	err := adc.DeleteTable(nil, tableNameMultitenantDynamodb)
+	if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameMultitenantDynamodb, []string{""}, 1)
+	err = henge.InitDynamodbTables(adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
 		MainTableRcu:         2,
 		MainTableWcu:         2,
 		MainTableCustomAttrs: []prom.AwsDynamodbNameAndType{{Name: bo.DynamodbMultitenantPkName, Type: prom.AwsAttrTypeString}},
@@ -34,6 +40,10 @@ func _initAppDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.Aws
 		UidxTableRcu:         2,
 		UidxTableWcu:         2,
 	})
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameMultitenantDynamodb, []string{"ACTIVE"}, 1)
 	return NewAppDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
 }
 

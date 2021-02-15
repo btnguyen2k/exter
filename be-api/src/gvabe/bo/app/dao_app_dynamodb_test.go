@@ -1,18 +1,41 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
 	"main/src/gvabe/bo/user"
 )
+
+func _inSlide(item string, slide []string) bool {
+	for _, s := range slide {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func _waitForTable(adc *prom.AwsDynamodbConnect, table string, statusList []string, delay int) {
+	time.Sleep(5 * time.Second)
+	for status, err := adc.GetTableStatus(nil, table); !_inSlide(status, statusList) && err == nil; {
+		fmt.Printf("\tTable [%s] status: %v - %e\n", table, status, err)
+		if delay > 0 {
+			time.Sleep(time.Duration(delay) * time.Second)
+		}
+		status, err = adc.GetTableStatus(nil, table)
+	}
+}
 
 func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
 	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
@@ -51,14 +74,22 @@ func TestNewAppDaoAwsDynamodb(t *testing.T) {
 }
 
 func _initAppDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) AppDao {
-	adc.DeleteTable(nil, tableNameDynamodb)
-	henge.InitDynamodbTables(adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
+	err := adc.DeleteTable(nil, tableNameDynamodb)
+	if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameDynamodb, []string{""}, 1)
+	err = henge.InitDynamodbTables(adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
 		MainTableRcu:    2,
 		MainTableWcu:    2,
 		CreateUidxTable: true,
 		UidxTableRcu:    2,
 		UidxTableWcu:    2,
 	})
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameDynamodb, []string{"ACTIVE"}, 1)
 	return NewAppDaoAwsDynamodb(adc, tableNameDynamodb)
 }
 

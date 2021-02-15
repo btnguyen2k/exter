@@ -3,6 +3,7 @@ package user
 import (
 	"testing"
 
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
@@ -22,8 +23,12 @@ func TestNewUserDaoMultitenantAwsDynamodb(t *testing.T) {
 }
 
 func _initUserDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) UserDao {
-	adc.DeleteTable(nil, tableNameMultitenantDynamodb)
-	henge.InitDynamodbTables(adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
+	err := adc.DeleteTable(nil, tableNameMultitenantDynamodb)
+	if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameMultitenantDynamodb, []string{""}, 1)
+	err = henge.InitDynamodbTables(adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
 		MainTableRcu:         2,
 		MainTableWcu:         2,
 		MainTableCustomAttrs: []prom.AwsDynamodbNameAndType{{Name: bo.DynamodbMultitenantPkName, Type: prom.AwsAttrTypeString}},
@@ -32,6 +37,10 @@ func _initUserDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.Aw
 		UidxTableRcu:         2,
 		UidxTableWcu:         2,
 	})
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameMultitenantDynamodb, []string{"ACTIVE"}, 1)
 	return NewUserDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
 }
 
@@ -177,6 +186,6 @@ func TestUserDaoMultitenantAwsDynamodb_Update(t *testing.T) {
 		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
 	if v, _ := items[0][bo.DynamodbMultitenantPkName].(string); v != dynamodbPkValueUser {
-		t.Fatalf("%s failed: expected item has field %s with value %s but received %#v", name, bo.DynamodbMultitenantPkName, dynamodbPkValueUser, items[0])
+		t.Fatalf("%s failed: expected item has field %s with value '%s' but received %#v", name, bo.DynamodbMultitenantPkName, dynamodbPkValueUser, items[0])
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
@@ -23,8 +24,12 @@ func TestNewSessionDaoMultitenantAwsDynamodb(t *testing.T) {
 }
 
 func _initSessionDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
-	adc.DeleteTable(nil, tableNameMultitenantDynamodb)
-	henge.InitDynamodbTables(adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
+	err := adc.DeleteTable(nil, tableNameMultitenantDynamodb)
+	if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameMultitenantDynamodb, []string{""}, 1)
+	err = henge.InitDynamodbTables(adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
 		MainTableRcu:         2,
 		MainTableWcu:         2,
 		MainTableCustomAttrs: []prom.AwsDynamodbNameAndType{{Name: bo.DynamodbMultitenantPkName, Type: prom.AwsAttrTypeString}},
@@ -33,6 +38,10 @@ func _initSessionDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom
 		UidxTableRcu:         2,
 		UidxTableWcu:         2,
 	})
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	_waitForTable(adc, tableNameMultitenantDynamodb, []string{"ACTIVE"}, 1)
 	return NewSessionDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
 }
 
@@ -54,7 +63,7 @@ func TestSessionDaoMultitenantAwsDynamodb_Save(t *testing.T) {
 		t.Fatalf("%s failed: %s", name, err)
 	}
 	if len(items) != 1 {
-		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, items)
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
 	if v, _ := items[0][bo.DynamodbMultitenantPkName].(string); v != dynamodbPkValueSession {
 		t.Fatalf("%s failed: expected item has field '%s' with value '%s' but received %#v", name, bo.DynamodbMultitenantPkName, dynamodbPkValueSession, items[0])
@@ -146,7 +155,7 @@ func TestSessionDaoMultitenantAwsDynamodb_Delete(t *testing.T) {
 		t.Fatalf("%s failed: %s", name, err)
 	}
 	if len(items) != 0 {
-		t.Fatalf("%s failed: expected 0 item inserted but received %#v", name, items)
+		t.Fatalf("%s failed: expected 0 item inserted but received %#v", name, len(items))
 	}
 }
 
@@ -211,7 +220,7 @@ func TestSessionDaoMultitenantAwsDynamodb_Update(t *testing.T) {
 		t.Fatalf("%s failed: %s", name, err)
 	}
 	if len(items) != 1 {
-		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, items)
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
 	if v, _ := items[0][bo.DynamodbMultitenantPkName].(string); v != dynamodbPkValueSession {
 		t.Fatalf("%s failed: expected item has field %s with value %s but received %#v", name, bo.DynamodbMultitenantPkName, dynamodbPkValueSession, items[0])
