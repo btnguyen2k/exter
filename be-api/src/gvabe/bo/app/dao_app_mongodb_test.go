@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
@@ -19,7 +20,12 @@ func _createMongoConnect(t *testing.T, testName string) *prom.MongoConnect {
 		t.Skipf("%s skipped", testName)
 		return nil
 	}
-	mc, err := prom.NewMongoConnect(mongoUrl, mongoDb, 10000)
+	mongoPoolOpts := &prom.MongoPoolOpts{
+		ConnectTimeout:         5 * time.Second,
+		SocketTimeout:          7 * time.Second,
+		ServerSelectionTimeout: 11 * time.Second,
+	}
+	mc, err := prom.NewMongoConnectWithPoolOptions(mongoUrl, mongoDb, 10000, mongoPoolOpts)
 	if err != nil {
 		t.Fatalf("%s/%s failed: %s", testName, "NewMongoConnect", err)
 	}
