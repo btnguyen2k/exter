@@ -155,14 +155,6 @@ func TestUserDaoAwsDynamodb_Get(t *testing.T) {
 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "aeskey", v)
 		}
 	}
-
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
-	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	}
-	if len(items) != 1 {
-		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
-	}
 }
 
 func TestUserDaoAwsDynamodb_Delete(t *testing.T) {
@@ -189,6 +181,14 @@ func TestUserDaoAwsDynamodb_Delete(t *testing.T) {
 		t.Fatalf("%s failed: %s", name, err)
 	} else if app != nil {
 		t.Fatalf("%s failed: user %s should not exist", name, "userDao")
+	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
 }
 

@@ -6,6 +6,7 @@
 - AB#32: support MongoDB.
 - Fix AB#34: Fix bug `403: Return url [] is not allowed for app [exter]`.
 - Fix AB#35: Display favicon on browser.
+- AB#36: support Azure CosmosDB.
 
 ## 2020-11-02 - v0.5.0
 

@@ -1,69 +1,97 @@
 package app
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 
+	_ "github.com/btnguyen2k/gocosmos"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
+	"main/src/gvabe/bo"
 	"main/src/gvabe/bo/user"
 )
 
-func _createMongoConnect(t *testing.T, testName string) *prom.MongoConnect {
-	mongoDb := strings.ReplaceAll(os.Getenv("MONGO_DB"), `"`, "")
-	mongoUrl := strings.ReplaceAll(os.Getenv("MONGO_URL"), `"`, "")
-	if mongoDb == "" || mongoUrl == "" {
+func _createCosmosdbConnect(t *testing.T, testName string) *prom.SqlConnect {
+	driver := strings.ReplaceAll(os.Getenv("COSMOSDB_DRIVER"), `"`, "")
+	url := strings.ReplaceAll(os.Getenv("COSMOSDB_URL"), `"`, "")
+	if driver == "" || url == "" {
 		t.Skipf("%s skipped", testName)
 		return nil
 	}
-	mongoPoolOpts := &prom.MongoPoolOpts{
-		ConnectTimeout:         5 * time.Second,
-		SocketTimeout:          7 * time.Second,
-		ServerSelectionTimeout: 11 * time.Second,
+	timezone := strings.ReplaceAll(os.Getenv("TIMEZONE"), `"`, "")
+	if timezone == "" {
+		timezone = "UTC"
 	}
-	mc, err := prom.NewMongoConnectWithPoolOptions(mongoUrl, mongoDb, 10000, mongoPoolOpts)
+	urlTimezone := strings.ReplaceAll(timezone, "/", "%2f")
+	url = strings.ReplaceAll(url, "${loc}", urlTimezone)
+	url = strings.ReplaceAll(url, "${tz}", urlTimezone)
+	url = strings.ReplaceAll(url, "${timezone}", urlTimezone)
+	url += ";Db=exter"
+	sqlc, err := henge.NewCosmosdbConnection(url, timezone, driver, 10000, nil)
 	if err != nil {
-		t.Fatalf("%s/%s failed: %s", testName, "NewMongoConnect", err)
+		t.Fatalf("%s/%s failed: %s", testName, "NewCosmosdbConnection", err)
 	}
-	return mc
+	sqlc.GetDB().Exec("CREATE DATABASE exter WITH maxru=10000")
+	return sqlc
 }
 
-const collectionNameMongo = "exter_test_app"
+const tableNameCosmosdb = "exter_test_app"
 
-func TestNewAppDaoMongo(t *testing.T) {
-	name := "TestNewAppDaoMongo"
-	mc := _createMongoConnect(t, name)
-	appDao := NewAppDaoMongo(mc, collectionNameMongo)
+func TestNewAppDaoCosmosdb(t *testing.T) {
+	name := "TestNewAppDaoCosmosdb"
+	sqlc := _createCosmosdbConnect(t, name)
+	appDao := NewAppDaoCosmosdb(sqlc, tableNameCosmosdb)
 	if appDao == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
 
-func _initAppDaoMongo(t *testing.T, testName string, mc *prom.MongoConnect) AppDao {
-	mc.GetCollection(collectionNameMongo).Drop(nil)
-	henge.InitMongoCollection(mc, collectionNameMongo)
-	return NewAppDaoMongo(mc, collectionNameMongo)
+func _initAppDaoCosmosdb(t *testing.T, testName string, sqlc *prom.SqlConnect) AppDao {
+	if _, err := sqlc.GetDB().Exec(fmt.Sprintf("DROP COLLECTION IF EXISTS %s", tableNameCosmosdb)); err != nil {
+		t.Fatalf("%s failed: %s", testName+"/DROP COLLECTION", err)
+	}
+	err := henge.InitCosmosdbCollection(sqlc, tableNameCosmosdb, &henge.CosmosdbCollectionSpec{Pk: bo.CosmosdbPkName})
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/InitCosmosdbCollection", err)
+	}
+	return NewAppDaoCosmosdb(sqlc, tableNameCosmosdb)
 }
 
-func TestAppDaoMongo_Create(t *testing.T) {
-	name := "TestAppDaoMongo_Create"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func _ensureCosmosdbNumRows(t *testing.T, testName string, sqlc *prom.SqlConnect, numRows int) {
+	if dbRows, err := sqlc.GetDB().Query(fmt.Sprintf("SELECT COUNT(1) FROM %s c WITH cross_partition=true", tableNameCosmosdb)); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	} else if rows, err := sqlc.FetchRows(dbRows); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	} else if value := rows[0]["$1"]; int(value.(float64)) != numRows {
+		t.Fatalf("%s failed: expected collection to have %#v rows but received %#v", testName, numRows, value)
+	}
+}
+
+func TestAppDaoCosmosdb_Create(t *testing.T) {
+	name := "TestAppDaoCosmosdb_Create"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoCosmosdb(t, name, sqlc)
+
 	app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
 	ok, err := appDao.Create(app)
 	if err != nil || !ok {
 		t.Fatalf("%s failed: %#v / %s", name, ok, err)
 	}
+
+	_ensureCosmosdbNumRows(t, name, sqlc, 1)
 }
 
-func TestAppDaoMongo_Get(t *testing.T) {
-	name := "TestAppDaoMongo_Get"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoCosmosdb_Get(t *testing.T) {
+	name := "TestAppDaoCosmosdb_Get"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoCosmosdb(t, name, sqlc)
+
 	appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
 	if app, err := appDao.Get("not_found"); err != nil {
 		t.Fatalf("%s failed: %s", name, err)
@@ -91,10 +119,11 @@ func TestAppDaoMongo_Get(t *testing.T) {
 	}
 }
 
-func TestAppDaoMongo_Delete(t *testing.T) {
-	name := "TestAppDaoMongo_Delete"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoCosmosdb_Delete(t *testing.T) {
+	name := "TestAppDaoCosmosdb_Delete"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoCosmosdb(t, name, sqlc)
 
 	appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
 	app, err := appDao.Get("exter")
@@ -117,12 +146,15 @@ func TestAppDaoMongo_Delete(t *testing.T) {
 	} else if app != nil {
 		t.Fatalf("%s failed: app %s should not exist", name, "exter")
 	}
+
+	_ensureCosmosdbNumRows(t, name, sqlc, 0)
 }
 
-func TestAppDaoMongo_Update(t *testing.T) {
-	name := "TestAppDaoMongo_Update"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoCosmosdb_Update(t *testing.T) {
+	name := "TestAppDaoCosmosdb_Update"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoCosmosdb(t, name, sqlc)
 
 	app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
 	appDao.Create(app)
@@ -153,12 +185,15 @@ func TestAppDaoMongo_Update(t *testing.T) {
 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "App description", v)
 		}
 	}
+
+	_ensureCosmosdbNumRows(t, name, sqlc, 1)
 }
 
-func TestAppDaoMongo_GetUserApps(t *testing.T) {
-	name := "TestAppDaoMongo_GetUserApps"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoCosmosdb_GetUserApps(t *testing.T) {
+	name := "TestAppDaoCosmosdb_GetUserApps"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoCosmosdb(t, name, sqlc)
 
 	for i := 0; i < 10; i++ {
 		app := NewApp(uint64(i), strconv.Itoa(i), strconv.Itoa(i%3), "App #"+strconv.Itoa(i))
@@ -178,4 +213,6 @@ func TestAppDaoMongo_GetUserApps(t *testing.T) {
 			t.Fatalf("%s failed: app %#v does not belong to user %#v", name, app.GetId(), "2")
 		}
 	}
+
+	_ensureCosmosdbNumRows(t, name, sqlc, 10)
 }

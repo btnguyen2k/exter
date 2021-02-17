@@ -15,8 +15,8 @@ func TestNewUserDaoMultitenantAwsDynamodb(t *testing.T) {
 	name := "TestNewUserDaoMultitenantAwsDynamodb"
 	adc := _createAwsDynamodbConnect(t, name)
 	defer adc.Close()
-	appDao := NewUserDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
-	if appDao == nil {
+	userDao := NewUserDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
+	if userDao == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
@@ -131,6 +131,14 @@ func TestUserDaoMultitenantAwsDynamodb_Delete(t *testing.T) {
 		t.Fatalf("%s failed: %s", name, err)
 	} else if app != nil {
 		t.Fatalf("%s failed: user %s should not exist", name, "userDao")
+	}
+
+	items, err := adc.ScanItems(nil, tableNameMultitenantDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
 }
 

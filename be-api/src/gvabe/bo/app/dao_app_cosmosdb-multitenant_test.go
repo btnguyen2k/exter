@@ -1,69 +1,70 @@
 package app
 
 import (
-	"os"
+	"fmt"
 	"strconv"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
+	"main/src/gvabe/bo"
 	"main/src/gvabe/bo/user"
 )
 
-func _createMongoConnect(t *testing.T, testName string) *prom.MongoConnect {
-	mongoDb := strings.ReplaceAll(os.Getenv("MONGO_DB"), `"`, "")
-	mongoUrl := strings.ReplaceAll(os.Getenv("MONGO_URL"), `"`, "")
-	if mongoDb == "" || mongoUrl == "" {
-		t.Skipf("%s skipped", testName)
-		return nil
-	}
-	mongoPoolOpts := &prom.MongoPoolOpts{
-		ConnectTimeout:         5 * time.Second,
-		SocketTimeout:          7 * time.Second,
-		ServerSelectionTimeout: 11 * time.Second,
-	}
-	mc, err := prom.NewMongoConnectWithPoolOptions(mongoUrl, mongoDb, 10000, mongoPoolOpts)
-	if err != nil {
-		t.Fatalf("%s/%s failed: %s", testName, "NewMongoConnect", err)
-	}
-	return mc
-}
+const tableNameMultitenantCosmosdb = "exter_test"
 
-const collectionNameMongo = "exter_test_app"
-
-func TestNewAppDaoMongo(t *testing.T) {
-	name := "TestNewAppDaoMongo"
-	mc := _createMongoConnect(t, name)
-	appDao := NewAppDaoMongo(mc, collectionNameMongo)
+func TestNewAppDaoMultitenantCosmosdb(t *testing.T) {
+	name := "tableNameMultitenantCosmosdb"
+	sqlc := _createCosmosdbConnect(t, name)
+	appDao := NewAppDaoMultitenantCosmosdb(sqlc, tableNameMultitenantCosmosdb)
 	if appDao == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
 
-func _initAppDaoMongo(t *testing.T, testName string, mc *prom.MongoConnect) AppDao {
-	mc.GetCollection(collectionNameMongo).Drop(nil)
-	henge.InitMongoCollection(mc, collectionNameMongo)
-	return NewAppDaoMongo(mc, collectionNameMongo)
+func _initAppDaoMultitenantCosmosdb(t *testing.T, testName string, sqlc *prom.SqlConnect) AppDao {
+	if _, err := sqlc.GetDB().Exec(fmt.Sprintf("DROP COLLECTION IF EXISTS %s", tableNameMultitenantCosmosdb)); err != nil {
+		t.Fatalf("%s failed: %s", testName+"/DROP COLLECTION", err)
+	}
+	err := henge.InitCosmosdbCollection(sqlc, tableNameMultitenantCosmosdb, &henge.CosmosdbCollectionSpec{Pk: bo.CosmosdbMultitenantPkName})
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/InitCosmosdbCollection", err)
+	}
+	return NewAppDaoMultitenantCosmosdb(sqlc, tableNameMultitenantCosmosdb)
 }
 
-func TestAppDaoMongo_Create(t *testing.T) {
-	name := "TestAppDaoMongo_Create"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func _ensureMultitenantCosmosdbNumRows(t *testing.T, testName string, sqlc *prom.SqlConnect, numRows int) {
+	if dbRows, err := sqlc.GetDB().Query(fmt.Sprintf("SELECT COUNT(1) FROM %s c WITH cross_partition=true", tableNameMultitenantCosmosdb)); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	} else if rows, err := sqlc.FetchRows(dbRows); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	} else if value := rows[0]["$1"]; int(value.(float64)) != numRows {
+		t.Fatalf("%s failed: expected collection to have %#v rows but received %#v", testName, numRows, value)
+	}
+}
+
+func TestAppDaoMultitenantCosmosdb_Create(t *testing.T) {
+	name := "TestAppDaoMultitenantCosmosdb_Create"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoMultitenantCosmosdb(t, name, sqlc)
+
 	app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
 	ok, err := appDao.Create(app)
 	if err != nil || !ok {
 		t.Fatalf("%s failed: %#v / %s", name, ok, err)
 	}
+
+	_ensureMultitenantCosmosdbNumRows(t, name, sqlc, 1)
 }
 
-func TestAppDaoMongo_Get(t *testing.T) {
-	name := "TestAppDaoMongo_Get"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoMultitenantCosmosdb_Get(t *testing.T) {
+	name := "TestAppDaoMultitenantCosmosdb_Get"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoMultitenantCosmosdb(t, name, sqlc)
+
 	appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
 	if app, err := appDao.Get("not_found"); err != nil {
 		t.Fatalf("%s failed: %s", name, err)
@@ -91,10 +92,11 @@ func TestAppDaoMongo_Get(t *testing.T) {
 	}
 }
 
-func TestAppDaoMongo_Delete(t *testing.T) {
-	name := "TestAppDaoMongo_Delete"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoMultitenantCosmosdb_Delete(t *testing.T) {
+	name := "TestAppDaoMultitenantCosmosdb_Delete"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoMultitenantCosmosdb(t, name, sqlc)
 
 	appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
 	app, err := appDao.Get("exter")
@@ -117,12 +119,15 @@ func TestAppDaoMongo_Delete(t *testing.T) {
 	} else if app != nil {
 		t.Fatalf("%s failed: app %s should not exist", name, "exter")
 	}
+
+	_ensureMultitenantCosmosdbNumRows(t, name, sqlc, 0)
 }
 
-func TestAppDaoMongo_Update(t *testing.T) {
-	name := "TestAppDaoMongo_Update"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoMultitenantCosmosdb_Update(t *testing.T) {
+	name := "TestAppDaoMultitenantCosmosdb_Update"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoMultitenantCosmosdb(t, name, sqlc)
 
 	app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
 	appDao.Create(app)
@@ -153,12 +158,15 @@ func TestAppDaoMongo_Update(t *testing.T) {
 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "App description", v)
 		}
 	}
+
+	_ensureMultitenantCosmosdbNumRows(t, name, sqlc, 1)
 }
 
-func TestAppDaoMongo_GetUserApps(t *testing.T) {
-	name := "TestAppDaoMongo_GetUserApps"
-	mc := _createMongoConnect(t, name)
-	appDao := _initAppDaoMongo(t, name, mc)
+func TestAppDaoMultitenantCosmosdb_GetUserApps(t *testing.T) {
+	name := "TestAppDaoMultitenantCosmosdb_GetUserApps"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	appDao := _initAppDaoMultitenantCosmosdb(t, name, sqlc)
 
 	for i := 0; i < 10; i++ {
 		app := NewApp(uint64(i), strconv.Itoa(i), strconv.Itoa(i%3), "App #"+strconv.Itoa(i))
@@ -178,4 +186,6 @@ func TestAppDaoMongo_GetUserApps(t *testing.T) {
 			t.Fatalf("%s failed: app %#v does not belong to user %#v", name, app.GetId(), "2")
 		}
 	}
+
+	_ensureMultitenantCosmosdbNumRows(t, name, sqlc, 10)
 }
