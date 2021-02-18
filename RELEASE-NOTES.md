@@ -1,6 +1,6 @@
 # Exter release notes
 
-## 2020-12-xx - v0.6.0
+## 2021-02-18 - v0.6.0
 
 - AB#31: support AWS DynamoDB.
 - AB#32: support MongoDB.
