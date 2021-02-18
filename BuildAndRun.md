@@ -31,6 +31,8 @@ docker build --rm -t exter-be .
 
 > See [Docker documentation](https://docs.docker.com/engine/reference/commandline/build/) for command arguments.
 
+> Pre-built all-in-one_ Docker image can be found at https://hub.docker.com/repository/docker/btnguyen2k/exter.
+
 ## Run from Docker image
 
 Run the _all-in-one_ Docker image on local machine:
