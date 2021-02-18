@@ -65,6 +65,8 @@ var (
 
 	// sessionCache         mico.ICache
 	// preLoginSessionCache mico.ICache
+
+	daoMultitenant = false
 )
 
 const (

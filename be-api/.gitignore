@@ -20,3 +20,5 @@
 /vendor
 /data/
 /qnd/
+/coverage*.txt
+temp/

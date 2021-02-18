@@ -1,8 +1,6 @@
 package app
 
 import (
-	"github.com/btnguyen2k/consu/reddo"
-	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/prom"
 
 	"github.com/btnguyen2k/henge"
@@ -12,18 +10,16 @@ import (
 
 // NewAppDaoAwsDynamodb is helper method to create AWS DynamoDB-implementation of AppDao.
 func NewAppDaoAwsDynamodb(dync *prom.AwsDynamodbConnect, tableName string) AppDao {
-	dao := &AppDaoAwsDynamodb{UniversalDao: henge.NewUniversalDaoDynamodb(dync, tableName, nil)}
+	var spec *henge.DynamodbDaoSpec = nil
+	dao := &AppDaoAwsDynamodb{UniversalDao: henge.NewUniversalDaoDynamodb(dync, tableName, spec)}
+	dao.spec = spec
 	return dao
 }
 
 // AppDaoAwsDynamodb is AWS DynamoDB-implementation of AppDao.
 type AppDaoAwsDynamodb struct {
 	henge.UniversalDao
-}
-
-// GdaoCreateFilter implements IGenericDao.GdaoCreateFilter.
-func (dao *AppDaoAwsDynamodb) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-	return map[string]interface{}{henge.FieldId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
+	spec *henge.DynamodbDaoSpec
 }
 
 // Delete implements AppDao.Delete.
@@ -33,16 +29,17 @@ func (dao *AppDaoAwsDynamodb) Delete(bo *App) (bool, error) {
 
 // Create implements AppDao.Create.
 func (dao *AppDaoAwsDynamodb) Create(bo *App) (bool, error) {
-	return dao.UniversalDao.Create(bo.sync().UniversalBo)
+	ubo := bo.sync().UniversalBo
+	if dao.spec != nil && dao.spec.PkPrefix != "" {
+		ubo.SetExtraAttr(dao.spec.PkPrefix, dao.spec.PkPrefixValue)
+	}
+	return dao.UniversalDao.Create(ubo)
 }
 
 // Get implements AppDao.Get.
 func (dao *AppDaoAwsDynamodb) Get(id string) (*App, error) {
 	ubo, err := dao.UniversalDao.Get(id)
-	if err != nil {
-		return nil, err
-	}
-	return NewAppFromUbo(ubo), nil
+	return NewAppFromUbo(ubo), err
 }
 
 // getN implements AppDao.getN.

@@ -82,3 +82,13 @@ func VersionToNumber(version string) uint64 {
 	}
 	return result
 }
+
+// InSlideStr returns true if haystack contains needle.
+func InSlideStr(needle string, haystack []string) bool {
+	for _, item := range haystack {
+		if needle == item {
+			return true
+		}
+	}
+	return false
+}

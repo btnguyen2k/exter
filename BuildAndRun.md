@@ -2,15 +2,15 @@
 
 `Exter` is composed of 2 components that can be built and deployed separately.
 - [Frontend](fe-gui/):
-    - Which is a single-page application (SPA) built with [Vue.js](https://vuejs.org/) framework.
+    - Which is a [Vue.js](https://vuejs.org/) single-page application (SPA).
     - Frontend interacts with backend via REST APIs.
 - [Backend](be-api/):
-    - Which is a [Go](https://golang.org/) project.
+    - Which is a [Go](https://golang.org/) application.
     - Backend has no GUI and offers only APIs for frontend to interfact with.
 
 ## Build Docker image
 
-`Exter` can be built and packaged as an _all-on-one_ Docker image that includes both the frontend end backend components.
+`Exter` can be built and packaged as an _all-in-one_ Docker image that includes both frontend and backend components.
 Simply run the following command at the project's root directory:
 
 ```
@@ -95,16 +95,67 @@ On developer environment you can either run Exter as a container from [Docker im
 > - (1) This affects only the Exter frontend. On development env you can use the default value. On production env put your fronend domains here. Domain names are separated by spaces or commas or semi-colons. For example `exteross.gpvcloud.com,exteross.mydomain.com;exteross.mydomain.net`.
 > - (2) On production env, do _not_ use the default private key. _Generate and use your own key_.
 
-**Database Backend Configuration**
+**Database Backend Configurations**
 
 |Env variable                |Description                              |Default value   |
 |----------------------------|-----------------------------------------|----------------|
 |DB_TYPE                     |Type of database backend|`sqlite`|
-|DB_PGSQL_URL                |Connection string for PostgreSQL||
 
-> - Supported database backend:
->   - `sqlite`: use [SQLite](https://sqlite.org/index.html) as database backend. Not recommended for production use. Directory to store SQLite data is `./data/sqlite`
->   - `pgsql`: use [PostgreSQL](https://www.postgresql.org/) as database backend. Recommended for production use. PostgreSQL connection string is read from environment variable `DB_PGSQL_URL`. An example of the connection string: `postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=exter`
+As of `v0.6.0`, `Exter` supports the following database backends:
+
+#### SQLite (`DB_TYPE=sqlite`)
+
+Use [SQLite](https://sqlite.org/index.html) as database backend. Not recommended for production use!
+No other configuration is needed. SQLite data is stored in the directory `./data/sqlite`.
+
+#### Azure Cosmos DB (`DB_TYPE=cosmosdb`)
+
+Use [Azure Cosmos DB](https://azure.microsoft.com/en-us/services/cosmos-db/) as database backend. Configurations for Azure Cosmos DB:
+
+|Env variable                |Description                              |Default value   |
+|----------------------------|-----------------------------------------|----------------|
+|DB_COSMOSDB_URL             |Connection string to CosmosDB service||
+|DB_COSMOSDB_MULTITENANT     |(boolean) If set to `true`, use only one CosmosDB collection to store all types of BO. Otherwise, each BO is stored in its own collection|`true`|
+
+> An example of the connection string: `AccountEndpoint=https://localhost:8081/;AccountKey=<cosmosdb_account_key>;Db=<cosmosdb_dbname>`
+
+#### AWS DynamoDB (`DB_TYPE=dynamodb`)
+
+Use [AWS DynamoDB](https://aws.amazon.com/dynamodb/) as database backend. Configurations for AWS DynamoDB:
+
+|Env variable                |Description                              |Default value   |
+|----------------------------|-----------------------------------------|----------------|
+|DB_DYNAMODB_REGION          |AWS Region to connect to||
+|DB_DYNAMODB_ENDPOINT        |Endpoint of AWS DynamoDB service|`""`|
+|DB_DYNAMODB_MULTITENANT     |(boolean) If set to `true`, use only one DyanmoDB table to store all types of BO. Otherwise, each BO is stored in its own table|`true`|
+|AWS_ACCESS_KEY_ID           |AWS access key, used for authentication||
+|AWS_SECRET_ACCESS_KEY       |AWS secret key, used for authentication||
+
+> AWS SDK automatically determines the endpoint based on the region value. Hence, `DB_DYNAMODB_ENDPOINT` is optional.
+> On dev env, `DB_DYNAMODB_ENDPOINT` can be set to point to the local instance of AWS DynamoDB, for example `http://localhost:8000`.
+
+#### MongoDB (`DB_TYPE=mongodb`)
+
+Use [MongoDB](https://www.mongodb.com/) as database backend. Configurations for MongoDB:
+
+|Env variable                |Description                              |Default value   |
+|----------------------------|-----------------------------------------|----------------|
+|DB_MONGODB_DB               |Name of MongoDB database to use||
+|DB_MONGODB_URL              |Connection string to MongoDB server||
+
+> An example of the connection string to connect to standalone MongoDB server: `mongodb://test:test@localhost:37017/?authSource=admin`.
+>
+> An example of the connection string to connect to MongoDB replica cluster: `mongodb://root:test@localhost:27017/admin?replicaSet=rsName&w=majority`.
+
+#### PostgreSQL (`DB_TYPE=pgsql`)
+
+Use [PostgreSQL](https://www.postgresql.org/) as database backend. Configurations for PostgreSQL:
+
+|Env variable                |Description                              |Default value   |
+|----------------------------|-----------------------------------------|----------------|
+|DB_PGSQL_URL                |Connection string to PostgreSQL||
+
+> An example of the connection string: `postgres://test:test@localhost:5432/test?sslmode=disable&client_encoding=UTF-8&application_name=exter`.
 
 **Identity Source Configurations**
 

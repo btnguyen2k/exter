@@ -1,110 +1,54 @@
 package session
 
 import (
-	"os"
-	"strings"
+	"fmt"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
+
+	"main/src/gvabe/bo"
 )
 
-func _inSlide(item string, slide []string) bool {
-	for _, s := range slide {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
+const tableNameMultitenantCosmosdb = "exter_test"
 
-func _deleteTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string) {
-	statusList := []string{""}
-	for {
-		if status, err := adc.GetTableStatus(nil, table); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		} else if _inSlide(status, statusList) {
-			return
-		}
-		err := adc.DeleteTable(nil, table)
-		if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		}
-	}
-}
-
-func _createTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string, spec *henge.DynamodbTablesSpec) {
-	statusList := []string{"ACTIVE"}
-	for {
-		if status, err := adc.GetTableStatus(nil, table); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		} else if _inSlide(status, statusList) {
-			return
-		}
-		err := henge.InitDynamodbTables(adc, table, spec)
-		if err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		}
-	}
-}
-
-func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
-	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
-	awsAccessKeyId := strings.ReplaceAll(os.Getenv("AWS_ACCESS_KEY_ID"), `"`, "")
-	awsSecretAccessKey := strings.ReplaceAll(os.Getenv("AWS_SECRET_ACCESS_KEY"), `"`, "")
-	if awsRegion == "" || awsAccessKeyId == "" || awsSecretAccessKey == "" {
-		t.Skipf("%s skipped", testName)
-		return nil
-	}
-	cfg := &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewEnvCredentials(),
-	}
-	if awsDynamodbEndpoint := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_ENDPOINT"), `"`, ""); awsDynamodbEndpoint != "" {
-		cfg.Endpoint = aws.String(awsDynamodbEndpoint)
-		if strings.HasPrefix(awsDynamodbEndpoint, "http://") {
-			cfg.DisableSSL = aws.Bool(true)
-		}
-	}
-	adc, err := prom.NewAwsDynamodbConnect(cfg, nil, nil, 10000)
-	if err != nil {
-		t.Fatalf("%s/%s failed: %s", testName, "NewAwsDynamodbConnect", err)
-	}
-	return adc
-}
-
-const tableNameDynamodb = "exter_test_session"
-
-func TestNewSessionDaoAwsDynamodb(t *testing.T) {
-	name := "TestNewSessionDaoAwsDynamodb"
-	adc := _createAwsDynamodbConnect(t, name)
-	appDao := NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
-	if appDao == nil {
+func TestNewSessionDaoMultitenantCosmosdb(t *testing.T) {
+	name := "TestNewSessionDaoMultitenantCosmosdb"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	sessDao := NewSessionDaoMultitenantCosmosdb(sqlc, tableNameMultitenantCosmosdb)
+	if sessDao == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
 
-func _initSessionDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
-	_deleteTableWithWait(t, testName, adc, tableNameDynamodb)
-	_createTableWithWait(t, testName, adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
-		MainTableRcu:    2,
-		MainTableWcu:    2,
-		CreateUidxTable: true,
-		UidxTableRcu:    2,
-		UidxTableWcu:    2,
-	})
-	return NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
+func _initSessionDaoMultitenantCosmosdb(t *testing.T, testName string, sqlc *prom.SqlConnect) SessionDao {
+	if _, err := sqlc.GetDB().Exec(fmt.Sprintf("DROP COLLECTION IF EXISTS %s", tableNameMultitenantCosmosdb)); err != nil {
+		t.Fatalf("%s failed: %s", testName+"/DROP COLLECTION", err)
+	}
+	err := henge.InitCosmosdbCollection(sqlc, tableNameMultitenantCosmosdb, &henge.CosmosdbCollectionSpec{Pk: bo.CosmosdbMultitenantPkName})
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName+"/InitCosmosdbCollection", err)
+	}
+	return NewSessionDaoMultitenantCosmosdb(sqlc, tableNameMultitenantCosmosdb)
 }
 
-func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Save"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func _ensureMultitenantCosmosdbNumRows(t *testing.T, testName string, sqlc *prom.SqlConnect, numRows int) {
+	if dbRows, err := sqlc.GetDB().Query(fmt.Sprintf("SELECT COUNT(1) FROM %s c WITH cross_partition=true", tableNameMultitenantCosmosdb)); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	} else if rows, err := sqlc.FetchRows(dbRows); err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	} else if value := rows[0]["$1"]; int(value.(float64)) != numRows {
+		t.Fatalf("%s failed: expected collection to have %#v rows but received %#v", testName, numRows, value)
+	}
+}
+
+func TestSessionDaoMultitenantCosmosdb_Save(t *testing.T) {
+	name := "TestSessionDaoMultitenantCosmosdb_Save"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	sessDao := _initSessionDaoMultitenantCosmosdb(t, name, sqlc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -113,20 +57,14 @@ func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
 		t.Fatalf("%s failed: %#v / %s", name, ok, err)
 	}
 
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
-	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	}
-	if len(items) != 1 {
-		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
-	}
+	_ensureMultitenantCosmosdbNumRows(t, name, sqlc, 1)
 }
 
-func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Get"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func TestSessionDaoMultitenantCosmosdb_Get(t *testing.T) {
+	name := "TestSessionDaoMultitenantCosmosdb_Get"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	sessDao := _initSessionDaoMultitenantCosmosdb(t, name, sqlc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -173,11 +111,11 @@ func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
 	}
 }
 
-func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Delete"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func TestSessionDaoMultitenantCosmosdb_Delete(t *testing.T) {
+	name := "TestSessionDaoMultitenantCosmosdb_Delete"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	sessDao := _initSessionDaoMultitenantCosmosdb(t, name, sqlc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -202,20 +140,14 @@ func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
 		t.Fatalf("%s failed: session %s should not exist", name, "not_found")
 	}
 
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
-	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	}
-	if len(items) != 0 {
-		t.Fatalf("%s failed: expected 0 item inserted but received %#v", name, len(items))
-	}
+	_ensureMultitenantCosmosdbNumRows(t, name, sqlc, 0)
 }
 
-func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Update"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+func TestSessionDaoMultitenantCosmosdb_Update(t *testing.T) {
+	name := "TestSessionDaoMultitenantCosmosdb_Update"
+	sqlc := _createCosmosdbConnect(t, name)
+	defer sqlc.Close()
+	sessDao := _initSessionDaoMultitenantCosmosdb(t, name, sqlc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -267,11 +199,5 @@ func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
 		}
 	}
 
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
-	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	}
-	if len(items) != 1 {
-		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
-	}
+	_ensureMultitenantCosmosdbNumRows(t, name, sqlc, 1)
 }

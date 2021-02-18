@@ -1,110 +1,46 @@
 package session
 
 import (
-	"os"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
+
+	"main/src/gvabe/bo"
 )
 
-func _inSlide(item string, slide []string) bool {
-	for _, s := range slide {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
+const tableNameMultitenantDynamodb = "exter_test"
 
-func _deleteTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string) {
-	statusList := []string{""}
-	for {
-		if status, err := adc.GetTableStatus(nil, table); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		} else if _inSlide(status, statusList) {
-			return
-		}
-		err := adc.DeleteTable(nil, table)
-		if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		}
-	}
-}
-
-func _createTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string, spec *henge.DynamodbTablesSpec) {
-	statusList := []string{"ACTIVE"}
-	for {
-		if status, err := adc.GetTableStatus(nil, table); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		} else if _inSlide(status, statusList) {
-			return
-		}
-		err := henge.InitDynamodbTables(adc, table, spec)
-		if err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		}
-	}
-}
-
-func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
-	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
-	awsAccessKeyId := strings.ReplaceAll(os.Getenv("AWS_ACCESS_KEY_ID"), `"`, "")
-	awsSecretAccessKey := strings.ReplaceAll(os.Getenv("AWS_SECRET_ACCESS_KEY"), `"`, "")
-	if awsRegion == "" || awsAccessKeyId == "" || awsSecretAccessKey == "" {
-		t.Skipf("%s skipped", testName)
-		return nil
-	}
-	cfg := &aws.Config{
-		Region:      aws.String(awsRegion),
-		Credentials: credentials.NewEnvCredentials(),
-	}
-	if awsDynamodbEndpoint := strings.ReplaceAll(os.Getenv("AWS_DYNAMODB_ENDPOINT"), `"`, ""); awsDynamodbEndpoint != "" {
-		cfg.Endpoint = aws.String(awsDynamodbEndpoint)
-		if strings.HasPrefix(awsDynamodbEndpoint, "http://") {
-			cfg.DisableSSL = aws.Bool(true)
-		}
-	}
-	adc, err := prom.NewAwsDynamodbConnect(cfg, nil, nil, 10000)
-	if err != nil {
-		t.Fatalf("%s/%s failed: %s", testName, "NewAwsDynamodbConnect", err)
-	}
-	return adc
-}
-
-const tableNameDynamodb = "exter_test_session"
-
-func TestNewSessionDaoAwsDynamodb(t *testing.T) {
-	name := "TestNewSessionDaoAwsDynamodb"
+func TestNewSessionDaoMultitenantAwsDynamodb(t *testing.T) {
+	name := "TestNewSessionDaoMultitenantAwsDynamodb"
 	adc := _createAwsDynamodbConnect(t, name)
-	appDao := NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
+	defer adc.Close()
+	appDao := NewSessionDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
 	if appDao == nil {
 		t.Fatalf("%s failed: nil", name)
 	}
 }
 
-func _initSessionDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
-	_deleteTableWithWait(t, testName, adc, tableNameDynamodb)
-	_createTableWithWait(t, testName, adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
-		MainTableRcu:    2,
-		MainTableWcu:    2,
-		CreateUidxTable: true,
-		UidxTableRcu:    2,
-		UidxTableWcu:    2,
+func _initSessionDaoMultitenantDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
+	_deleteTableWithWait(t, testName, adc, tableNameMultitenantDynamodb)
+	_createTableWithWait(t, testName, adc, tableNameMultitenantDynamodb, &henge.DynamodbTablesSpec{
+		MainTableRcu:         2,
+		MainTableWcu:         2,
+		MainTableCustomAttrs: []prom.AwsDynamodbNameAndType{{Name: bo.DynamodbMultitenantPkName, Type: prom.AwsAttrTypeString}},
+		MainTablePkPrefix:    bo.DynamodbMultitenantPkName,
+		CreateUidxTable:      true,
+		UidxTableRcu:         2,
+		UidxTableWcu:         2,
 	})
-	return NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
+	return NewSessionDaoMultitenantAwsDynamodb(adc, tableNameMultitenantDynamodb)
 }
 
-func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Save"
+func TestSessionDaoMultitenantAwsDynamodb_Save(t *testing.T) {
+	name := "TestSessionDaoMultitenantAwsDynamodb_Save"
 	adc := _createAwsDynamodbConnect(t, name)
 	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+	sessDao := _initSessionDaoMultitenantDynamodb(t, name, adc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -113,20 +49,23 @@ func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
 		t.Fatalf("%s failed: %#v / %s", name, ok, err)
 	}
 
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	items, err := adc.ScanItems(nil, tableNameMultitenantDynamodb, nil, "")
 	if err != nil {
 		t.Fatalf("%s failed: %s", name, err)
 	}
 	if len(items) != 1 {
 		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
+	if v, _ := items[0][bo.DynamodbMultitenantPkName].(string); v != dynamodbPkValueSession {
+		t.Fatalf("%s failed: expected item has field '%s' with value '%s' but received %#v", name, bo.DynamodbMultitenantPkName, dynamodbPkValueSession, items[0])
+	}
 }
 
-func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Get"
+func TestSessionDaoMultitenantAwsDynamodb_Get(t *testing.T) {
+	name := "TestSessionDaoMultitenantAwsDynamodb_Get"
 	adc := _createAwsDynamodbConnect(t, name)
 	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+	sessDao := _initSessionDaoMultitenantDynamodb(t, name, adc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -173,11 +112,11 @@ func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
 	}
 }
 
-func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Delete"
+func TestSessionDaoMultitenantAwsDynamodb_Delete(t *testing.T) {
+	name := "TestSessionDaoMultitenantAwsDynamodb_Delete"
 	adc := _createAwsDynamodbConnect(t, name)
 	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+	sessDao := _initSessionDaoMultitenantDynamodb(t, name, adc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -202,7 +141,7 @@ func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
 		t.Fatalf("%s failed: session %s should not exist", name, "not_found")
 	}
 
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	items, err := adc.ScanItems(nil, tableNameMultitenantDynamodb, nil, "")
 	if err != nil {
 		t.Fatalf("%s failed: %s", name, err)
 	}
@@ -211,11 +150,11 @@ func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
 	}
 }
 
-func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Update"
+func TestSessionDaoMultitenantAwsDynamodb_Update(t *testing.T) {
+	name := "TestSessionDaoMultitenantAwsDynamodb_Update"
 	adc := _createAwsDynamodbConnect(t, name)
 	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
+	sessDao := _initSessionDaoMultitenantDynamodb(t, name, adc)
 
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
@@ -267,11 +206,14 @@ func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
 		}
 	}
 
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	items, err := adc.ScanItems(nil, tableNameMultitenantDynamodb, nil, "")
 	if err != nil {
 		t.Fatalf("%s failed: %s", name, err)
 	}
 	if len(items) != 1 {
 		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
+	}
+	if v, _ := items[0][bo.DynamodbMultitenantPkName].(string); v != dynamodbPkValueSession {
+		t.Fatalf("%s failed: expected item has field %s with value %s but received %#v", name, bo.DynamodbMultitenantPkName, dynamodbPkValueSession, items[0])
 	}
 }
