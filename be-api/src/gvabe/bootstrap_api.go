@@ -328,9 +328,11 @@ func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("App [%s] is not active", appId))
 	}
 
-	returnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
-	if returnUrl = app.GenerateReturnUrl(returnUrl.(string)); returnUrl == "" {
+	requestReturnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
+	if returnUrl := app.GenerateReturnUrl(requestReturnUrl.(string)); returnUrl == "" && requestReturnUrl != "" {
 		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
+	} else {
+		requestReturnUrl = returnUrl
 	}
 
 	source := _extractParam(params, "source", reddo.TypeString, "", nil)
@@ -338,16 +340,16 @@ func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris
 	switch strings.ToLower(source.(string)) {
 	case loginChannelGoogle:
 		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
-		return _doLoginGoogle(ctx, auth, authCode.(string), app, returnUrl.(string))
+		return _doLoginGoogle(ctx, auth, authCode.(string), app, requestReturnUrl.(string))
 	case loginChannelGithub:
 		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
-		return _doLoginGitHub(ctx, auth, authCode.(string), app, returnUrl.(string))
+		return _doLoginGitHub(ctx, auth, authCode.(string), app, requestReturnUrl.(string))
 	case loginChannelFacebook:
 		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
-		return _doLoginFacebook(ctx, auth, authCode.(string), app, returnUrl.(string))
+		return _doLoginFacebook(ctx, auth, authCode.(string), app, requestReturnUrl.(string))
 	case loginChannelLinkedin:
 		authCode := _extractParam(params, "code", reddo.TypeString, "", nil)
-		return _doLoginLinkedin(ctx, auth, authCode.(string), app, returnUrl.(string))
+		return _doLoginLinkedin(ctx, auth, authCode.(string), app, requestReturnUrl.(string))
 	}
 	return itineris.NewApiResult(itineris.StatusErrorClient).SetMessage(fmt.Sprintf("Login source is not supported: %s", source))
 }

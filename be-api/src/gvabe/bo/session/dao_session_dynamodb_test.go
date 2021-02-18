@@ -8,9 +8,49 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 )
+
+func _inSlide(item string, slide []string) bool {
+	for _, s := range slide {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func _deleteTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string) {
+	statusList := []string{""}
+	for {
+		if status, err := adc.GetTableStatus(nil, table); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		} else if _inSlide(status, statusList) {
+			return
+		}
+		err := adc.DeleteTable(nil, table)
+		if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		}
+	}
+}
+
+func _createTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string, spec *henge.DynamodbTablesSpec) {
+	statusList := []string{"ACTIVE"}
+	for {
+		if status, err := adc.GetTableStatus(nil, table); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		} else if _inSlide(status, statusList) {
+			return
+		}
+		err := henge.InitDynamodbTables(adc, table, spec)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		}
+	}
+}
 
 func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
 	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
@@ -49,27 +89,45 @@ func TestNewSessionDaoAwsDynamodb(t *testing.T) {
 }
 
 func _initSessionDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
-	adc.DeleteTable(nil, tableNameDynamodb)
-	henge.InitDynamodbTable(adc, tableNameDynamodb, 2, 2)
+	_deleteTableWithWait(t, testName, adc, tableNameDynamodb)
+	_createTableWithWait(t, testName, adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
+		MainTableRcu:    2,
+		MainTableWcu:    2,
+		CreateUidxTable: true,
+		UidxTableRcu:    2,
+		UidxTableWcu:    2,
+	})
 	return NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
 }
 
 func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
 	name := "TestSessionDaoAwsDynamodb_Save"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	sessDao := _initSessionDaoDynamodb(t, name, adc)
+
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 	ok, err := sessDao.Save(sess)
 	if err != nil || !ok {
 		t.Fatalf("%s failed: %#v / %s", name, ok, err)
 	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
+	}
 }
 
 func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
 	name := "TestSessionDaoAwsDynamodb_Get"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	sessDao := _initSessionDaoDynamodb(t, name, adc)
+
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 	ok, err := sessDao.Save(sess)
@@ -118,7 +176,9 @@ func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
 func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
 	name := "TestSessionDaoAwsDynamodb_Delete"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	sessDao := _initSessionDaoDynamodb(t, name, adc)
+
 	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 	ok, err := sessDao.Save(sess)
@@ -141,14 +201,23 @@ func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
 	} else if sess != nil {
 		t.Fatalf("%s failed: session %s should not exist", name, "not_found")
 	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("%s failed: expected 0 item inserted but received %#v", name, len(items))
+	}
 }
 
 func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
 	name := "TestSessionDaoAwsDynamodb_Update"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	sessDao := _initSessionDaoDynamodb(t, name, adc)
-	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 
+	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
 	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
 	ok, err := sessDao.Save(sess)
 	if err != nil || !ok {
@@ -196,5 +265,13 @@ func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
 		if v := sess.GetExpiry(); v.Unix() != expiry.Add(1*time.Hour).Unix() {
 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, expiry.Add(1*time.Hour), v)
 		}
+	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
 }

@@ -8,11 +8,51 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
 	"main/src/gvabe/bo/user"
 )
+
+func _inSlide(item string, slide []string) bool {
+	for _, s := range slide {
+		if item == s {
+			return true
+		}
+	}
+	return false
+}
+
+func _deleteTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string) {
+	statusList := []string{""}
+	for {
+		err := adc.DeleteTable(nil, table)
+		if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		}
+		if status, err := adc.GetTableStatus(nil, table); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		} else if _inSlide(status, statusList) {
+			return
+		}
+	}
+}
+
+func _createTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string, spec *henge.DynamodbTablesSpec) {
+	statusList := []string{"ACTIVE"}
+	for {
+		if status, err := adc.GetTableStatus(nil, table); err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		} else if _inSlide(status, statusList) {
+			return
+		}
+		err := henge.InitDynamodbTables(adc, table, spec)
+		if err != nil {
+			t.Fatalf("%s failed: %s", testName, err)
+		}
+	}
+}
 
 func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
 	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
@@ -51,26 +91,44 @@ func TestNewAppDaoAwsDynamodb(t *testing.T) {
 }
 
 func _initAppDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) AppDao {
-	adc.DeleteTable(nil, tableNameDynamodb)
-	henge.InitDynamodbTable(adc, tableNameDynamodb, 2, 2)
+	_deleteTableWithWait(t, testName, adc, tableNameDynamodb)
+	_createTableWithWait(t, testName, adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
+		MainTableRcu:    2,
+		MainTableWcu:    2,
+		CreateUidxTable: true,
+		UidxTableRcu:    2,
+		UidxTableWcu:    2,
+	})
 	return NewAppDaoAwsDynamodb(adc, tableNameDynamodb)
 }
 
 func TestAppDaoAwsDynamodb_Create(t *testing.T) {
 	name := "TestAppDaoAwsDynamodb_Create"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	appDao := _initAppDaoDynamodb(t, name, adc)
+
 	app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
 	ok, err := appDao.Create(app)
 	if err != nil || !ok {
 		t.Fatalf("%s failed: %#v / %s", name, ok, err)
+	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
 	}
 }
 
 func TestAppDaoAwsDynamodb_Get(t *testing.T) {
 	name := "TestAppDaoAwsDynamodb_Get"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	appDao := _initAppDaoDynamodb(t, name, adc)
+
 	appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
 	if app, err := appDao.Get("not_found"); err != nil {
 		t.Fatalf("%s failed: %s", name, err)
@@ -101,6 +159,7 @@ func TestAppDaoAwsDynamodb_Get(t *testing.T) {
 func TestAppDaoAwsDynamodb_Delete(t *testing.T) {
 	name := "TestAppDaoAwsDynamodb_Delete"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	appDao := _initAppDaoDynamodb(t, name, adc)
 
 	appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
@@ -124,11 +183,20 @@ func TestAppDaoAwsDynamodb_Delete(t *testing.T) {
 	} else if app != nil {
 		t.Fatalf("%s failed: app %s should not exist", name, "exter")
 	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 0 {
+		t.Fatalf("%s failed: expected 0 item inserted but received %#v", name, len(items))
+	}
 }
 
 func TestAppDaoAwsDynamodb_Update(t *testing.T) {
 	name := "TestAppDaoAwsDynamodb_Update"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	appDao := _initAppDaoDynamodb(t, name, adc)
 
 	app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
@@ -160,11 +228,20 @@ func TestAppDaoAwsDynamodb_Update(t *testing.T) {
 			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "App description", v)
 		}
 	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
+	}
 }
 
 func TestAppDaoAwsDynamodb_GetUserApps(t *testing.T) {
 	name := "TestAppDaoAwsDynamodb_GetUserApps"
 	adc := _createAwsDynamodbConnect(t, name)
+	defer adc.Close()
 	appDao := _initAppDaoDynamodb(t, name, adc)
 
 	for i := 0; i < 10; i++ {
@@ -184,5 +261,13 @@ func TestAppDaoAwsDynamodb_GetUserApps(t *testing.T) {
 		if app.GetOwnerId() != "2" {
 			t.Fatalf("%s failed: app %#v does not belong to user %#v", name, app.GetId(), "2")
 		}
+	}
+
+	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	if err != nil {
+		t.Fatalf("%s failed: %s", name, err)
+	}
+	if len(items) != 10 {
+		t.Fatalf("%s failed: expected 10 items inserted but received %#v", name, len(items))
 	}
 }

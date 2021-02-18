@@ -2,7 +2,7 @@
 
 This document provides guidelines for application developers to integrate their web applications with Exter.
 
-> Requirement: you need a running Exter instance. You can deploy [our own Exter instance](BuildAndRun.md) or use the pre-hosted [ExterOSS](https://btnguyen2k.github.io/exter/).
+> Requirement: a running Exter instance, either deploy [our own Exter instance](BuildAndRun.md) or use the pre-hosted [ExterOSS](https://btnguyen2k.github.io/exter/).
 
 ## Register your app with Exter
 

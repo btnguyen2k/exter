@@ -1,8 +1,6 @@
 package app
 
 import (
-	"github.com/btnguyen2k/consu/reddo"
-	"github.com/btnguyen2k/godal"
 	"github.com/btnguyen2k/prom"
 
 	"github.com/btnguyen2k/henge"
@@ -17,19 +15,13 @@ const (
 // NewAppDaoSql is helper method to create SQL-implementation of AppDao.
 func NewAppDaoSql(sqlc *prom.SqlConnect, tableName string) AppDao {
 	dao := &AppDaoSql{}
-	dao.UniversalDao = henge.NewUniversalDaoSql(sqlc, tableName, true,
-		map[string]string{SqlCol_App_UserId: FieldApp_OwnerId})
+	dao.UniversalDao = henge.NewUniversalDaoSql(sqlc, tableName, true, map[string]string{SqlCol_App_UserId: FieldApp_OwnerId})
 	return dao
 }
 
 // AppDaoSql is SQL-implementation of AppDao.
 type AppDaoSql struct {
 	henge.UniversalDao
-}
-
-// GdaoCreateFilter implements IGenericDao.GdaoCreateFilter.
-func (dao *AppDaoSql) GdaoCreateFilter(_ string, gbo godal.IGenericBo) interface{} {
-	return map[string]interface{}{henge.SqlColId: gbo.GboGetAttrUnsafe(henge.FieldId, reddo.TypeString)}
 }
 
 // Delete implements AppDao.Delete.
@@ -45,10 +37,7 @@ func (dao *AppDaoSql) Create(bo *App) (bool, error) {
 // Get implements AppDao.Get.
 func (dao *AppDaoSql) Get(id string) (*App, error) {
 	ubo, err := dao.UniversalDao.Get(id)
-	if err != nil {
-		return nil, err
-	}
-	return NewAppFromUbo(ubo), nil
+	return NewAppFromUbo(ubo), err
 }
 
 // getN implements AppDao.getN.

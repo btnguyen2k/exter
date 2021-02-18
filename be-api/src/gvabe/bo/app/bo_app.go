@@ -33,7 +33,7 @@ func NewAppFromUbo(ubo *henge.UniversalBo) *App {
 	app := App{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &app); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewAppFromUbo - error unmarshalling JSON data: %e", err))
-		log.Print(err)
+		// log.Print(err)
 		return nil
 	}
 	app.UniversalBo = ubo.Clone()
@@ -126,7 +126,7 @@ func (app *App) GenerateReturnUrl(preferredReturnUrl string) string {
 
 // GenerateCancelUrl validates 'preferredCancelUrl' and builds "cancel url" for the app.
 //
-//	- if 'preferredCancelUrl' is invalid, this function returns empty string
+// - if 'preferredCancelUrl' is invalid, this function returns empty string
 func (app *App) GenerateCancelUrl(preferredCancelUrl string) string {
 	preferredCancelUrl = strings.TrimSpace(preferredCancelUrl)
 	if preferredCancelUrl == "" {
