@@ -17,8 +17,8 @@ Supported identity sources:
 ### Privacy Policy
 
 - After authentication, `Exter` forwards user's basic info (_email address_ and _display name_) to the registered application as JWT.
-`Exter` does _not_ store user info in a long-term storage. Contact the registered application's owner to learn more about its Terms of Service and Privacy Policy.
-- `Exter` stores the JWT in user login session. The login session will expire after 60 minutes and will be automatically invalidated.
+`Exter` does _not_ store user info in a long-term storage. Contact the registered application's owner to learn more about the application's Terms of Service and Privacy Policy.
+- `Exter` stores the JWT in user session, also known as login session. The login session will expire after 60 minutes and will be automatically invalidated.
 
 ### Technical Info
 
