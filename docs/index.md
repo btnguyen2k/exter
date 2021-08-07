@@ -16,9 +16,9 @@ Supported identity sources:
 
 ### Privacy Policy
 
-- Email is used as user id. Upon successful authentication, the `ExterOSS` will store your email address in its database and login session.
-- Your email address is only used to uniquely identify yourself and will not be used for any other purpose. 
-- `ExterOSS` will remove its session data periodically without notice.
+- After authentication, `Exter` forwards user's basic info (_email address_ and _display name_) to the registered application as JWT.
+`Exter` does _not_ store user info in a long-term storage. Contact the registered application's owner to learn more about its Terms of Service and Privacy Policy.
+- `Exter` stores the JWT in user login session. The login session will expire after 60 minutes and will be automatically invalidated.
 
 ### Technical Info
 
