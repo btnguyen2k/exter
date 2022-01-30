@@ -1,4 +1,4 @@
-// package app contains business object (BO) and data access object (DAO) implementations for Application.
+// Package app contains business object (BO) and data access object (DAO) implementations for Application.
 package app
 
 import (
@@ -33,7 +33,6 @@ func NewAppFromUbo(ubo *henge.UniversalBo) *App {
 	app := App{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &app); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewAppFromUbo - error unmarshalling JSON data: %e", err))
-		// log.Print(err)
 		return nil
 	}
 	app.UniversalBo = ubo.Clone()

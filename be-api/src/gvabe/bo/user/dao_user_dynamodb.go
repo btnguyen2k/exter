@@ -6,12 +6,21 @@ import (
 	"github.com/btnguyen2k/henge"
 )
 
-// NewUserDaoAwsDynamodb is helper method to create AWS DynamoDB-implementation of UserDao.
+// NewUserDaoAwsDynamodb is helper function to create AWS DynamoDB-implementation of UserDao.
 func NewUserDaoAwsDynamodb(dync *prom.AwsDynamodbConnect, tableName string) UserDao {
 	var spec *henge.DynamodbDaoSpec = nil
 	dao := &UserDaoAwsDynamodb{UniversalDao: henge.NewUniversalDaoDynamodb(dync, tableName, spec)}
 	dao.spec = spec
 	return dao
+}
+
+// InitUserTableAwsDynamodb is helper function to initialize AWS DynamoDB table(s) to store users.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitUserTableAwsDynamodb(adc *prom.AwsDynamodbConnect, tableName string) error {
+	spec := &henge.DynamodbTablesSpec{MainTableRcu: 1, MainTableWcu: 1}
+	return henge.InitDynamodbTables(adc, tableName, spec)
 }
 
 // UserDaoAwsDynamodb is AWS DynamoDB-implementation of UserDao.

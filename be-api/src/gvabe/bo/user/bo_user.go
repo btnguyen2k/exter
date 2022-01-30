@@ -1,4 +1,4 @@
-// package user contains business object (BO) and data access object (DAO) implementations for User.
+// Package user contains business object (BO) and data access object (DAO) implementations for User.
 package user
 
 import (
@@ -28,20 +28,22 @@ func NewUserFromUbo(ubo *henge.UniversalBo) *User {
 	if ubo == nil {
 		return nil
 	}
+	ubo = ubo.Clone()
+	// ubo = ubo.Sync(henge.UboSyncOpts{UpdateTimestampIfChecksumChange: true})
 	user := User{UniversalBo: &henge.UniversalBo{}}
 	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &user); err != nil {
 		log.Print(fmt.Sprintf("[WARN] NewUserFromUbo - error unmarshalling JSON data: %s", err))
-		// log.Print(err)
 		return nil
 	}
-	user.UniversalBo = ubo.Clone()
+	// user.UniversalBo = ubo.Clone()
+	user.UniversalBo = ubo
 	return &user
 }
 
 const (
-	AttrUser_AesKey      = "aes_key"
-	AttrUser_DisplayName = "display_name"
-	AttrUser_Ubo         = "_ubo"
+	AttrUserAesKey      = "aes_key"
+	AttrUserDisplayName = "display_name"
+	AttrUserUbo         = "_ubo"
 )
 
 // User is the business object.
@@ -55,7 +57,7 @@ type User struct {
 func (user *User) MarshalJSON() ([]byte, error) {
 	user.sync()
 	m := map[string]interface{}{
-		AttrUser_Ubo: user.UniversalBo.Clone(),
+		AttrUserUbo: user.UniversalBo.Clone(),
 	}
 	return json.Marshal(m)
 }
@@ -67,8 +69,8 @@ func (user *User) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
-	if m[AttrUser_Ubo] != nil {
-		js, _ := json.Marshal(m[AttrUser_Ubo])
+	if m[AttrUserUbo] != nil {
+		js, _ := json.Marshal(m[AttrUserUbo])
 		if err := json.Unmarshal(js, &user.UniversalBo); err != nil {
 			return err
 		}
@@ -79,7 +81,7 @@ func (user *User) UnmarshalJSON(data []byte) error {
 
 // GetAesKey returns value of user's 'aes-key' attribute.
 func (user *User) GetAesKey() string {
-	v, err := user.GetDataAttrAs(AttrUser_AesKey, reddo.TypeString)
+	v, err := user.GetDataAttrAs(AttrUserAesKey, reddo.TypeString)
 	if err != nil || v == nil {
 		return ""
 	}
@@ -88,14 +90,14 @@ func (user *User) GetAesKey() string {
 
 // SetAesKey sets value of user's 'aes-key' attribute.
 func (user *User) SetAesKey(v string) *User {
-	user.SetDataAttr(AttrUser_AesKey, strings.TrimSpace(v))
+	user.SetDataAttr(AttrUserAesKey, strings.TrimSpace(v))
 	return user
 }
 
 // GetDisplayName returns value of user's 'display-name' attribute.
 // available since v0.4.0
 func (user *User) GetDisplayName() string {
-	v, err := user.GetDataAttrAs(AttrUser_DisplayName, reddo.TypeString)
+	v, err := user.GetDataAttrAs(AttrUserDisplayName, reddo.TypeString)
 	if err != nil || v == nil {
 		return ""
 	}
@@ -105,7 +107,7 @@ func (user *User) GetDisplayName() string {
 // SetDisplayName sets value of user's 'display-name' attribute.
 // available since v0.4.0
 func (user *User) SetDisplayName(v string) *User {
-	user.SetDataAttr(AttrUser_DisplayName, strings.TrimSpace(v))
+	user.SetDataAttr(AttrUserDisplayName, strings.TrimSpace(v))
 	return user
 }
 
