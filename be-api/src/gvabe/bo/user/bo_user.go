@@ -18,7 +18,9 @@ func NewUser(appVersion uint64, id string) *User {
 	user := &User{
 		UniversalBo: henge.NewUniversalBo(id, appVersion, henge.UboOpt{TimeLayout: bo.UboTimeLayout, TimestampRounding: bo.UboTimestampRouding}),
 	}
-	user.SetAesKey(utils.RandomString(16))
+	user.
+		SetDisplayName(id).
+		SetAesKey(utils.RandomString(16))
 	return user.sync()
 }
 
@@ -43,26 +45,28 @@ func NewUserFromUbo(ubo *henge.UniversalBo) *User {
 }
 
 const (
-	AttrUserAesKey      = "aes_key"
-	AttrUserDisplayName = "display_name"
 	AttrUserUbo         = "_ubo"
+	AttrUserAesKey      = "aes"
+	AttrUserDisplayName = "dname"
 )
 
 // User is the business object.
 // User inherits unique id from bo.UniversalBo. Email address is used to uniquely identify user (e.g. user-id is email address).
 type User struct {
 	*henge.UniversalBo `json:"_ubo"`
+	aesKey             string `json:"aes"`
+	displayName        string `json:"dname"`
 }
 
 // MarshalJSON implements json.encode.Marshaler.MarshalJSON.
 //	TODO: lock for read?
-func (user *User) MarshalJSON() ([]byte, error) {
-	user.sync()
+func (u *User) MarshalJSON() ([]byte, error) {
+	u.sync()
 	m := map[string]interface{}{
-		AttrUserUbo: user.UniversalBo.Clone(),
+		AttrUserUbo: u.UniversalBo.Clone(),
 		bo.SerKeyAttrs: map[string]interface{}{
-			AttrUserAesKey:      user.GetAesKey(),
-			AttrUserDisplayName: user.GetDisplayName(),
+			AttrUserAesKey:      u.GetAesKey(),
+			AttrUserDisplayName: u.GetDisplayName(),
 		},
 	}
 	return json.Marshal(m)
@@ -70,7 +74,7 @@ func (user *User) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements json.decode.Unmarshaler.UnmarshalJSON.
 //	TODO: lock for write?
-func (user *User) UnmarshalJSON(data []byte) error {
+func (u *User) UnmarshalJSON(data []byte) error {
 	var m map[string]interface{}
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
@@ -78,7 +82,7 @@ func (user *User) UnmarshalJSON(data []byte) error {
 	var err error
 	if m[AttrUserUbo] != nil {
 		js, _ := json.Marshal(m[AttrUserUbo])
-		if err = json.Unmarshal(js, &user.UniversalBo); err != nil {
+		if err = json.Unmarshal(js, &u.UniversalBo); err != nil {
 			return err
 		}
 	}
@@ -86,51 +90,45 @@ func (user *User) UnmarshalJSON(data []byte) error {
 		if v, err := reddo.ToString(_attrs[AttrUserAesKey]); err != nil {
 			return err
 		} else {
-			user.SetAesKey(v)
+			u.SetAesKey(v)
 		}
 		if v, err := reddo.ToString(_attrs[AttrUserDisplayName]); err != nil {
 			return err
 		} else {
-			user.SetDisplayName(v)
+			u.SetDisplayName(v)
 		}
 	}
-	user.sync()
+	u.sync()
 	return nil
 }
 
 // GetAesKey returns value of user's 'aes-key' attribute.
-func (user *User) GetAesKey() string {
-	v, err := user.GetDataAttrAs(AttrUserAesKey, reddo.TypeString)
-	if err != nil || v == nil {
-		return ""
-	}
-	return v.(string)
+func (u *User) GetAesKey() string {
+	return u.aesKey
 }
 
 // SetAesKey sets value of user's 'aes-key' attribute.
-func (user *User) SetAesKey(v string) *User {
-	user.SetDataAttr(AttrUserAesKey, strings.TrimSpace(v))
-	return user
+func (u *User) SetAesKey(v string) *User {
+	u.aesKey = strings.TrimSpace(v)
+	return u
 }
 
 // GetDisplayName returns value of user's 'display-name' attribute.
 // available since v0.4.0
-func (user *User) GetDisplayName() string {
-	v, err := user.GetDataAttrAs(AttrUserDisplayName, reddo.TypeString)
-	if err != nil || v == nil {
-		return ""
-	}
-	return v.(string)
+func (u *User) GetDisplayName() string {
+	return u.displayName
 }
 
 // SetDisplayName sets value of user's 'display-name' attribute.
 // available since v0.4.0
-func (user *User) SetDisplayName(v string) *User {
-	user.SetDataAttr(AttrUserDisplayName, strings.TrimSpace(v))
-	return user
+func (u *User) SetDisplayName(v string) *User {
+	u.displayName = strings.TrimSpace(v)
+	return u
 }
 
-func (user *User) sync() *User {
-	user.UniversalBo.Sync()
-	return user
+func (u *User) sync() *User {
+	u.SetDataAttr(AttrUserAesKey, u.aesKey)
+	u.SetDataAttr(AttrUserDisplayName, u.displayName)
+	u.UniversalBo.Sync()
+	return u
 }
