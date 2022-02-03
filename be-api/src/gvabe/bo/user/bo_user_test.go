@@ -57,11 +57,11 @@ func TestNewUserFromUbo(t *testing.T) {
 			if user := NewUserFromUbo(ubo); user == nil {
 				t.Fatalf("%s failed: nil", name)
 			} else {
-				if displayName, expected := user.GetDisplayName(), newDisplayName; displayName != expected {
+				if displayName, expected := user.GetDisplayName(), strings.TrimSpace(newDisplayName); displayName != expected {
 					t.Fatalf("%s failed: expected AES-key to be %#v but received %#v", name, expected, displayName)
 				}
 
-				if aesKey, expected := user.GetAesKey(), newAesKey; aesKey != expected {
+				if aesKey, expected := user.GetAesKey(), strings.TrimSpace(newAesKey); aesKey != expected {
 					t.Fatalf("%s failed: expected AES-key to be %#v but received %#v", name, expected, aesKey)
 				}
 			}

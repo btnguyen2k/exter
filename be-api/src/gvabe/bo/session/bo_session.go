@@ -1,4 +1,4 @@
-// package session contains business object (BO) and data access object (DAO) implementations for Session.
+// Package session contains business object (BO) and data access object (DAO) implementations for Session.
 package session
 
 import (

@@ -3,11 +3,10 @@ package user
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"strings"
 
 	"github.com/btnguyen2k/consu/reddo"
+	"main/src/gvabe/bo"
 
 	"github.com/btnguyen2k/henge"
 
@@ -17,7 +16,7 @@ import (
 // NewUser is helper function to create new User bo.
 func NewUser(appVersion uint64, id string) *User {
 	user := &User{
-		UniversalBo: henge.NewUniversalBo(id, appVersion),
+		UniversalBo: henge.NewUniversalBo(id, appVersion, henge.UboOpt{TimeLayout: bo.UboTimeLayout, TimestampRounding: bo.UboTimestampRouding}),
 	}
 	user.SetAesKey(utils.RandomString(16))
 	return user.sync()
@@ -29,15 +28,18 @@ func NewUserFromUbo(ubo *henge.UniversalBo) *User {
 		return nil
 	}
 	ubo = ubo.Clone()
-	// ubo = ubo.Sync(henge.UboSyncOpts{UpdateTimestampIfChecksumChange: true})
-	user := User{UniversalBo: &henge.UniversalBo{}}
-	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &user); err != nil {
-		log.Print(fmt.Sprintf("[WARN] NewUserFromUbo - error unmarshalling JSON data: %s", err))
+	user := &User{UniversalBo: ubo}
+	if v, err := ubo.GetDataAttrAs(AttrUserAesKey, reddo.TypeString); err != nil {
 		return nil
+	} else if v != nil {
+		user.SetAesKey(v.(string))
 	}
-	// user.UniversalBo = ubo.Clone()
-	user.UniversalBo = ubo
-	return &user
+	if v, err := ubo.GetDataAttrAs(AttrUserDisplayName, reddo.TypeString); err != nil {
+		return nil
+	} else if v != nil {
+		user.SetDisplayName(v.(string))
+	}
+	return user.sync()
 }
 
 const (
@@ -58,6 +60,10 @@ func (user *User) MarshalJSON() ([]byte, error) {
 	user.sync()
 	m := map[string]interface{}{
 		AttrUserUbo: user.UniversalBo.Clone(),
+		bo.SerKeyAttrs: map[string]interface{}{
+			AttrUserAesKey:      user.GetAesKey(),
+			AttrUserDisplayName: user.GetDisplayName(),
+		},
 	}
 	return json.Marshal(m)
 }
@@ -69,10 +75,23 @@ func (user *User) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
+	var err error
 	if m[AttrUserUbo] != nil {
 		js, _ := json.Marshal(m[AttrUserUbo])
-		if err := json.Unmarshal(js, &user.UniversalBo); err != nil {
+		if err = json.Unmarshal(js, &user.UniversalBo); err != nil {
 			return err
+		}
+	}
+	if _attrs, ok := m[bo.SerKeyAttrs].(map[string]interface{}); ok {
+		if v, err := reddo.ToString(_attrs[AttrUserAesKey]); err != nil {
+			return err
+		} else {
+			user.SetAesKey(v)
+		}
+		if v, err := reddo.ToString(_attrs[AttrUserDisplayName]); err != nil {
+			return err
+		} else {
+			user.SetDisplayName(v)
 		}
 	}
 	user.sync()
