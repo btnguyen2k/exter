@@ -8,49 +8,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
-	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
-	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 )
-
-func _inSlide(item string, slide []string) bool {
-	for _, s := range slide {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func _deleteTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string) {
-	statusList := []string{""}
-	for {
-		if status, err := adc.GetTableStatus(nil, table); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		} else if _inSlide(status, statusList) {
-			return
-		}
-		err := adc.DeleteTable(nil, table)
-		if err = prom.AwsIgnoreErrorIfMatched(err, awsdynamodb.ErrCodeTableNotFoundException); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		}
-	}
-}
-
-func _createTableWithWait(t *testing.T, testName string, adc *prom.AwsDynamodbConnect, table string, spec *henge.DynamodbTablesSpec) {
-	statusList := []string{"ACTIVE"}
-	for {
-		if status, err := adc.GetTableStatus(nil, table); err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		} else if _inSlide(status, statusList) {
-			return
-		}
-		err := henge.InitDynamodbTables(adc, table, spec)
-		if err != nil {
-			t.Fatalf("%s failed: %s", testName, err)
-		}
-	}
-}
 
 func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbConnect {
 	awsRegion := strings.ReplaceAll(os.Getenv("AWS_REGION"), `"`, "")
@@ -79,199 +38,89 @@ func _createAwsDynamodbConnect(t *testing.T, testName string) *prom.AwsDynamodbC
 
 const tableNameDynamodb = "exter_test_session"
 
-func TestNewSessionDaoAwsDynamodb(t *testing.T) {
-	name := "TestNewSessionDaoAwsDynamodb"
-	adc := _createAwsDynamodbConnect(t, name)
-	appDao := NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
-	if appDao == nil {
-		t.Fatalf("%s failed: nil", name)
+var setupTestDynamodb = func(t *testing.T, testName string) {
+	testAdc = _createAwsDynamodbConnect(t, testName)
+	testAdc.DeleteTable(nil, tableNameDynamodb)
+	err := prom.AwsDynamodbWaitForTableStatus(testAdc, tableNameDynamodb, []string{""}, 1*time.Second, 10*time.Second)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
+	}
+	err = InitSessionTableAwsDynamodb(testAdc, tableNameDynamodb)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
 
-func _initSessionDaoDynamodb(t *testing.T, testName string, adc *prom.AwsDynamodbConnect) SessionDao {
-	_deleteTableWithWait(t, testName, adc, tableNameDynamodb)
-	_createTableWithWait(t, testName, adc, tableNameDynamodb, &henge.DynamodbTablesSpec{
-		MainTableRcu:    2,
-		MainTableWcu:    2,
-		CreateUidxTable: true,
-		UidxTableRcu:    2,
-		UidxTableWcu:    2,
-	})
-	return NewSessionDaoAwsDynamodb(adc, tableNameDynamodb)
+var teardownTestDynamodb = func(t *testing.T, testName string) {
+	if testAdc != nil {
+		defer func() {
+			defer func() { testAdc = nil }()
+			testAdc.Close()
+		}()
+	}
+}
+
+/*----------------------------------------------------------------------*/
+
+func TestNewSessionDaoAwsDynamodb(t *testing.T) {
+	testName := "TestNewSessionDaoAwsDynamodb"
+	teardownTest := setupTest(t, testName, setupTestDynamodb, teardownTestDynamodb)
+	defer teardownTest(t)
+	sessDao := NewSessionDaoAwsDynamodb(testAdc, tableNameDynamodb)
+	if sessDao == nil {
+		t.Fatalf("%s failed: nil", testName)
+	}
 }
 
 func TestSessionDaoAwsDynamodb_Save(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Save"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
-
-	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
-	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
-	ok, err := sessDao.Save(sess)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	testName := "TestSessionDaoAwsDynamodb_Save"
+	teardownTest := setupTest(t, testName, setupTestDynamodb, teardownTestDynamodb)
+	defer teardownTest(t)
+	sessDao := NewSessionDaoAwsDynamodb(testAdc, tableNameDynamodb)
+	doTestSessionDao_Save(t, testName, sessDao)
+	items, err := testAdc.ScanItems(nil, tableNameDynamodb, nil, "")
 	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if len(items) != 1 {
-		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", testName, len(items))
 	}
 }
 
 func TestSessionDaoAwsDynamodb_Get(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Get"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
-
-	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
-	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
-	ok, err := sessDao.Save(sess)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	if sess, err := sessDao.Get("not_found"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if sess != nil {
-		t.Fatalf("%s failed: session %s should not exist", name, "not_found")
-	}
-
-	if sess, err := sessDao.Get("1"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if sess == nil {
-		t.Fatalf("%s failed: nil", name)
-	} else {
-		if v := sess.GetId(); v != "1" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "1", v)
-		}
-		if v := sess.GetTagVersion(); v != 1357 {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
-		}
-		if v := sess.GetSessionType(); v != "login" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "login", v)
-		}
-		if v := sess.GetIdSource(); v != "local" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "local", v)
-		}
-		if v := sess.GetAppId(); v != "exter" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "exter", v)
-		}
-		if v := sess.GetUserId(); v != "btnguyen2k" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
-		}
-		if v := sess.GetSessionData(); v != "session-data" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "session-data", v)
-		}
-		if v := sess.GetExpiry(); v.Unix() != expiry.Unix() {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, expiry, v)
-		}
-	}
+	testName := "TestSessionDaoAwsDynamodb_Get"
+	teardownTest := setupTest(t, testName, setupTestDynamodb, teardownTestDynamodb)
+	defer teardownTest(t)
+	sessDao := NewSessionDaoAwsDynamodb(testAdc, tableNameDynamodb)
+	doTestSessionDao_Get(t, testName, sessDao)
 }
 
 func TestSessionDaoAwsDynamodb_Delete(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Delete"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
-
-	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
-	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
-	ok, err := sessDao.Save(sess)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-	if sess, err := sessDao.Get("1"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if sess == nil {
-		t.Fatalf("%s failed: nill", name)
-	}
-
-	ok, err = sessDao.Delete(sess)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	if sess, err := sessDao.Get("1"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if sess != nil {
-		t.Fatalf("%s failed: session %s should not exist", name, "not_found")
-	}
-
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	testName := "TestSessionDaoAwsDynamodb_Delete"
+	teardownTest := setupTest(t, testName, setupTestDynamodb, teardownTestDynamodb)
+	defer teardownTest(t)
+	sessDao := NewSessionDaoAwsDynamodb(testAdc, tableNameDynamodb)
+	doTestSessionDao_Delete(t, testName, sessDao)
+	items, err := testAdc.ScanItems(nil, tableNameDynamodb, nil, "")
 	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if len(items) != 0 {
-		t.Fatalf("%s failed: expected 0 item inserted but received %#v", name, len(items))
+		t.Fatalf("%s failed: expected 0 item inserted but received %#v", testName, len(items))
 	}
 }
 
 func TestSessionDaoAwsDynamodb_Update(t *testing.T) {
-	name := "TestSessionDaoAwsDynamodb_Update"
-	adc := _createAwsDynamodbConnect(t, name)
-	defer adc.Close()
-	sessDao := _initSessionDaoDynamodb(t, name, adc)
-
-	expiry := time.Now().Add(5 * time.Minute).Round(time.Millisecond)
-	sess := NewSession(1357, "1", "login", "local", "exter", "btnguyen2k", "session-data", expiry)
-	ok, err := sessDao.Save(sess)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	sess.SetTagVersion(2468)
-	sess.SetSessionType("pre-login")
-	sess.SetIdSource("external")
-	sess.SetAppId("myapp")
-	sess.SetUserId("nbthanh")
-	sess.SetSessionData("data")
-	sess.SetExpiry(expiry.Add(1 * time.Hour))
-	ok, err = sessDao.Save(sess)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	if sess, err := sessDao.Get("1"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if sess == nil {
-		t.Fatalf("%s failed: nil", name)
-	} else {
-		if v := sess.GetId(); v != "1" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "1", v)
-		}
-		if v := sess.GetTagVersion(); v != 2468 {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 2468, v)
-		}
-		if v := sess.GetSessionType(); v != "pre-login" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "pre-login", v)
-		}
-		if v := sess.GetIdSource(); v != "external" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "external", v)
-		}
-		if v := sess.GetAppId(); v != "myapp" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "myapp", v)
-		}
-		if v := sess.GetUserId(); v != "nbthanh" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "nbthanh", v)
-		}
-		if v := sess.GetSessionData(); v != "data" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "data", v)
-		}
-		if v := sess.GetExpiry(); v.Unix() != expiry.Add(1*time.Hour).Unix() {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, expiry.Add(1*time.Hour), v)
-		}
-	}
-
-	items, err := adc.ScanItems(nil, tableNameDynamodb, nil, "")
+	testName := "TestSessionDaoAwsDynamodb_Update"
+	teardownTest := setupTest(t, testName, setupTestDynamodb, teardownTestDynamodb)
+	defer teardownTest(t)
+	sessDao := NewSessionDaoAwsDynamodb(testAdc, tableNameDynamodb)
+	doTestSessionDao_Update(t, testName, sessDao)
+	items, err := testAdc.ScanItems(nil, tableNameDynamodb, nil, "")
 	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 	if len(items) != 1 {
-		t.Fatalf("%s failed: expected 1 item inserted but received %#v", name, len(items))
+		t.Fatalf("%s failed: expected 1 item inserted but received %#v", testName, len(items))
 	}
 }

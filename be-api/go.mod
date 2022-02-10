@@ -9,7 +9,7 @@ require (
 	github.com/btnguyen2k/consu/reddo v0.1.7
 	github.com/btnguyen2k/consu/semita v0.1.5
 	github.com/btnguyen2k/gocosmos v0.1.4
-	github.com/btnguyen2k/henge v0.5.5
+	github.com/btnguyen2k/henge v0.5.6
 	github.com/btnguyen2k/prom v0.2.15
 	github.com/denisenkom/go-mssqldb v0.12.0
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible

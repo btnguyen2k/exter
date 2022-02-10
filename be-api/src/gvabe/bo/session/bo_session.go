@@ -3,12 +3,11 @@ package session
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/btnguyen2k/consu/reddo"
+	"main/src/gvabe/bo"
 
 	"github.com/btnguyen2k/henge"
 
@@ -18,17 +17,18 @@ import (
 // NewSession is helper function to create new Session bo.
 func NewSession(appVersion uint64, id, sessionType, idSource, appId, userId, sessionData string, expiry time.Time) *Session {
 	sess := &Session{
-		UniversalBo: henge.NewUniversalBo(id, appVersion),
-		sessionData: strings.TrimSpace(sessionData),
-		idSource:    strings.TrimSpace(strings.ToLower(idSource)),
-		appId:       strings.TrimSpace(strings.ToLower(appId)),
-		userId:      strings.TrimSpace(strings.ToLower(userId)),
-		sessionType: strings.TrimSpace(sessionType),
-		expiry:      expiry,
+		UniversalBo: henge.NewUniversalBo(id, appVersion, henge.UboOpt{TimeLayout: bo.UboTimeLayout, TimestampRounding: bo.UboTimestampRounding}),
 	}
 	if sess.GetId() == "" {
 		sess.SetId(utils.UniqueId())
 	}
+	sess.
+		SetSessionData(sessionData).
+		SetIdSource(idSource).
+		SetAppId(appId).
+		SetUserId(userId).
+		SetSessionType(sessionType).
+		SetExpiry(expiry)
 	return sess.sync()
 }
 
@@ -37,43 +37,47 @@ func NewSessionFromUbo(ubo *henge.UniversalBo) *Session {
 	if ubo == nil {
 		return nil
 	}
-	sess := Session{UniversalBo: &henge.UniversalBo{}}
-	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &sess); err != nil {
-		log.Print(fmt.Sprintf("[WARN] NewSessionFromUbo - error unmarshalling JSON data: %e", err))
-		// log.Print(err)
+	ubo = ubo.Clone()
+	sess := &Session{UniversalBo: ubo}
+
+	if v, err := ubo.GetExtraAttrAsTimeWithLayout(FieldSessionExpiry, bo.UboTimeLayout); err != nil {
 		return nil
+	} else {
+		sess.SetExpiry(v)
 	}
-	sess.UniversalBo = ubo.Clone()
-	if sessionType, err := sess.GetExtraAttrAs(FieldSession_SessionType, reddo.TypeString); err == nil {
-		sess.sessionType = sessionType.(string)
+
+	fieldListStr := []string{FieldSessionIdSource, FieldSessionAppId, FieldSessionUserId, FieldSessionSessionType}
+	setterListStr := []func(string) *Session{sess.SetIdSource, sess.SetAppId, sess.SetUserId, sess.SetSessionType}
+	for i, field := range fieldListStr {
+		if v, err := ubo.GetExtraAttrAs(field, reddo.TypeString); err != nil {
+			return nil
+		} else if v != nil {
+			setterListStr[i](v.(string))
+		}
 	}
-	if idSource, err := sess.GetExtraAttrAs(FieldSession_IdSource, reddo.TypeString); err == nil {
-		sess.idSource = idSource.(string)
+
+	attrListStr := []string{AttrSessionData}
+	setterListStr = []func(string) *Session{sess.SetSessionData}
+	for i, attr := range attrListStr {
+		if v, err := ubo.GetDataAttrAs(attr, reddo.TypeString); err != nil {
+			return nil
+		} else if v != nil {
+			setterListStr[i](v.(string))
+		}
 	}
-	if appId, err := sess.GetExtraAttrAs(FieldSession_AppId, reddo.TypeString); err == nil {
-		sess.appId = appId.(string)
-	}
-	if userId, err := sess.GetExtraAttrAs(FieldSession_UserId, reddo.TypeString); err == nil {
-		sess.userId = userId.(string)
-	}
-	if expiry, err := sess.GetExtraAttrAsTimeWithLayout(FieldSession_Expiry, henge.TimeLayout); err == nil {
-		sess.expiry = expiry
-	}
-	if data, err := sess.GetDataAttrAs(AttrSession_Data, reddo.TypeString); err == nil && data != nil {
-		sess.sessionData = data.(string)
-	}
-	return &sess
+
+	return sess.sync()
 }
 
 const (
-	FieldSession_IdSource    = "isrc"
-	FieldSession_AppId       = "aid"
-	FieldSession_UserId      = "uid"
-	FieldSession_SessionType = "type"
-	FieldSession_Expiry      = "eat"
+	FieldSessionIdSource    = "isrc"
+	FieldSessionAppId       = "aid"
+	FieldSessionUserId      = "uid"
+	FieldSessionSessionType = "type"
+	FieldSessionExpiry      = "eat"
 
-	AttrSession_Ubo  = "_ubo"
-	AttrSession_Data = "data"
+	AttrSessionUbo  = "_ubo"
+	AttrSessionData = "data"
 )
 
 // Session is the business object.
@@ -93,12 +97,17 @@ type Session struct {
 func (sess *Session) MarshalJSON() ([]byte, error) {
 	sess.sync()
 	m := map[string]interface{}{
-		AttrSession_Ubo:          sess.UniversalBo.Clone(),
-		FieldSession_IdSource:    sess.idSource,
-		FieldSession_AppId:       sess.appId,
-		FieldSession_UserId:      sess.userId,
-		FieldSession_SessionType: sess.sessionType,
-		FieldSession_Expiry:      sess.expiry,
+		AttrSessionUbo: sess.UniversalBo.Clone(),
+		bo.SerKeyFields: map[string]interface{}{
+			FieldSessionIdSource:    sess.GetIdSource(),
+			FieldSessionAppId:       sess.GetAppId(),
+			FieldSessionUserId:      sess.GetUserId(),
+			FieldSessionSessionType: sess.GetSessionType(),
+			FieldSessionExpiry:      sess.GetExpiry(),
+		},
+		bo.SerKeyAttrs: map[string]interface{}{
+			AttrSessionData: sess.GetSessionData(),
+		},
 	}
 	return json.Marshal(m)
 }
@@ -110,33 +119,42 @@ func (sess *Session) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
-	var err error
-	if m[AttrSession_Ubo] != nil {
-		js, _ := json.Marshal(m[AttrSession_Ubo])
+
+	if m[AttrSessionUbo] != nil {
+		js, _ := json.Marshal(m[AttrSessionUbo])
 		if err := json.Unmarshal(js, &sess.UniversalBo); err != nil {
 			return err
 		}
 	}
-	if sess.idSource, err = reddo.ToString(m[FieldSession_IdSource]); err != nil {
-		return err
+	if _cols, ok := m[bo.SerKeyFields].(map[string]interface{}); ok {
+		fieldListStr := []string{FieldSessionIdSource, FieldSessionAppId, FieldSessionUserId, FieldSessionSessionType}
+		setterListStr := []func(string) *Session{sess.SetIdSource, sess.SetAppId, sess.SetUserId, sess.SetSessionType}
+		for i, field := range fieldListStr {
+			if v, err := reddo.ToString(_cols[field]); err != nil {
+				return err
+			} else {
+				setterListStr[i](v)
+			}
+		}
+
+		if v, err := reddo.ToTimeWithLayout(_cols[FieldSessionExpiry], bo.UboTimeLayout); err != nil {
+			return err
+		} else {
+			sess.SetExpiry(v)
+		}
 	}
-	if sess.appId, err = reddo.ToString(m[FieldSession_AppId]); err != nil {
-		return err
+	if _attrs, ok := m[bo.SerKeyAttrs].(map[string]interface{}); ok {
+		attrListStr := []string{AttrSessionData}
+		setterListStr := []func(string) *Session{sess.SetSessionData}
+		for i, attr := range attrListStr {
+			if v, err := reddo.ToString(_attrs[attr]); err != nil {
+				return err
+			} else {
+				setterListStr[i](v)
+			}
+		}
 	}
-	if sess.userId, err = reddo.ToString(m[FieldSession_UserId]); err != nil {
-		return err
-	}
-	if sess.sessionType, err = reddo.ToString(m[FieldSession_SessionType]); err != nil {
-		return err
-	}
-	if sessionData, err := sess.GetDataAttrAs(AttrSession_Data, reddo.TypeString); err != nil {
-		return err
-	} else if sessionData != nil {
-		sess.sessionData = sessionData.(string)
-	}
-	if sess.expiry, err = reddo.ToTimeWithLayout(m[FieldSession_Expiry], henge.TimeLayout); err != nil {
-		return err
-	}
+
 	sess.sync()
 	return nil
 }
@@ -203,7 +221,7 @@ func (sess *Session) GetExpiry() time.Time {
 
 // SetExpiry sets session's 'expiry' value.
 func (sess *Session) SetExpiry(value time.Time) *Session {
-	sess.expiry = value
+	sess.expiry = sess.RoundTimestamp(value)
 	return sess
 }
 
@@ -213,12 +231,12 @@ func (sess *Session) IsExpired() bool {
 }
 
 func (sess *Session) sync() *Session {
-	sess.SetExtraAttr(FieldSession_IdSource, sess.idSource)
-	sess.SetExtraAttr(FieldSession_AppId, sess.appId)
-	sess.SetExtraAttr(FieldSession_UserId, sess.userId)
-	sess.SetExtraAttr(FieldSession_Expiry, sess.expiry)
-	sess.SetExtraAttr(FieldSession_SessionType, sess.sessionType)
-	sess.SetDataAttr(AttrSession_Data, sess.sessionData)
+	sess.SetExtraAttr(FieldSessionIdSource, sess.idSource)
+	sess.SetExtraAttr(FieldSessionAppId, sess.appId)
+	sess.SetExtraAttr(FieldSessionUserId, sess.userId)
+	sess.SetExtraAttr(FieldSessionExpiry, sess.expiry)
+	sess.SetExtraAttr(FieldSessionSessionType, sess.sessionType)
+	sess.SetDataAttr(AttrSessionData, sess.sessionData)
 	sess.UniversalBo.Sync()
 	return sess
 }

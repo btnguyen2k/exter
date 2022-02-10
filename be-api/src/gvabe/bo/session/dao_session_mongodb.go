@@ -15,6 +15,14 @@ func NewSessionDaoMongo(mc *prom.MongoConnect, collectionName string) SessionDao
 	return dao
 }
 
+// InitSessionTableMongo is helper function to initialize MongoDB table (collection) to store sessions.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitSessionTableMongo(mc *prom.MongoConnect, collectionName string) error {
+	return henge.InitMongoCollection(mc, collectionName)
+}
+
 // SessionDaoMongo is MongoDB-implementation of SessionDao.
 type SessionDaoMongo struct {
 	henge.UniversalDao

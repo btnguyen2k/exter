@@ -16,7 +16,7 @@ import (
 // NewUser is helper function to create new User bo.
 func NewUser(appVersion uint64, id string) *User {
 	user := &User{
-		UniversalBo: henge.NewUniversalBo(id, appVersion, henge.UboOpt{TimeLayout: bo.UboTimeLayout, TimestampRounding: bo.UboTimestampRouding}),
+		UniversalBo: henge.NewUniversalBo(id, appVersion, henge.UboOpt{TimeLayout: bo.UboTimeLayout, TimestampRounding: bo.UboTimestampRounding}),
 	}
 	user.
 		SetDisplayName(id).
@@ -79,10 +79,10 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &m); err != nil {
 		return err
 	}
-	var err error
+
 	if m[AttrUserUbo] != nil {
 		js, _ := json.Marshal(m[AttrUserUbo])
-		if err = json.Unmarshal(js, &u.UniversalBo); err != nil {
+		if err := json.Unmarshal(js, &u.UniversalBo); err != nil {
 			return err
 		}
 	}
@@ -98,6 +98,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 			u.SetDisplayName(v)
 		}
 	}
+
 	u.sync()
 	return nil
 }

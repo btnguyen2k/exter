@@ -78,8 +78,8 @@ github.com/btnguyen2k/gocosmos v0.1.4 h1:9R12Hvk5/6HV9HYNLr103z0LNzWt9FJTRDaDPSV
 github.com/btnguyen2k/gocosmos v0.1.4/go.mod h1:BYrAnNLG+e5NCz9q0X9dkjhMM1XkYhyRG74bQX4Wb1w=
 github.com/btnguyen2k/godal v0.5.2 h1:xV6+iP41iwO9kydqTRdbv5Zyma0rSsHQ1B73RYzgqnA=
 github.com/btnguyen2k/godal v0.5.2/go.mod h1:pKDn8XTJViLV1SHd+oV4mErtJ3MAbPzs7GmxsJkcTCU=
-github.com/btnguyen2k/henge v0.5.5 h1:OpWh6L5epAuZqYbyxSicutHQCTMJpUQ+tfYBzMdToOY=
-github.com/btnguyen2k/henge v0.5.5/go.mod h1:XN5e+tJK+hHpV/FFGecYOgCya0HrNMawem4uvlq0mXM=
+github.com/btnguyen2k/henge v0.5.6 h1:bFjRX8mWuv+5RCgyMGZ8yr0DQiKdRoY8NMTQOz7Ht6g=
+github.com/btnguyen2k/henge v0.5.6/go.mod h1:XN5e+tJK+hHpV/FFGecYOgCya0HrNMawem4uvlq0mXM=
 github.com/btnguyen2k/prom v0.2.15 h1:9bWEeXKH1LjPw99KNiobe/xFY3GtNjuci5uiES95R9A=
 github.com/btnguyen2k/prom v0.2.15/go.mod h1:xctr0wF1deE/6iNeQ0aCkMYzeolGDsFMZUwtKkBApQA=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

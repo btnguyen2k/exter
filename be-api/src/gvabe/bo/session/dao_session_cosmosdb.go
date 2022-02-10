@@ -1,6 +1,8 @@
 package session
 
 import (
+	"fmt"
+
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
@@ -15,13 +17,25 @@ func NewSessionDaoCosmosdb(sqlc *prom.SqlConnect, tableName string) SessionDao {
 	return dao
 }
 
+// InitSessionTableCosmosdb is helper function to initialize CosmosDB-based table to store sessions.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitSessionTableCosmosdb(sqlc *prom.SqlConnect, tableName string) error {
+	switch sqlc.GetDbFlavor() {
+	case prom.FlavorCosmosDb:
+		return InitSessionTableSql(sqlc, tableName)
+	}
+	return fmt.Errorf("unsupported database type %v", sqlc.GetDbFlavor())
+}
+
 // SessionDaoCosmosdb is CosmosDB-implementation of SessionDao.
 type SessionDaoCosmosdb struct {
 	SessionDaoSql
 	spec *henge.CosmosdbDaoSpec
 }
 
-// Update implements SessionDao.Save.
+// Save implements SessionDao.Save.
 func (dao *SessionDaoCosmosdb) Save(sess *Session) (bool, error) {
 	ubo := sess.sync().UniversalBo
 	if dao.spec != nil && dao.spec.PkName != "" && dao.spec.PkValue != "" {

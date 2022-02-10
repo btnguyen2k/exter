@@ -16,6 +16,6 @@ var (
 	// UboTimeLayout controls how henge.UniversalBo will format create/update timestamp.
 	UboTimeLayout = henge.DefaultTimeLayout
 
-	// UboTimestampRouding controls how henge.UniversalBo will round create/update timestamp.
-	UboTimestampRouding = henge.DefaultTimestampRoundSetting
+	// UboTimestampRounding controls how henge.UniversalBo will round create/update timestamp.
+	UboTimestampRounding = henge.DefaultTimestampRoundingSetting
 )

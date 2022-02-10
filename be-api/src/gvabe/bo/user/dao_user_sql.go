@@ -16,7 +16,7 @@ func NewUserDaoSql(sqlc *prom.SqlConnect, tableName string) UserDao {
 	return dao
 }
 
-// InitUserTableSql is helper function to initialize SQL-based table (collection) to store users.
+// InitUserTableSql is helper function to initialize SQL-based table to store users.
 // This function also creates table indexes if needed.
 //
 // Available since v0.7.0.

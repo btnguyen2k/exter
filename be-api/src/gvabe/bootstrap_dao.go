@@ -126,54 +126,54 @@ func initDaos() {
 		henge.InitSqliteTable(sqlc, user.TableUser, nil)
 		henge.InitSqliteTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
 		henge.InitSqliteTable(sqlc, session.TableSession, map[string]string{
-			session.SqlCol_Session_IdSource:    "VARCHAR(32)",
-			session.SqlCol_Session_AppId:       "VARCHAR(32)",
-			session.SqlCol_Session_UserId:      "VARCHAR(32)",
-			session.SqlCol_Session_SessionType: "VARCHAR(32)",
-			session.SqlCol_Session_Expiry:      "TIMESTAMP",
+			session.SqlColSessionIdSource:    "VARCHAR(32)",
+			session.SqlColSessionAppId:       "VARCHAR(32)",
+			session.SqlColSessionUserId:      "VARCHAR(32)",
+			session.SqlColSessionSessionType: "VARCHAR(32)",
+			session.SqlColSessionExpiry:      "TIMESTAMP",
 		})
 	case utils.InSlideStr(dbtype, dbTypeMssql):
 		// MSSQL
 		henge.InitMssqlTable(sqlc, user.TableUser, nil)
 		henge.InitMssqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "NVARCHAR(32)"})
 		henge.InitMssqlTable(sqlc, session.TableSession, map[string]string{
-			session.SqlCol_Session_IdSource:    "NVARCHAR(32)",
-			session.SqlCol_Session_AppId:       "NVARCHAR(32)",
-			session.SqlCol_Session_UserId:      "NVARCHAR(32)",
-			session.SqlCol_Session_SessionType: "NVARCHAR(32)",
-			session.SqlCol_Session_Expiry:      "DATETIMEOFFSET",
+			session.SqlColSessionIdSource:    "NVARCHAR(32)",
+			session.SqlColSessionAppId:       "NVARCHAR(32)",
+			session.SqlColSessionUserId:      "NVARCHAR(32)",
+			session.SqlColSessionSessionType: "NVARCHAR(32)",
+			session.SqlColSessionExpiry:      "DATETIMEOFFSET",
 		})
 	case utils.InSlideStr(dbtype, dbTypeMysql):
 		// MySQL
 		henge.InitMysqlTable(sqlc, user.TableUser, nil)
 		henge.InitMysqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
 		henge.InitMysqlTable(sqlc, session.TableSession, map[string]string{
-			session.SqlCol_Session_IdSource:    "VARCHAR(32)",
-			session.SqlCol_Session_AppId:       "VARCHAR(32)",
-			session.SqlCol_Session_UserId:      "VARCHAR(32)",
-			session.SqlCol_Session_SessionType: "VARCHAR(32)",
-			session.SqlCol_Session_Expiry:      "DATETIME",
+			session.SqlColSessionIdSource:    "VARCHAR(32)",
+			session.SqlColSessionAppId:       "VARCHAR(32)",
+			session.SqlColSessionUserId:      "VARCHAR(32)",
+			session.SqlColSessionSessionType: "VARCHAR(32)",
+			session.SqlColSessionExpiry:      "DATETIME",
 		})
 	case utils.InSlideStr(dbtype, dbTypeOracle):
 		henge.InitOracleTable(sqlc, user.TableUser, nil)
 		henge.InitOracleTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "NVARCHAR2(32)"})
 		henge.InitOracleTable(sqlc, session.TableSession, map[string]string{
-			session.SqlCol_Session_IdSource:    "NVARCHAR2(32)",
-			session.SqlCol_Session_AppId:       "NVARCHAR2(32)",
-			session.SqlCol_Session_UserId:      "NVARCHAR2(32)",
-			session.SqlCol_Session_SessionType: "NVARCHAR2(32)",
-			session.SqlCol_Session_Expiry:      "TIMESTAMP WITH TIME ZONE",
+			session.SqlColSessionIdSource:    "NVARCHAR2(32)",
+			session.SqlColSessionAppId:       "NVARCHAR2(32)",
+			session.SqlColSessionUserId:      "NVARCHAR2(32)",
+			session.SqlColSessionSessionType: "NVARCHAR2(32)",
+			session.SqlColSessionExpiry:      "TIMESTAMP WITH TIME ZONE",
 		})
 	case utils.InSlideStr(dbtype, dbTypePgsql):
 		// PostgreSQL
 		henge.InitPgsqlTable(sqlc, user.TableUser, nil)
 		henge.InitPgsqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
 		henge.InitPgsqlTable(sqlc, session.TableSession, map[string]string{
-			session.SqlCol_Session_IdSource:    "VARCHAR(32)",
-			session.SqlCol_Session_AppId:       "VARCHAR(32)",
-			session.SqlCol_Session_UserId:      "VARCHAR(32)",
-			session.SqlCol_Session_SessionType: "VARCHAR(32)",
-			session.SqlCol_Session_Expiry:      "TIMESTAMP WITH TIME ZONE",
+			session.SqlColSessionIdSource:    "VARCHAR(32)",
+			session.SqlColSessionAppId:       "VARCHAR(32)",
+			session.SqlColSessionUserId:      "VARCHAR(32)",
+			session.SqlColSessionSessionType: "VARCHAR(32)",
+			session.SqlColSessionExpiry:      "TIMESTAMP WITH TIME ZONE",
 		})
 	}
 
@@ -211,15 +211,15 @@ func initDaos() {
 		})
 		mc.CreateCollectionIndexes(session.TableSession, []interface{}{
 			map[string]interface{}{
-				"key":  map[string]interface{}{session.FieldSession_IdSource: 1},
+				"key":  map[string]interface{}{session.FieldSessionIdSource: 1},
 				"name": "idx_idsource",
 			},
 			map[string]interface{}{
-				"key":  map[string]interface{}{session.FieldSession_AppId: 1},
+				"key":  map[string]interface{}{session.FieldSessionAppId: 1},
 				"name": "idx_appid",
 			},
 			map[string]interface{}{
-				"key":  map[string]interface{}{session.FieldSession_Expiry: 1},
+				"key":  map[string]interface{}{session.FieldSessionExpiry: 1},
 				"name": "idx_expiry",
 			},
 		})
@@ -249,9 +249,9 @@ func initDaos() {
 	} else if sqlc != nil {
 		// other RDBMS
 		henge.CreateIndexSql(sqlc, app.TableApp, false, []string{app.SqlCol_App_UserId})
-		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlCol_Session_IdSource})
-		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlCol_Session_AppId})
-		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlCol_Session_Expiry})
+		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlColSessionIdSource})
+		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlColSessionAppId})
+		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlColSessionExpiry})
 
 		appDao = app.NewAppDaoSql(sqlc, app.TableApp)
 		sessionDao = session.NewSessionDaoSql(sqlc, session.TableSession)
