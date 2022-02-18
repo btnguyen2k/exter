@@ -124,7 +124,7 @@ func initDaos() {
 	case utils.InSlideStr(dbtype, dbTypeSqlite):
 		// SQLite, for non-production only!
 		henge.InitSqliteTable(sqlc, user.TableUser, nil)
-		henge.InitSqliteTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
+		henge.InitSqliteTable(sqlc, app.TableApp, map[string]string{app.SqlColAppUserId: "VARCHAR(32)"})
 		henge.InitSqliteTable(sqlc, session.TableSession, map[string]string{
 			session.SqlColSessionIdSource:    "VARCHAR(32)",
 			session.SqlColSessionAppId:       "VARCHAR(32)",
@@ -135,7 +135,7 @@ func initDaos() {
 	case utils.InSlideStr(dbtype, dbTypeMssql):
 		// MSSQL
 		henge.InitMssqlTable(sqlc, user.TableUser, nil)
-		henge.InitMssqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "NVARCHAR(32)"})
+		henge.InitMssqlTable(sqlc, app.TableApp, map[string]string{app.SqlColAppUserId: "NVARCHAR(32)"})
 		henge.InitMssqlTable(sqlc, session.TableSession, map[string]string{
 			session.SqlColSessionIdSource:    "NVARCHAR(32)",
 			session.SqlColSessionAppId:       "NVARCHAR(32)",
@@ -146,7 +146,7 @@ func initDaos() {
 	case utils.InSlideStr(dbtype, dbTypeMysql):
 		// MySQL
 		henge.InitMysqlTable(sqlc, user.TableUser, nil)
-		henge.InitMysqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
+		henge.InitMysqlTable(sqlc, app.TableApp, map[string]string{app.SqlColAppUserId: "VARCHAR(32)"})
 		henge.InitMysqlTable(sqlc, session.TableSession, map[string]string{
 			session.SqlColSessionIdSource:    "VARCHAR(32)",
 			session.SqlColSessionAppId:       "VARCHAR(32)",
@@ -156,7 +156,7 @@ func initDaos() {
 		})
 	case utils.InSlideStr(dbtype, dbTypeOracle):
 		henge.InitOracleTable(sqlc, user.TableUser, nil)
-		henge.InitOracleTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "NVARCHAR2(32)"})
+		henge.InitOracleTable(sqlc, app.TableApp, map[string]string{app.SqlColAppUserId: "NVARCHAR2(32)"})
 		henge.InitOracleTable(sqlc, session.TableSession, map[string]string{
 			session.SqlColSessionIdSource:    "NVARCHAR2(32)",
 			session.SqlColSessionAppId:       "NVARCHAR2(32)",
@@ -167,7 +167,7 @@ func initDaos() {
 	case utils.InSlideStr(dbtype, dbTypePgsql):
 		// PostgreSQL
 		henge.InitPgsqlTable(sqlc, user.TableUser, nil)
-		henge.InitPgsqlTable(sqlc, app.TableApp, map[string]string{app.SqlCol_App_UserId: "VARCHAR(32)"})
+		henge.InitPgsqlTable(sqlc, app.TableApp, map[string]string{app.SqlColAppUserId: "VARCHAR(32)"})
 		henge.InitPgsqlTable(sqlc, session.TableSession, map[string]string{
 			session.SqlColSessionIdSource:    "VARCHAR(32)",
 			session.SqlColSessionAppId:       "VARCHAR(32)",
@@ -205,7 +205,7 @@ func initDaos() {
 
 		mc.CreateCollectionIndexes(app.TableApp, []interface{}{
 			map[string]interface{}{
-				"key":  map[string]interface{}{app.FieldApp_OwnerId: 1},
+				"key":  map[string]interface{}{app.FieldAppOwnerId: 1},
 				"name": "idx_ownerid",
 			},
 		})
@@ -248,7 +248,7 @@ func initDaos() {
 		}
 	} else if sqlc != nil {
 		// other RDBMS
-		henge.CreateIndexSql(sqlc, app.TableApp, false, []string{app.SqlCol_App_UserId})
+		henge.CreateIndexSql(sqlc, app.TableApp, false, []string{app.SqlColAppUserId})
 		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlColSessionIdSource})
 		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlColSessionAppId})
 		henge.CreateIndexSql(sqlc, session.TableSession, false, []string{session.SqlColSessionExpiry})

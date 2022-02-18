@@ -3,20 +3,16 @@ package app
 import (
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 	_ "github.com/denisenkom/go-mssqldb"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/godror/godror"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/mattn/go-sqlite3"
-
-	"main/src/gvabe/bo/user"
 )
 
 func newSqlConnectSqlite(driver, url, timezone string, timeoutMs int, poolOptions *prom.SqlPoolOptions) (*prom.SqlConnect, error) {
@@ -112,286 +108,150 @@ func sqlGetUrlFromEnv() map[string]sqlDriverAndUrl {
 	return urlMap
 }
 
-func TestNewAppDaoSql(t *testing.T) {
-	name := "TestNewAppDaoSql"
-	urlMap := sqlGetUrlFromEnv()
-	if len(urlMap) == 0 {
-		t.Skipf("%s skipped", name)
+var (
+	testSqlDbtype   string
+	testSqlConnInfo sqlDriverAndUrl
+)
+
+func _createSqlConnect(t *testing.T, testName string, dbtype string, connInfo sqlDriverAndUrl) *prom.SqlConnect {
+	var sqlc *prom.SqlConnect
+	var err error
+	switch dbtype {
+	case "sqlite", "sqlite3":
+		sqlc, err = newSqlConnectSqlite(connInfo.driver, connInfo.url, timezoneSql, 10000, nil)
+	case "mssql":
+		sqlc, err = newSqlConnectMssql(connInfo.driver, connInfo.url, timezoneSql, 10000, nil)
+	case "mysql":
+		sqlc, err = newSqlConnectMysql(connInfo.driver, connInfo.url, timezoneSql, 10000, nil)
+	case "oracle":
+		sqlc, err = newSqlConnectOracle(connInfo.driver, connInfo.url, timezoneSql, 10000, nil)
+	case "pgsql":
+		sqlc, err = newSqlConnectPgsql(connInfo.driver, connInfo.url, timezoneSql, 10000, nil)
+	default:
+		t.Fatalf("%s failed: unknown database type [%s]", testName, dbtype)
 	}
-	for k, info := range urlMap {
-		var sqlc *prom.SqlConnect
-		var err error
-		switch k {
-		case "sqlite", "sqlite3":
-			sqlc, err = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mssql":
-			sqlc, err = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mysql":
-			sqlc, err = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "oracle":
-			sqlc, err = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
-			sqlc, err = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
-		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
-		}
-		if err != nil {
-			t.Fatalf("%s failed: error [%e]", name+"/"+k, err)
-		} else if sqlc == nil {
-			t.Fatalf("%s failed: nil", name+"/"+k)
-		}
-		appDao := NewAppDaoSql(sqlc, tableNameSql)
-		if appDao == nil {
-			t.Fatalf("%s failed: nil", name)
-		}
+	if err != nil {
+		t.Fatalf("%s failed: error [%e]", testName+"/"+dbtype, err)
+	} else if sqlc == nil {
+		t.Fatalf("%s failed: nil", testName+"/"+dbtype)
+	}
+	return sqlc
+}
+
+var setupTestSql = func(t *testing.T, testName string) {
+	testSqlc = _createSqlConnect(t, testName, testSqlDbtype, testSqlConnInfo)
+	testSqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tableNameSql))
+	err := InitAppTableSql(testSqlc, tableNameSql)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
 
-func _initAppDaoSql(t *testing.T, testName string, sqlc *prom.SqlConnect) AppDao {
-	sqlc.GetDB().Exec(fmt.Sprintf("DROP TABLE %s", tableNameSql))
-	switch sqlc.GetDbFlavor() {
-	case prom.FlavorPgSql:
-		henge.InitPgsqlTable(sqlc, tableNameSql, map[string]string{SqlCol_App_UserId: "VARCHAR(32)"})
-	case prom.FlavorMsSql:
-		henge.InitMssqlTable(sqlc, tableNameSql, map[string]string{SqlCol_App_UserId: "NVARCHAR(32)"})
-	case prom.FlavorMySql:
-		henge.InitMysqlTable(sqlc, tableNameSql, map[string]string{SqlCol_App_UserId: "VARCHAR(32)"})
-	case prom.FlavorOracle:
-		henge.InitOracleTable(sqlc, tableNameSql, map[string]string{SqlCol_App_UserId: "NVARCHAR2(32)"})
-	case prom.FlavorSqlite:
-		henge.InitSqliteTable(sqlc, tableNameSql, map[string]string{SqlCol_App_UserId: "VARCHAR(32)"})
-	default:
-		t.Fatalf("%s failed: unknown database type %#v", testName, sqlc.GetDbFlavor())
+var teardownTestSql = func(t *testing.T, testName string) {
+	if testSqlc != nil {
+		defer func() {
+			defer func() { testSqlc = nil }()
+			testSqlc.Close()
+		}()
 	}
-	return NewAppDaoSql(sqlc, tableNameSql)
+}
+
+/*----------------------------------------------------------------------*/
+
+func TestNewAppDaoSql(t *testing.T) {
+	testName := "TestNewAppDaoSql"
+	urlMap := sqlGetUrlFromEnv()
+	if len(urlMap) == 0 {
+		t.Skipf("%s skipped", testName)
+	}
+	for testSqlDbtype, testSqlConnInfo = range urlMap {
+		t.Run(testSqlDbtype, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, setupTestSql, teardownTestSql)
+			defer teardownTest(t)
+			appDao := NewAppDaoSql(testSqlc, tableNameSql)
+			if appDao == nil {
+				t.Fatalf("%s failed: nil", testName+"/"+testSqlDbtype)
+			}
+		})
+	}
 }
 
 func TestAppDaosql_Create(t *testing.T) {
-	name := "TestAppDaosql_Create"
+	testName := "TestAppDaosql_Create"
 	urlMap := sqlGetUrlFromEnv()
 	if len(urlMap) == 0 {
-		t.Skipf("%s skipped", name)
+		t.Skipf("%s skipped", testName)
 	}
-	for k, info := range urlMap {
-		var sqlc *prom.SqlConnect
-		switch k {
-		case "sqlite", "sqlite3":
-			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mssql":
-			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mysql":
-			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "oracle":
-			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
-			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
-		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
-		}
-		appDao := _initAppDaoSql(t, name, sqlc)
-		app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
-		ok, err := appDao.Create(app)
-		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
-		}
+	for testSqlDbtype, testSqlConnInfo = range urlMap {
+		t.Run(testSqlDbtype, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, setupTestSql, teardownTestSql)
+			defer teardownTest(t)
+			appDao := NewAppDaoSql(testSqlc, tableNameSql)
+			doTestAppDao_Create(t, testName, appDao)
+		})
 	}
 }
 
 func TestAppDaoSql_Get(t *testing.T) {
-	name := "TestAppDaoSql_Get"
+	testName := "TestAppDaoSql_Get"
 	urlMap := sqlGetUrlFromEnv()
 	if len(urlMap) == 0 {
-		t.Skipf("%s skipped", name)
+		t.Skipf("%s skipped", testName)
 	}
-	for k, info := range urlMap {
-		var sqlc *prom.SqlConnect
-		switch k {
-		case "sqlite", "sqlite3":
-			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mssql":
-			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mysql":
-			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "oracle":
-			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
-			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
-		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
-		}
-		appDao := _initAppDaoSql(t, name, sqlc)
-		appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
-		if app, err := appDao.Get("not_found"); err != nil {
-			t.Fatalf("%s failed: %s", name, err)
-		} else if app != nil {
-			t.Fatalf("%s failed: app %s should not exist", name, "not_found")
-		}
-
-		if app, err := appDao.Get("exter"); err != nil {
-			t.Fatalf("%s failed: %s", name, err)
-		} else if app == nil {
-			t.Fatalf("%s failed: nil", name)
-		} else {
-			if v := app.GetId(); v != "exter" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "exter", v)
-			}
-			if v := app.GetTagVersion(); v != 1357 {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
-			}
-			if v := app.GetOwnerId(); v != "btnguyen2k" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
-			}
-			if v := app.GetAttrsPublic().Description; v != "System application (do not delete)" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "System application (do not delete)", v)
-			}
-		}
+	for testSqlDbtype, testSqlConnInfo = range urlMap {
+		t.Run(testSqlDbtype, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, setupTestSql, teardownTestSql)
+			defer teardownTest(t)
+			appDao := NewAppDaoSql(testSqlc, tableNameSql)
+			doTestAppDao_Get(t, testName, appDao)
+		})
 	}
 }
 
 func TestAppDaoSql_Delete(t *testing.T) {
-	name := "TestAppDaoSql_Delete"
+	testName := "TestAppDaoSql_Delete"
 	urlMap := sqlGetUrlFromEnv()
 	if len(urlMap) == 0 {
-		t.Skipf("%s skipped", name)
+		t.Skipf("%s skipped", testName)
 	}
-	for k, info := range urlMap {
-		var sqlc *prom.SqlConnect
-		switch k {
-		case "sqlite", "sqlite3":
-			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mssql":
-			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mysql":
-			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "oracle":
-			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
-			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
-		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
-		}
-		appDao := _initAppDaoSql(t, name, sqlc)
-		appDao.Create(NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)"))
-		app, err := appDao.Get("exter")
-		if err != nil {
-			t.Fatalf("%s failed: %s", name, err)
-		} else if app == nil {
-			t.Fatalf("%s failed: nil", name)
-		}
-
-		ok, err := appDao.Delete(app)
-		if err != nil {
-			t.Fatalf("%s failed: %s", name, err)
-		} else if !ok {
-			t.Fatalf("%s failed: cannot delete app [%s]", name, app.GetId())
-		}
-
-		app, err = appDao.Get("exter")
-		if app, err := appDao.Get("exter"); err != nil {
-			t.Fatalf("%s failed: %s", name, err)
-		} else if app != nil {
-			t.Fatalf("%s failed: app %s should not exist", name, "exter")
-		}
+	for testSqlDbtype, testSqlConnInfo = range urlMap {
+		t.Run(testSqlDbtype, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, setupTestSql, teardownTestSql)
+			defer teardownTest(t)
+			appDao := NewAppDaoSql(testSqlc, tableNameSql)
+			doTestAppDao_Delete(t, testName, appDao)
+		})
 	}
 }
 
 func TestAppDaoSql_Update(t *testing.T) {
-	name := "TestAppDaoSql_Update"
+	testName := "TestAppDaoSql_Update"
 	urlMap := sqlGetUrlFromEnv()
 	if len(urlMap) == 0 {
-		t.Skipf("%s skipped", name)
+		t.Skipf("%s skipped", testName)
 	}
-	for k, info := range urlMap {
-		var sqlc *prom.SqlConnect
-		switch k {
-		case "sqlite", "sqlite3":
-			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mssql":
-			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mysql":
-			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "oracle":
-			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
-			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
-		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
-		}
-		appDao := _initAppDaoSql(t, name, sqlc)
-
-		app := NewApp(1357, "exter", "btnguyen2k", "System application (do not delete)")
-		appDao.Create(app)
-
-		app.SetOwnerId("nbthanh")
-		app.SetTagVersion(2468)
-		app.attrsPublic.Description = "App description"
-		ok, err := appDao.Update(app)
-		if err != nil || !ok {
-			t.Fatalf("%s failed: %#v / %s", name, ok, err)
-		}
-
-		if app, err := appDao.Get("exter"); err != nil {
-			t.Fatalf("%s failed: %s", name, err)
-		} else if app == nil {
-			t.Fatalf("%s failed: nil", name)
-		} else {
-			if v := app.GetId(); v != "exter" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "exter", v)
-			}
-			if v := app.GetTagVersion(); v != 2468 {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 2468, v)
-			}
-			if v := app.GetOwnerId(); v != "nbthanh" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "nbthanh", v)
-			}
-			if v := app.GetAttrsPublic().Description; v != "App description" {
-				t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "App description", v)
-			}
-		}
+	for testSqlDbtype, testSqlConnInfo = range urlMap {
+		t.Run(testSqlDbtype, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, setupTestSql, teardownTestSql)
+			defer teardownTest(t)
+			appDao := NewAppDaoSql(testSqlc, tableNameSql)
+			doTestAppDao_Update(t, testName, appDao)
+		})
 	}
 }
 
 func TestAppDaoSql_GetUserApps(t *testing.T) {
-	name := "TestAppDaoSql_GetUserApps"
+	testName := "TestAppDaoSql_GetUserApps"
 	urlMap := sqlGetUrlFromEnv()
 	if len(urlMap) == 0 {
-		t.Skipf("%s skipped", name)
+		t.Skipf("%s skipped", testName)
 	}
-	for k, info := range urlMap {
-		var sqlc *prom.SqlConnect
-		switch k {
-		case "sqlite", "sqlite3":
-			sqlc, _ = newSqlConnectSqlite(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mssql":
-			sqlc, _ = newSqlConnectMssql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "mysql":
-			sqlc, _ = newSqlConnectMysql(info.driver, info.url, timezoneSql, 10000, nil)
-		case "oracle":
-			sqlc, _ = newSqlConnectOracle(info.driver, info.url, timezoneSql, 10000, nil)
-		case "pgsql":
-			sqlc, _ = newSqlConnectPgsql(info.driver, info.url, timezoneSql, 10000, nil)
-		default:
-			t.Fatalf("%s failed: unknown database type [%s]", name, k)
-		}
-		appDao := _initAppDaoSql(t, name, sqlc)
-
-		for i := 0; i < 10; i++ {
-			app := NewApp(uint64(i), strconv.Itoa(i), strconv.Itoa(i%3), "App #"+strconv.Itoa(i))
-			appDao.Create(app)
-		}
-
-		u := user.NewUser(123, "2")
-		appList, err := appDao.GetUserApps(u)
-		if err != nil {
-			t.Fatalf("%s failed: %s", name, err)
-		}
-		if len(appList) != 3 {
-			t.Fatalf("%s failed: expected %#v apps but received %#v", name, 3, len(appList))
-		}
-		for _, app := range appList {
-			if app.GetOwnerId() != "2" {
-				t.Fatalf("%s failed: app %#v does not belong to user %#v", name, app.GetId(), "2")
-			}
-		}
+	for testSqlDbtype, testSqlConnInfo = range urlMap {
+		t.Run(testSqlDbtype, func(t *testing.T) {
+			teardownTest := setupTest(t, testName, setupTestSql, teardownTestSql)
+			defer teardownTest(t)
+			appDao := NewAppDaoSql(testSqlc, tableNameSql)
+			doTestAppDao_GetUserApps(t, testName, appDao)
+		})
 	}
 }

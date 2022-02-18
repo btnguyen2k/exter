@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/btnguyen2k/prom"
 
 	"github.com/btnguyen2k/henge"
@@ -14,6 +16,18 @@ func NewAppDaoCosmosdb(sqlc *prom.SqlConnect, tableName string) AppDao {
 	innerDao := AppDaoSql{UniversalDao: henge.NewUniversalDaoCosmosdbSql(sqlc, tableName, spec)}
 	dao := &AppDaoCosmosdb{AppDaoSql: innerDao, spec: spec}
 	return dao
+}
+
+// InitAppTableCosmosdb is helper function to initialize CosmosDB-based table to store application data.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitAppTableCosmosdb(sqlc *prom.SqlConnect, tableName string) error {
+	switch sqlc.GetDbFlavor() {
+	case prom.FlavorCosmosDb:
+		return InitAppTableSql(sqlc, tableName)
+	}
+	return fmt.Errorf("unsupported database type %v", sqlc.GetDbFlavor())
 }
 
 // AppDaoCosmosdb is CosmosDB-implementation of AppDao.

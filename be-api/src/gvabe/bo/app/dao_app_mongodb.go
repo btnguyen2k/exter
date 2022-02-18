@@ -19,6 +19,14 @@ func NewAppDaoMongo(mc *prom.MongoConnect, collectionName string) AppDao {
 	return dao
 }
 
+// InitAppTableMongo is helper function to initialize MongoDB table (collection) to store application data.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitAppTableMongo(mc *prom.MongoConnect, collectionName string) error {
+	return henge.InitMongoCollection(mc, collectionName)
+}
+
 // AppDaoMongo is MongoDB-implementation of AppDao.
 //
 // Available: since v0.6.0

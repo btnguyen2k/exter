@@ -3,43 +3,76 @@ package app
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/url"
+	"reflect"
 	"strings"
 
 	"github.com/btnguyen2k/consu/reddo"
 	"github.com/btnguyen2k/henge"
+	"main/src/gvabe/bo"
 )
 
 // NewApp is helper function to create new App bo.
 func NewApp(tagVersion uint64, id, ownerId, desc string) *App {
 	app := &App{
-		UniversalBo: henge.NewUniversalBo(id, tagVersion),
-		ownerId:     strings.TrimSpace(strings.ToLower(ownerId)),
-		attrsPublic: AppAttrsPublic{
-			IsActive:    true,
-			Description: strings.TrimSpace(desc),
-		},
+		UniversalBo: henge.NewUniversalBo(id, tagVersion, henge.UboOpt{TimeLayout: bo.UboTimeLayout, TimestampRounding: bo.UboTimestampRounding}),
 	}
+	app.
+		SetOwnerId(ownerId).
+		SetAttrsPublic(AppAttrsPublic{IsActive: true, Description: strings.TrimSpace(desc)})
 	return app.sync()
 }
+
+var typMapStrBool = reflect.TypeOf(map[string]bool{})
+var typSliceStr = reflect.TypeOf([]string{})
 
 // NewAppFromUbo is helper function to create new App bo from a universal bo.
 func NewAppFromUbo(ubo *henge.UniversalBo) *App {
 	if ubo == nil {
 		return nil
 	}
-	app := App{UniversalBo: &henge.UniversalBo{}}
-	if err := json.Unmarshal([]byte(ubo.GetDataJson()), &app); err != nil {
-		log.Print(fmt.Sprintf("[WARN] NewAppFromUbo - error unmarshalling JSON data: %e", err))
-		return nil
+	ubo = ubo.Clone()
+	app := &App{UniversalBo: ubo}
+	if ownerId, err := app.GetExtraAttrAs(FieldAppOwnerId, reddo.TypeString); err == nil {
+		app.SetOwnerId(ownerId.(string))
 	}
-	app.UniversalBo = ubo.Clone()
-	if ownerId, err := app.GetExtraAttrAs(FieldApp_OwnerId, reddo.TypeString); err == nil {
-		app.ownerId = ownerId.(string)
+	if publicAttrsRaw, err := app.GetDataAttr(AttrAppPublicAttrs); err == nil && publicAttrsRaw != nil {
+		var publicAttrs AppAttrsPublic
+		var v interface{}
+		ok := false
+		if v, ok = publicAttrsRaw.(AppAttrsPublic); ok {
+			publicAttrs = v.(AppAttrsPublic)
+		} else if v, ok = publicAttrsRaw.(*AppAttrsPublic); ok {
+			publicAttrs = *v.(*AppAttrsPublic)
+		}
+		if !ok {
+			if v, err := app.GetDataAttrAs(AttrAppPublicAttrs+".actv", reddo.TypeBool); err == nil && v != nil {
+				publicAttrs.IsActive = v.(bool)
+			}
+			if v, err := app.GetDataAttrAs(AttrAppPublicAttrs+".desc", reddo.TypeString); err == nil && v != nil {
+				publicAttrs.Description = strings.TrimSpace(v.(string))
+			}
+			if v, err := app.GetDataAttrAs(AttrAppPublicAttrs+".rurl", reddo.TypeString); err == nil && v != nil {
+				publicAttrs.DefaultReturnUrl = strings.TrimSpace(v.(string))
+			}
+			if v, err := app.GetDataAttrAs(AttrAppPublicAttrs+".curl", reddo.TypeString); err == nil && v != nil {
+				publicAttrs.DefaultCancelUrl = strings.TrimSpace(v.(string))
+			}
+			if v, err := app.GetDataAttrAs(AttrAppPublicAttrs+".rpub", reddo.TypeString); err == nil && v != nil {
+				publicAttrs.RsaPublicKey = strings.TrimSpace(v.(string))
+			}
+			if v, err := app.GetDataAttrAs(AttrAppPublicAttrs+".isrc", typMapStrBool); err == nil && v != nil {
+				publicAttrs.IdentitySources = v.(map[string]bool)
+			}
+			if v, err := app.GetDataAttrAs(AttrAppPublicAttrs+".tags", typSliceStr); err == nil && v != nil {
+				publicAttrs.Tags = v.([]string)
+			}
+		}
+		app.SetAttrsPublic(publicAttrs)
 	}
-	return &app
+
+	return app.sync()
 }
 
 // AppAttrsPublic holds application's public attributes.
@@ -74,10 +107,10 @@ func (apub AppAttrsPublic) clone() AppAttrsPublic {
 }
 
 const (
-	FieldApp_OwnerId = "oid"
+	FieldAppOwnerId = "oid"
 
-	AttrApp_PublicAttrs = "apub"
-	AttrApp_Ubo         = "_ubo"
+	AttrAppPublicAttrs = "apub"
+	AttrAppUbo         = "_ubo"
 )
 
 // App is the business object.
@@ -163,9 +196,9 @@ func (app *App) GenerateCancelUrl(preferredCancelUrl string) string {
 func (app *App) MarshalJSON() ([]byte, error) {
 	app.sync()
 	m := map[string]interface{}{
-		AttrApp_Ubo:         app.UniversalBo.Clone(),
-		FieldApp_OwnerId:    app.ownerId,
-		AttrApp_PublicAttrs: app.attrsPublic.clone(),
+		AttrAppUbo:         app.UniversalBo.Clone(),
+		FieldAppOwnerId:    app.ownerId,
+		AttrAppPublicAttrs: app.attrsPublic.clone(),
 	}
 	return json.Marshal(m)
 }
@@ -178,19 +211,19 @@ func (app *App) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	var err error
-	if m[AttrApp_Ubo] != nil {
-		js, _ := json.Marshal(m[AttrApp_Ubo])
+	if m[AttrAppUbo] != nil {
+		js, _ := json.Marshal(m[AttrAppUbo])
 		if err := json.Unmarshal(js, &app.UniversalBo); err != nil {
 			return err
 		}
 	}
-	if m[AttrApp_PublicAttrs] != nil {
-		js, _ := json.Marshal(m[AttrApp_PublicAttrs])
+	if m[AttrAppPublicAttrs] != nil {
+		js, _ := json.Marshal(m[AttrAppPublicAttrs])
 		if err := json.Unmarshal(js, &app.attrsPublic); err != nil {
 			return err
 		}
 	}
-	if app.ownerId, err = reddo.ToString(m[FieldApp_OwnerId]); err != nil {
+	if app.ownerId, err = reddo.ToString(m[FieldAppOwnerId]); err != nil {
 		return err
 	}
 	app.sync()
@@ -220,8 +253,8 @@ func (app *App) SetAttrsPublic(apub AppAttrsPublic) *App {
 }
 
 func (app *App) sync() *App {
-	app.SetDataAttr(AttrApp_PublicAttrs, app.attrsPublic)
-	app.SetExtraAttr(FieldApp_OwnerId, app.ownerId)
+	app.SetDataAttr(AttrAppPublicAttrs, app.attrsPublic)
+	app.SetExtraAttr(FieldAppOwnerId, app.ownerId)
 	app.UniversalBo.Sync()
 	return app
 }

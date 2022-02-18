@@ -16,6 +16,15 @@ func NewAppDaoAwsDynamodb(dync *prom.AwsDynamodbConnect, tableName string) AppDa
 	return dao
 }
 
+// InitAppTableAwsDynamodb is helper function to initialize AWS DynamoDB table(s) to store application data.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitAppTableAwsDynamodb(adc *prom.AwsDynamodbConnect, tableName string) error {
+	spec := &henge.DynamodbTablesSpec{MainTableRcu: 1, MainTableWcu: 1}
+	return henge.InitDynamodbTables(adc, tableName, spec)
+}
+
 // AppDaoAwsDynamodb is AWS DynamoDB-implementation of AppDao.
 type AppDaoAwsDynamodb struct {
 	henge.UniversalDao
