@@ -48,6 +48,7 @@ func TestNewAppFromUbo(t *testing.T) {
 	_rsaPubKey := "rsa pub key"
 	_idstr := map[string]bool{"src1": true, "src2": false}
 	_tags := []string{"tag1", "tag2", "tag3"}
+	_domains := []string{"domain1", "domain2", "domain3"}
 	ubo := henge.NewUniversalBo(_aid, _appVersion)
 	ubo.SetDataJson("invalid json string")
 	if app := NewAppFromUbo(ubo); app == nil {
@@ -64,6 +65,7 @@ func TestNewAppFromUbo(t *testing.T) {
 		Tags:             _tags,
 		RsaPublicKey:     _rsaPubKey,
 	})
+	ubo.SetDataAttr(AttrAppDomains, _domains)
 	app := NewAppFromUbo(ubo)
 	if app == nil {
 		t.Fatalf("%s failed: nil", testName)
@@ -75,6 +77,9 @@ func TestNewAppFromUbo(t *testing.T) {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
 	if f, v, expected := "owner-id", app.GetOwnerId(), _oid; v != expected {
+		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+	}
+	if f, v, expected := "domains", app.GetDomains(), _domains; !reflect.DeepEqual(v, expected) {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
 	if f, v, expected := "public-attrs/is-active", app.GetAttrsPublic().IsActive, _isAtive; v != expected {
@@ -110,6 +115,7 @@ func TestApp_json(t *testing.T) {
 	_rsaPubKey := "rsa pub key"
 	_idstr := map[string]bool{"src1": true, "src2": false}
 	_tags := []string{"tag1", "tag2", "tag3"}
+	_domains := []string{"domain1", "domain2", "domain3"}
 	app1 := NewApp(_appVersion, _aid, _oid, _desc)
 	attrs := app1.GetAttrsPublic()
 	attrs.IsActive = _isAtive
@@ -119,6 +125,7 @@ func TestApp_json(t *testing.T) {
 	attrs.IdentitySources = _idstr
 	attrs.RsaPublicKey = _rsaPubKey
 	app1.SetAttrsPublic(attrs)
+	app1.SetDomains(_domains)
 
 	js1, _ := json.Marshal(app1)
 
@@ -135,6 +142,9 @@ func TestApp_json(t *testing.T) {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
 	if f, v, expected := "owner-id", app2.GetOwnerId(), _oid; v != expected {
+		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+	}
+	if f, v, expected := "domains", app1.GetDomains(), _domains; !reflect.DeepEqual(v, expected) {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
 	if f, v, expected := "public-attrs/is-active", app2.GetAttrsPublic().IsActive, _isAtive; v != expected {
@@ -162,78 +172,85 @@ func TestApp_json(t *testing.T) {
 	if !reflect.DeepEqual(app1.attrsPublic, app2.attrsPublic) {
 		t.Fatalf("%s failed:\nexpected %#v\nbut received %#v", testName, app1.attrsPublic, app2.attrsPublic)
 	}
-}
-
-func TestApp_GenerateReturnUrl(t *testing.T) {
-	testName := "TestApp_GenerateReturnUrl"
-	app := NewApp(0, "appid", "ownerid", "test app")
-
-	if url := app.GenerateReturnUrl(""); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
-
-	if url := app.GenerateReturnUrl("in%20valid://invalid"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
-
-	app.SetAttrsPublic(AppAttrsPublic{DefaultReturnUrl: "in%20valid://invalid"})
-	if url := app.GenerateReturnUrl("url://whatever"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
-
-	app.SetAttrsPublic(AppAttrsPublic{DefaultReturnUrl: "/login?src=exter"})
-	if url := app.GenerateReturnUrl("url://absolute/url"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
-	if url := app.GenerateReturnUrl("/relative/url?param=value"); url != "/relative/url?param=value" {
-		t.Fatalf("%s failed: expected %#v but received %#v", testName, "/relative/url?param=value", url)
-	}
-
-	app.SetAttrsPublic(AppAttrsPublic{DefaultReturnUrl: "url://domain/path1/subpath1?src=exter"})
-	if url, e := app.GenerateReturnUrl("/another/path?param=value"), "url://domain/another/path?param=value"; url != e {
-		t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
-	}
-	if url := app.GenerateReturnUrl("url://another_domain/url"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
-	if url, e := app.GenerateReturnUrl("url://domain/path2/subpath2?param=value"), "url://domain/path2/subpath2?param=value"; url != e {
-		t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+	if !reflect.DeepEqual(app1.domains, app2.domains) {
+		t.Fatalf("%s failed:\nexpected %#v\nbut received %#v", testName, app1.domains, app2.domains)
 	}
 }
 
-func TestApp_GenerateCancelUrl(t *testing.T) {
-	testName := "TestApp_GenerateCancelUrl"
+func TestApp_GenerateUrl(t *testing.T) {
+	testName := "TestApp_GenerateUrl"
 	app := NewApp(0, "appid", "ownerid", "test app")
+	funcList := []func(string) string{app.GenerateReturnUrl, app.GenerateCancelUrl}
+	for _, f := range funcList {
+		app.SetAttrsPublic(AppAttrsPublic{Description: "test app"})
+		app.SetDomains(nil)
 
-	if url := app.GenerateCancelUrl(""); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
+		if url := f(""); url != "" {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
 
-	if url := app.GenerateCancelUrl("in%20valid://invalid"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
+		if url := f("in%20valid://invalid"); url != "" {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
 
-	app.SetAttrsPublic(AppAttrsPublic{DefaultCancelUrl: "in%20valid://invalid"})
-	if url := app.GenerateCancelUrl("url://whatever"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
+		app.SetAttrsPublic(AppAttrsPublic{DefaultReturnUrl: "in%20valid://invalid", DefaultCancelUrl: "in%20valid://invalid"})
+		if url := f("url://whatever"); url != "" {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
 
-	app.SetAttrsPublic(AppAttrsPublic{DefaultCancelUrl: "/login?src=exter"})
-	if url := app.GenerateCancelUrl("url://absolute/url"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
-	if url, e := app.GenerateCancelUrl("/relative/url?param=value"), "/relative/url?param=value"; url != e {
-		t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
-	}
+		app.SetAttrsPublic(AppAttrsPublic{DefaultReturnUrl: "/login?src=exter", DefaultCancelUrl: "/login?src=exter"})
+		if url := f("url://absolute/url"); url != "" {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
+		if url := f("/relative/url?param=value"); url != "/relative/url?param=value" {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, "/relative/url?param=value", url)
+		}
 
-	app.SetAttrsPublic(AppAttrsPublic{DefaultCancelUrl: "url://domain/path1/subpath1?src=exter"})
-	if url, e := app.GenerateCancelUrl("/path2/subpath2?param=value"), "url://domain/path2/subpath2?param=value"; url != e {
-		t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+		_default := "url://domain/path1/subpath1?src=exter"
+		app.SetAttrsPublic(AppAttrsPublic{DefaultReturnUrl: _default, DefaultCancelUrl: _default})
+		if url, e := f("/another/path?param=value"), "url://domain/another/path?param=value"; url != e {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+		}
+		if url := f("url://another_domain/url"); url != "" {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
+		if url, e := f("url://domain/path2/subpath2?param=value"), "url://domain/path2/subpath2?param=value"; url != e {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+		}
+		if url, e := f(""), _default; url != e {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+		}
 	}
-	if url := app.GenerateCancelUrl("url://another_domain/url"); url != "" {
-		t.Fatalf("%s failed: expected empty but received %#v", testName, url)
-	}
-	if url, e := app.GenerateCancelUrl("url://domain/path2/subpath2?param=value"), "url://domain/path2/subpath2?param=value"; url != e {
-		t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+}
+
+func TestApp_GenerateUrlWhitelist(t *testing.T) {
+	testName := "TestApp_GenerateUrlWhitelist"
+	app := NewApp(0, "appid", "ownerid", "test app")
+	funcList := []func(string) string{app.GenerateReturnUrl, app.GenerateCancelUrl}
+	for _, f := range funcList {
+		app.SetAttrsPublic(AppAttrsPublic{Description: "test app"})
+		app.SetDomains([]string{"domain1", "domain2", "domain3"})
+
+		if url := f(""); url != "" {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
+
+		if url := f("/relative/url?param=value"); url != "" {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
+
+		if url, e := f("url://domain1/path1/subpath1?param=value"), "url://domain1/path1/subpath1?param=value"; url != e {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+		}
+		if url, e := f("url://domain2/path2/subpath2?param=value"), "url://domain2/path2/subpath2?param=value"; url != e {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+		}
+		if url, e := f("url://domain3/path3/subpath3?param=value"), "url://domain3/path3/subpath3?param=value"; url != e {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
+		}
+
+		if url, e := f("url://domain0/path0/subpath0?param=value"), ""; url != e {
+			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		}
 	}
 }
