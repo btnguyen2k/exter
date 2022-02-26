@@ -23,7 +23,7 @@ let apiVerifyLoginToken = "/api/verifyLoginToken"
 let apiSystemInfo = "/api/systemInfo"
 let apiApp = "/api/app"
 let apiMyAppList = "/api/myapps"
-let apiMyApp = "/api/myapp"
+let apiMyApp = "/api/myapp/:app"
 
 function _apiOnSuccess(method, resp, apiUri, callbackSuccessful) {
     if (method=='GET' && resp.hasOwnProperty("data") && resp.data.status == 403) {

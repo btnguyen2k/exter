@@ -32,6 +32,14 @@ func TestNewApp(t *testing.T) {
 	}
 }
 
+func _sliceToMap(input []string) map[string]bool {
+	result := make(map[string]bool)
+	for _, k := range input {
+		result[k] = true
+	}
+	return result
+}
+
 func TestNewAppFromUbo(t *testing.T) {
 	testName := "TestNewAppFromUbo"
 	if app := NewAppFromUbo(nil); app != nil {
@@ -70,6 +78,8 @@ func TestNewAppFromUbo(t *testing.T) {
 	if app == nil {
 		t.Fatalf("%s failed: nil", testName)
 	}
+
+	_domains = append(_domains, "default_return_url", "default_cancel_url")
 	if f, v, expected := "app-version", app.GetTagVersion(), _appVersion; v != expected {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
@@ -79,7 +89,7 @@ func TestNewAppFromUbo(t *testing.T) {
 	if f, v, expected := "owner-id", app.GetOwnerId(), _oid; v != expected {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
-	if f, v, expected := "domains", app.GetDomains(), _domains; !reflect.DeepEqual(v, expected) {
+	if f, v, expected := "domains", _sliceToMap(app.GetDomains()), _sliceToMap(_domains); !reflect.DeepEqual(v, expected) {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
 	if f, v, expected := "public-attrs/is-active", app.GetAttrsPublic().IsActive, _isAtive; v != expected {
@@ -144,7 +154,7 @@ func TestApp_json(t *testing.T) {
 	if f, v, expected := "owner-id", app2.GetOwnerId(), _oid; v != expected {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
-	if f, v, expected := "domains", app1.GetDomains(), _domains; !reflect.DeepEqual(v, expected) {
+	if f, v, expected := "domains", _sliceToMap(app1.GetDomains()), _sliceToMap(_domains); !reflect.DeepEqual(v, expected) {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
 	if f, v, expected := "public-attrs/is-active", app2.GetAttrsPublic().IsActive, _isAtive; v != expected {
@@ -235,8 +245,8 @@ func TestApp_GenerateUrlWhitelist(t *testing.T) {
 			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
 		}
 
-		if url := f("/relative/url?param=value"); url != "" {
-			t.Fatalf("%s failed: expected empty but received %#v", testName, url)
+		if url, e := f("/relative/url?param=value"), "/relative/url?param=value"; url != e {
+			t.Fatalf("%s failed: expected %#v but received %#v", testName, e, url)
 		}
 
 		if url, e := f("url://domain1/path1/subpath1?param=value"), "url://domain1/path1/subpath1?param=value"; url != e {

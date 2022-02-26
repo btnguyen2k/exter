@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/btnguyen2k/consu/reddo"
@@ -140,21 +141,17 @@ func _generateUrl(preferredUrl, defaultUrl string, whitelistDomains []string) st
 	}
 
 	if !uPreferredUrl.IsAbs() {
-		// if preferred-url is relative, then default-url must not be empty
-		if defaultUrl == "" {
-			log.Printf("[WARN] Default url is empty")
-			return ""
-		}
-
 		uDefaultUrl, err := url.Parse(defaultUrl)
 		if err != nil {
 			log.Printf("[WARN] Default url is invalid: %s", defaultUrl)
 			return ""
 		}
-		if !uDefaultUrl.IsAbs() {
+
+		if !uDefaultUrl.IsAbs() || defaultUrl == "" {
 			// preferred-url and default-url are both relative
 			return preferredUrl
 		}
+
 		// default-url is absolute, complete the url by prepending default-url's scheme and host
 		return uDefaultUrl.Scheme + "://" + uDefaultUrl.Host + "/" + strings.TrimPrefix(preferredUrl, "/")
 	}
@@ -167,39 +164,28 @@ func _generateUrl(preferredUrl, defaultUrl string, whitelistDomains []string) st
 	}
 	log.Printf("[WARN] Preferred url [%s] is not in whitelist.", preferredUrl)
 	return ""
-
-	// if !uDefaultUrl.IsAbs() {
-	// 	// if default-url is relative, then preferred-url must be relative too
-	// 	if uPreferredUrl.IsAbs() {
-	// 		log.Printf("[WARN] Preferred url [%s] is not valid against default one [%s]", preferredUrl, defaultUrl)
-	// 		return ""
-	// 	}
-	// 	return preferredUrl
-	// }
-	// if !uPreferredUrl.IsAbs() {
-	// 	// preferred-url is relative, complete the url by prepending default-url's scheme and host
-	// 	return uDefaultUrl.Scheme + "://" + uDefaultUrl.Host + "/" + strings.TrimPrefix(preferredUrl, "/")
-	// }
-	// if uDefaultUrl.Host != uPreferredUrl.Host {
-	// 	// preferred-url is absolute, its host must match default-url, or in whitelist
-	// 	log.Printf("[WARN] Preferred url [%s] is not valid against default one [%s]", preferredUrl, defaultUrl)
-	// 	return ""
-	// }
-	// return preferredUrl
 }
 
 // GenerateReturnUrl validates 'preferredReturnUrl' and builds "return url" for the app.
 //
 // - if 'preferredReturnUrl' is invalid, this function returns empty string
 func (app *App) GenerateReturnUrl(preferredReturnUrl string) string {
-	return _generateUrl(preferredReturnUrl, app.attrsPublic.DefaultReturnUrl, app.domains)
+	domains := app.domains
+	if u, e := url.Parse(app.attrsPublic.DefaultReturnUrl); e == nil && u != nil {
+		domains = append(domains, u.Host)
+	}
+	return _generateUrl(preferredReturnUrl, app.attrsPublic.DefaultReturnUrl, domains)
 }
 
 // GenerateCancelUrl validates 'preferredCancelUrl' and builds "cancel url" for the app.
 //
 // - if 'preferredCancelUrl' is invalid, this function returns empty string
 func (app *App) GenerateCancelUrl(preferredCancelUrl string) string {
-	return _generateUrl(preferredCancelUrl, app.attrsPublic.DefaultCancelUrl, app.domains)
+	domains := app.domains
+	if u, e := url.Parse(app.attrsPublic.DefaultCancelUrl); e == nil && u != nil {
+		domains = append(domains, u.Host)
+	}
+	return _generateUrl(preferredCancelUrl, app.attrsPublic.DefaultCancelUrl, domains)
 }
 
 // MarshalJSON implements json.encode.Marshaler.MarshalJSON.
@@ -292,6 +278,9 @@ func (app *App) SetDomains(value []string) *App {
 		app.domains[i] = k
 		i++
 	}
+	sort.Slice(app.domains, func(i, j int) bool {
+		return app.domains[i] < app.domains[j]
+	})
 	return app
 }
 
@@ -303,14 +292,14 @@ func (app *App) GetAttrsPublic() AppAttrsPublic {
 // SetAttrsPublic sets app's public attributes.
 func (app *App) SetAttrsPublic(apub AppAttrsPublic) *App {
 	app.attrsPublic = apub.clone()
-	domains := app.GetDomains()
-	if u, e := url.Parse(app.attrsPublic.DefaultReturnUrl); e == nil && u.Host != "" {
-		domains = append(domains, u.Host)
-	}
-	if u, e := url.Parse(app.attrsPublic.DefaultCancelUrl); e == nil && u.Host != "" {
-		domains = append(domains, u.Host)
-	}
-	app.SetDomains(domains)
+	// domains := app.GetDomains()
+	// if u, e := url.Parse(app.attrsPublic.DefaultReturnUrl); e == nil && u.Host != "" {
+	// 	domains = append(domains, u.Host)
+	// }
+	// if u, e := url.Parse(app.attrsPublic.DefaultCancelUrl); e == nil && u.Host != "" {
+	// 	domains = append(domains, u.Host)
+	// }
+	// app.SetDomains(domains)
 	return app
 }
 

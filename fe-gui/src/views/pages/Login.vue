@@ -42,10 +42,10 @@
                 </CForm>
               </CCardBody>
             </CCard>
-            <CCard v-if="app!=null && app.config!=null" color="primary" text-color="white"
+            <CCard v-if="app!=null && app.public_attrs!=null" color="primary" text-color="white"
                    class="text-center py-5 d-md-down-none" style="width:44%" body-wrapper>
               <h2>{{ app.id }}</h2>
-              <p>{{ app.config.desc }}</p>
+              <p>{{ app.public_attrs.desc }}</p>
             </CCard>
           </CCardGroup>
         </CCol>
@@ -72,11 +72,11 @@ export default {
       let appId = this.$route.query.app ? this.$route.query.app : appConfig.APP_ID
       let urlDashboard = this.$router.resolve({name: 'Dashboard'}).href
       let returnUrl = this.$route.query.returnUrl ? this.$route.query.returnUrl : ''
-      return returnUrl != '' ? returnUrl : (this.app.config ? this.app.config.rurl : (appId == appConfig.APP_ID ? urlDashboard : ''))
+      return returnUrl != '' ? returnUrl : (this.app.public_attrs ? this.app.public_attrs.rurl : (appId == appConfig.APP_ID ? urlDashboard : ''))
     },
     cancelUrl() {
       let urlCancelUrl = this.$route.query.cancelUrl ? this.$route.query.cancelUrl : ''
-      return urlCancelUrl != '' ? urlCancelUrl : (this.app.config ? this.app.config.curl : '')
+      return urlCancelUrl != '' ? urlCancelUrl : (this.app.public_attrs ? this.app.public_attrs.curl : '')
     },
   },
   data() {
@@ -90,11 +90,11 @@ export default {
           }
           this.app = apiRes.data
           this.appInited = true
-          if (!this.app.config.actv) {
+          if (!this.app.public_attrs.actv) {
             this._resetOnError("App [" + appId + "] is not active")
             return
           }
-          let appISources = this.app.config.sources
+          let appISources = this.app.public_attrs.sources
           let iSources = {}
           clientUtils.apiDoGet(clientUtils.apiInfo,
               (apiRes) => {

@@ -16,22 +16,22 @@
                     <CDataTable :items="myAppList.data" :fields="[{label:'',key:'active'},'id','description','sources','tags','actions']">
                         <template #active="{item}">
                             <td>
-                                <CIcon :name="`${item.config.actv?'cil-check':'cil-check-alt'}`" :style="`color: ${item.config.actv?'green':'grey'}`"/>
+                                <CIcon :name="`${item.public_attrs.actv?'cil-check':'cil-check-alt'}`" :style="`color: ${item.public_attrs.actv?'green':'grey'}`"/>
                             </td>
                         </template>
                         <template #description="{item}">
                             <td>
-                                {{item.config.desc}}
+                                {{item.public_attrs.desc}}
                             </td>
                         </template>
                         <template #sources="{item}">
                             <td>
-                                {{item.config.sources}}
+                                {{item.public_attrs.sources}}
                             </td>
                         </template>
                         <template #tags="{item}">
                             <td>
-                                {{item.config.tags}}
+                                {{item.public_attrs.tags}}
                             </td>
                         </template>
                         <template #actions="{item}">

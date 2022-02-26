@@ -330,7 +330,7 @@ func apiLogin(ctx *itineris.ApiContext, auth *itineris.ApiAuth, params *itineris
 
 	requestReturnUrl := _extractParam(params, "return_url", reddo.TypeString, "", nil)
 	if returnUrl := app.GenerateReturnUrl(requestReturnUrl.(string)); returnUrl == "" && requestReturnUrl != "" {
-		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", returnUrl, appId))
+		return itineris.NewApiResult(itineris.StatusNoPermission).SetMessage(fmt.Sprintf("Return url [%s] is not allowed for app [%s]", requestReturnUrl, appId))
 	} else {
 		requestReturnUrl = returnUrl
 	}
@@ -421,6 +421,9 @@ This API expects an input map:
 	{
 		"token": login token (returned by apiLogin/apiVerifyLoginToken),
 	}
+
+Notes:
+  - This API returns only app's public info.
 */
 func apiMyAppList(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
 	token, _ := params.GetParamAsType("token", reddo.TypeString)
@@ -435,17 +438,14 @@ func apiMyAppList(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.
 	result := make([]map[string]interface{}, 0)
 	for _, myApp := range appList {
 		attrsPublic := extractAppAttrsPublic(myApp)
-		appInfo := map[string]interface{}{"id": myApp.GetId(), "config": attrsPublic}
+		appInfo := map[string]interface{}{"id": myApp.GetId(), "public_attrs": attrsPublic}
 		result = append(result, appInfo)
 	}
 	return itineris.NewApiResult(itineris.StatusOk).SetData(result)
 }
 
 /*
-API handler "getMyApp"
-
-Notes:
-	- This API return only app's public info
+API handler "getMyApp".
 */
 func apiGetMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
 	id, _ := params.GetParamAsType("id", reddo.TypeString)
@@ -466,15 +466,19 @@ func apiGetMyApp(ctx *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris
 			return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("App [%s] not found", id))
 		}
 		attrsPublic := extractAppAttrsPublic(myApp)
-		return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{"id": myApp.GetId(), "config": attrsPublic})
+		return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{
+			"id":           myApp.GetId(),
+			"domains":      myApp.GetDomains(),
+			"public_attrs": attrsPublic,
+		})
 	}
 }
 
 /*
-API handler "getApp"
+API handler "getApp".
 
 Notes:
-	- This API return only app's public info
+  - This API returns only app's public info.
 */
 func apiGetApp(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.ApiParams) *itineris.ApiResult {
 	id, _ := params.GetParamAsType("id", reddo.TypeString)
@@ -487,7 +491,10 @@ func apiGetApp(_ *itineris.ApiContext, _ *itineris.ApiAuth, params *itineris.Api
 		return itineris.NewApiResult(itineris.StatusNotFound).SetMessage(fmt.Sprintf("App [%s] not found", id))
 	} else {
 		attrsPublic := extractAppAttrsPublic(myApp)
-		return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{"id": myApp.GetId(), "config": attrsPublic})
+		return itineris.NewApiResult(itineris.StatusOk).SetData(map[string]interface{}{
+			"id":           myApp.GetId(),
+			"public_attrs": attrsPublic,
+		})
 	}
 }
 
@@ -524,8 +531,13 @@ func _extractAppParams(ctx *itineris.ApiContext, params *itineris.ApiParams) (*a
 	if defaultCancelUrl != "" && !regexp.MustCompile("^(?i)https?://.*$").Match([]byte(defaultCancelUrl.(string))) {
 		return nil, itineris.NewApiResult(itineris.StatusErrorClient).SetMessage("Invalid value for parameter [default_cancel_url]")
 	}
+	domainsStr := _extractParam(params, "domains", reddo.TypeString, "", nil)
+	domains := regexp.MustCompile(`[,;\s]+`).Split(domainsStr.(string), -1)
+	for i, domain := range domains {
+		domains[i] = strings.ToLower(strings.TrimSpace(domain))
+	}
 	tagsStr := _extractParam(params, "tags", reddo.TypeString, "", nil)
-	tags := regexp.MustCompile("[,;]+").Split(tagsStr.(string), -1)
+	tags := regexp.MustCompile(`[,;]+`).Split(tagsStr.(string), -1)
 	for i, tag := range tags {
 		tags[i] = strings.TrimSpace(tag)
 	}
@@ -545,6 +557,7 @@ func _extractAppParams(ctx *itineris.ApiContext, params *itineris.ApiParams) (*a
 	ownerId := sessionClaim.UserId
 
 	boApp := app.NewApp(goapi.AppVersionNumber, id.(string), ownerId, desc.(string))
+	boApp.SetDomains(domains)
 	boApp.SetAttrsPublic(app.AppAttrsPublic{
 		IsActive:         isActive.(bool),
 		Description:      desc.(string),

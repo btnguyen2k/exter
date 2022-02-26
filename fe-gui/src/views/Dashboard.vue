@@ -72,22 +72,22 @@
                           :fields="[{label:'',key:'active'},'id','description','sources','tags','actions']">
                 <template #active="{item}">
                   <td style="vertical-align: middle">
-                    <CIcon name="cil-check" :style="`color: ${item.config.actv?'green':'grey'}`"/>
+                    <CIcon name="cil-check" :style="`color: ${item.public_attrs.actv?'green':'grey'}`"/>
                   </td>
                 </template>
                 <template #description="{item}">
                   <td style="vertical-align: middle">
-                    {{ item.config.desc }}
+                    {{ item.public_attrs.desc }}
                   </td>
                 </template>
                 <template #sources="{item}">
                   <td style="vertical-align: middle">
-                    {{ item.config.sources }}
+                    {{ item.public_attrs.sources }}
                   </td>
                 </template>
                 <template #tags="{item}">
                   <td style="vertical-align: middle">
-                    {{ item.config.tags }}
+                    {{ item.public_attrs.tags }}
                   </td>
                 </template>
                 <template #actions="{item}">
