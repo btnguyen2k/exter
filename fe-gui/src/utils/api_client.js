@@ -21,7 +21,7 @@ let apiInfo = "/info"
 let apiLogin = "/api/login"
 let apiVerifyLoginToken = "/api/verifyLoginToken"
 let apiSystemInfo = "/api/systemInfo"
-let apiApp = "/api/app"
+let apiApp = "/api/app/:app"
 let apiMyAppList = "/api/myapps"
 let apiMyApp = "/api/myapp/:app"
 
