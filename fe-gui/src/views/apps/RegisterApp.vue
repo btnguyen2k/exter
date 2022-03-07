@@ -42,8 +42,11 @@
                       :is-valid="validatorUrl"
                       invalid-feedback="Cancel url must be a http or https link."
               />
+              <CInput horizontal type="text" v-model="form.domains" label="Whitelist domains"
+                      placeholder="Exter redirects users to only these whitelist domains. Domains separated by spaces, commas or semi-colons"
+              />
               <CInput horizontal type="text" v-model="form.tags" label="Tags"
-                      placeholder="Tags separated by comma"
+                      placeholder="Tags separated by commas or semi-colons"
               />
               <CTextarea horizontal type="text" v-model="form.rsaPublicKey" label="RSA public key"
                          rows="6" placeholder="RSA public key in PEM format"
@@ -75,33 +78,37 @@ let patternUrl = /^http(s?):\/\//
 
 export default {
   name: 'RegisterApp',
-  data() {
+  mounted() {
+    const vue = this
     let loginChannelList = []
-    let form = {
-      isActive: true,
-      id: "", description: "", rsaPublicKey: "", defaultReturnUrl: "", defaultCancelUrl: "",
-      tags: "",
-      idSources: {},
-    }
     clientUtils.apiDoGet(clientUtils.apiInfo,
         (apiRes) => {
           if (apiRes.status == 200) {
             apiRes.data.login_channels.every(function (e) {
               loginChannelList.push(e)
-              form.idSources[e] = true
+              vue.form.idSources[e] = true
               return true
             })
+            vue.loginChannelList = loginChannelList
           } else {
-            console.error("Getting info was unsuccessful: " + apiRes)
+            console.error("Calling api "+clientUtils.apiInfo+" was unsuccessful: " + apiRes)
           }
         },
         (err) => {
-          console.error("Error getting info list: " + err)
+          console.error("Error calling api "+clientUtils.apiInfo+": " + err)
         })
+  },
+  data() {
     return {
-      form: form,
+      form: {
+        isActive: true,
+        id: "", description: "", rsaPublicKey: "", defaultReturnUrl: "", defaultCancelUrl: "",
+        domains: "",
+        tags: "",
+        idSources: {},
+      },
       errorMsg: "",
-      loginChannelList: loginChannelList,
+      loginChannelList: [],
     }
   },
   methods: {
@@ -116,6 +123,7 @@ export default {
         default_return_url: this.form.defaultReturnUrl,
         default_cancel_url: this.form.defaultCancelUrl,
         rsa_public_key: this.form.rsaPublicKey,
+        domains: this.form.domains,
         tags: this.form.tags,
         id_sources: this.form.idSources,
       }

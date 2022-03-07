@@ -72,22 +72,22 @@
                           :fields="[{label:'',key:'active'},'id','description','sources','tags','actions']">
                 <template #active="{item}">
                   <td style="vertical-align: middle">
-                    <CIcon name="cil-check" :style="`color: ${item.config.actv?'green':'grey'}`"/>
+                    <CIcon name="cil-check" :style="`color: ${item.public_attrs.actv?'green':'grey'}`"/>
                   </td>
                 </template>
                 <template #description="{item}">
                   <td style="vertical-align: middle">
-                    {{ item.config.desc }}
+                    {{ item.public_attrs.desc }}
                   </td>
                 </template>
                 <template #sources="{item}">
                   <td style="vertical-align: middle">
-                    {{ item.config.sources }}
+                    {{ item.public_attrs.sources }}
                   </td>
                 </template>
                 <template #tags="{item}">
                   <td style="vertical-align: middle">
-                    {{ item.config.tags }}
+                    {{ item.public_attrs.tags }}
                   </td>
                 </template>
                 <template #actions="{item}">
@@ -116,26 +116,20 @@ import {CChartLineSimple} from './charts/index.js'
 import clientUtils from "@/utils/api_client"
 import appUtils from "@/utils/app_utils"
 
+var intervalUpdateSystemInfo
+
 export default {
   name: 'Dashboard',
   components: {
     CChartLineSimple,
   },
-  data() {
-    let systemInfo = {
-      cpu: {cores: -1, load: -1.0, history_load: []},
-      memory: {free: 0, freeGb: 0.0, history_freeGb: []},
-      app_memory: {usedMb: 0.0, history_usedMb: []},
-      go_routines: {num: 0, history: []},
-    }
-
-    let myAppList = {data: []}
+  mounted: function () {
     let session = appUtils.loadLoginSession()
     if (session != null) {
       clientUtils.apiDoGet(clientUtils.apiMyAppList + "?token=" + session.token,
           (apiRes) => {
             if (apiRes.status == 200) {
-              myAppList.data = apiRes.data
+              this.myAppList.data = apiRes.data
             } else {
               console.error("Getting my app list was unsuccessful: " + JSON.stringify(apiRes))
             }
@@ -145,19 +139,30 @@ export default {
           })
     }
 
+    this._updateSystemInfo()
+    this.$nextTick(function () {
+      intervalUpdateSystemInfo = window.setInterval(() => this._updateSystemInfo(), 10000);
+    })
+  },
+  destroyed: function () {
+    if (intervalUpdateSystemInfo) {
+      window.clearInterval(intervalUpdateSystemInfo)
+      intervalUpdateSystemInfo = null
+    }
+  },
+  data() {
     return {
       isCollapsedMyApps: true,
       isCollapsedGroups: true,
       isCollapsedUsers: true,
-      systemInfo: systemInfo,
-      myAppList: myAppList,
+      systemInfo: {
+        cpu: {cores: -1, load: -1.0, history_load: []},
+        memory: {free: 0, freeGb: 0.0, history_freeGb: []},
+        app_memory: {usedMb: 0.0, history_usedMb: []},
+        go_routines: {num: 0, history: []},
+      },
+      myAppList: {data: []},
     }
-  },
-  mounted: function () {
-    this._updateSystemInfo()
-    this.$nextTick(function () {
-      window.setInterval(() => this._updateSystemInfo(), 10000);
-    })
   },
   methods: {
     _updateSystemInfo() {

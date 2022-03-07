@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 )
 
@@ -25,124 +24,64 @@ func _createMongoConnect(t *testing.T, testName string) *prom.MongoConnect {
 
 const collectionNameMongo = "exter_test_user"
 
-func TestNewUserDaoMongo(t *testing.T) {
-	name := "TestNewUserDaoMongo"
-	mc := _createMongoConnect(t, name)
-	userDao := NewUserDaoMongo(mc, collectionNameMongo)
-	if userDao == nil {
-		t.Fatalf("%s failed: nil", name)
+var setupTestMongo = func(t *testing.T, testName string) {
+	testMc = _createMongoConnect(t, testName)
+	testMc.GetCollection(collectionNameMongo).Drop(nil)
+	err := InitUserTableMongo(testMc, collectionNameMongo)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
 
-func _initUserDaoMongo(t *testing.T, testName string, mc *prom.MongoConnect) UserDao {
-	mc.GetCollection(collectionNameMongo).Drop(nil)
-	henge.InitMongoCollection(mc, collectionNameMongo)
-	return NewUserDaoMongo(mc, collectionNameMongo)
+var teardownTestMongo = func(t *testing.T, testName string) {
+	if testMc != nil {
+		defer func() {
+			defer func() { testMc = nil }()
+			testMc.Close(nil)
+		}()
+	}
+}
+
+/*----------------------------------------------------------------------*/
+
+func TestNewUserDaoMongo(t *testing.T) {
+	testName := "TestNewUserDaoMongo"
+	teardownTest := setupTest(t, testName, setupTestMongo, teardownTestMongo)
+	defer teardownTest(t)
+	userDao := NewUserDaoMongo(testMc, collectionNameMongo)
+	if userDao == nil {
+		t.Fatalf("%s failed: nil", testName)
+	}
 }
 
 func TestUserDaoMongo_Create(t *testing.T) {
-	name := "TestUserDaoMongo_Create"
-	mc := _createMongoConnect(t, name)
-	userDao := _initUserDaoMongo(t, name, mc)
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
+	testName := "TestUserDaoMongo_Create"
+	teardownTest := setupTest(t, testName, setupTestMongo, teardownTestMongo)
+	defer teardownTest(t)
+	userDao := NewUserDaoMongo(testMc, collectionNameMongo)
+	doTestUserDao_Create(t, testName, userDao)
 }
 
 func TestUserDaoMongo_Get(t *testing.T) {
-	name := "TestUserDaoMongo_Get"
-	mc := _createMongoConnect(t, name)
-	userDao := _initUserDaoMongo(t, name, mc)
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-	if u, err := userDao.Get("not_found"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u != nil {
-		t.Fatalf("%s failed: user %s should not exist", name, "not_found")
-	}
-
-	if u, err := userDao.Get("btnguyen2k"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u == nil {
-		t.Fatalf("%s failed: nil", name)
-	} else {
-		if v := u.GetId(); v != "btnguyen2k" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
-		}
-		if v := u.GetTagVersion(); v != 1357 {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
-		}
-		if v := u.GetDisplayName(); v != "Thanh Nguyen" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "Thanh Nguyen", v)
-		}
-		if v := u.GetAesKey(); v != "aeskey" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "aeskey", v)
-		}
-	}
+	testName := "TestUserDaoMongo_Get"
+	teardownTest := setupTest(t, testName, setupTestMongo, teardownTestMongo)
+	defer teardownTest(t)
+	userDao := NewUserDaoMongo(testMc, collectionNameMongo)
+	doTestUserDao_Get(t, testName, userDao)
 }
 
 func TestUserDaoMongo_Delete(t *testing.T) {
-	name := "TestUserDaoMongo_Delete"
-	mc := _createMongoConnect(t, name)
-	userDao := _initUserDaoMongo(t, name, mc)
-
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	ok, err = userDao.Delete(u)
-	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if !ok {
-		t.Fatalf("%s failed: cannot delete user [%s]", name, u.GetId())
-	}
-
-	u, err = userDao.Get("btnguyen2k")
-	if app, err := userDao.Get("exter"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if app != nil {
-		t.Fatalf("%s failed: user %s should not exist", name, "userDao")
-	}
+	testName := "TestUserDaoMongo_Delete"
+	teardownTest := setupTest(t, testName, setupTestMongo, teardownTestMongo)
+	defer teardownTest(t)
+	userDao := NewUserDaoMongo(testMc, collectionNameMongo)
+	doTestUserDao_Delete(t, testName, userDao)
 }
 
 func TestUserDaoMongo_Update(t *testing.T) {
-	name := "TestUserDaoMongo_Update"
-	mc := _createMongoConnect(t, name)
-	userDao := _initUserDaoMongo(t, name, mc)
-
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	userDao.Create(u)
-
-	u.SetDisplayName("nbthanh")
-	u.SetAesKey("newaeskey")
-	ok, err := userDao.Update(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	if u, err := userDao.Get("btnguyen2k"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u == nil {
-		t.Fatalf("%s failed: nil", name)
-	} else {
-		if v := u.GetId(); v != "btnguyen2k" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
-		}
-		if v := u.GetTagVersion(); v != 1357 {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
-		}
-		if v := u.GetDisplayName(); v != "nbthanh" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "nbthanh", v)
-		}
-		if v := u.GetAesKey(); v != "newaeskey" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "newaeskey", v)
-		}
-	}
+	testName := "TestUserDaoMongo_Update"
+	teardownTest := setupTest(t, testName, setupTestMongo, teardownTestMongo)
+	defer teardownTest(t)
+	userDao := NewUserDaoMongo(testMc, collectionNameMongo)
+	doTestUserDao_Update(t, testName, userDao)
 }

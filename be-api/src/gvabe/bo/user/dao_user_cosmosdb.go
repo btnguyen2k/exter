@@ -1,6 +1,8 @@
 package user
 
 import (
+	"fmt"
+
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
 
@@ -13,6 +15,18 @@ func NewUserDaoCosmosdb(sqlc *prom.SqlConnect, tableName string) UserDao {
 	innerDao := UserDaoSql{UniversalDao: henge.NewUniversalDaoCosmosdbSql(sqlc, tableName, spec)}
 	dao := &UserDaoCosmosdb{UserDaoSql: innerDao, spec: spec}
 	return dao
+}
+
+// InitUserTableCosmosdb is helper function to initialize CosmosDB-based table to store users.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitUserTableCosmosdb(sqlc *prom.SqlConnect, tableName string) error {
+	switch sqlc.GetDbFlavor() {
+	case prom.FlavorCosmosDb:
+		return InitUserTableSql(sqlc, tableName)
+	}
+	return fmt.Errorf("unsupported database type %v", sqlc.GetDbFlavor())
 }
 
 // UserDaoCosmosdb is CosmosDB-implementation of SessionDao.

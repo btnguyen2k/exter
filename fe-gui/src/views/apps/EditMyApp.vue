@@ -1,28 +1,18 @@
 <template>
   <div>
-    <CRow v-if="!found">
+    <CRow>
       <CCol sm="12">
-        <CCard>
+        <CCard accent-color="info">
           <CCardHeader>Edit Application</CCardHeader>
-          <CCardBody>
-            <p class="alert alert-danger">Application [{{ this.$route.params.id }}] not found</p>
-          </CCardBody>
-          <CCardFooter>
-            <CButton type="button" color="info" class="ml-2" style="width: 96px" @click="doCancel">
-              <CIcon name="cil-arrow-circle-left"/>
-              Back
-            </CButton>
-          </CCardFooter>
-        </CCard>
-      </CCol>
-    </CRow>
-    <CRow v-if="found">
-      <CCol sm="12">
-        <CCard>
-          <CCardHeader>Edit User</CCardHeader>
           <CForm @submit.prevent="doSubmit" method="post">
-            <CCardBody>
-              <p v-if="errorMsg!=''" class="alert alert-danger">{{ errorMsg }}</p>
+            <CCardBody v-if="foundStatus<0">
+              <CAlert color="info">Please wait...</CAlert>
+            </CCardBody>
+            <CCardBody v-if="foundStatus==0">
+              <CAlert color="danger">Application [{{ this.$route.params.id }}] not found</CAlert>
+            </CCardBody>
+            <CCardBody v-if="foundStatus>0">
+              <CAlert v-if="errorMsg" color="danger">{{ errorMsg }}</CAlert>
               <CInput horizontal type="text" v-model="app.id" label="Id"
                       placeholder="Application's unique id"
                       readonly="readonly"
@@ -56,6 +46,9 @@
                       :is-valid="validatorUrl"
                       invalid-feedback="Cancel url must be a http or https link."
               />
+              <CInput horizontal type="text" v-model="app.domains" label="Whitelist domains"
+                      placeholder="Exter redirects users to only these whitelist domains. Domains separated by spaces, commas or semi-colons"
+              />
               <CInput horizontal type="text" v-model="app.tags" label="Tags"
                       placeholder="Tags separated by comma"
               />
@@ -64,7 +57,7 @@
               />
             </CCardBody>
             <CCardFooter>
-              <CButton type="submit" color="primary" style="width: 96px">
+              <CButton v-if="foundStatus>0" type="submit" color="primary" style="width: 96px">
                 <CIcon name="cil-save"/>
                 Save
               </CButton>
@@ -86,84 +79,100 @@ import clientUtils from "@/utils/api_client"
 
 let patternUrl = /^http(s?):\/\//
 
+// const sleepSync = (ms) => {
+//   const end = new Date().getTime() + ms;
+//   while (new Date().getTime() < end) { /* do nothing */ }
+// }
+
 export default {
   name: 'EditMyApp',
+  mounted() {
+    this.loadApp(this.$route.params.id)
+  },
   data() {
-    let loginChannelList = []
-    let app = {
-      isActive: true,
-      id: "", description: "", rsaPublicKey: "", defaultReturnUrl: "", defaultCancelUrl: "",
-      tags: "",
-      idSources: {},
-    }
-    clientUtils.apiDoGet(clientUtils.apiMyApp + "/" + this.$route.params.id,
-        (apiRes) => {
-          this.found = apiRes.status == 200
-          if (apiRes.status == 200) {
-            app.id = apiRes.data.id
-            app.isActive = apiRes.data.config.actv
-            app.description = apiRes.data.config.desc
-            app.rsaPublicKey = apiRes.data.config.rpub
-            app.defaultReturnUrl = apiRes.data.config.rurl
-            app.defaultCancelUrl = apiRes.data.config.curl
-            app.idSources = apiRes.data.config.sources
-            app.tags = apiRes.data.config.tags != null ? apiRes.data.config.tags.join(", ") : ""
-
-            clientUtils.apiDoGet(clientUtils.apiInfo,
-                (apiRes) => {
-                  if (apiRes.status == 200) {
-                    apiRes.data.login_channels.every(function (e) {
-                      loginChannelList.push(e)
-                      return true
-                    })
-                  } else {
-                    console.error("Getting info was unsuccessful: " + apiRes)
-                  }
-                },
-                (err) => {
-                  console.error("Error getting info list: " + err)
-                })
-          }
-        },
-        (err) => {
-          this.errorMsg = err
-        })
     return {
-      app: app,
+      app: {},
       errorMsg: "",
-      loginChannelList: loginChannelList,
-      found: true,
+      loginChannelList: [],
+      foundStatus: -1,
     }
   },
   methods: {
+    loadApp(appId) {
+      this.foundStatus = -1
+      const vue = this
+      clientUtils.apiDoGet(clientUtils.apiInfo,
+          (apiRes) => {
+            if (apiRes.status == 200) {
+              let _loginChannels = []
+              apiRes.data.login_channels.every(function (e) {
+                _loginChannels.push(e)
+                return true
+              })
+              vue.loadLoginChannels = _loginChannels
+
+              const apiUrl = clientUtils.apiMyApp.replaceAll(':app', appId)
+              clientUtils.apiDoGet(apiUrl,
+                  (apiRes) => {
+                    vue.foundStatus = apiRes.status == 200 ? 1 : 0
+                    if (vue.foundStatus == 1) {
+                      let _app = {}
+                      _app.id = apiRes.data.id
+                      _app.isActive = apiRes.data.public_attrs.actv
+                      _app.description = apiRes.data.public_attrs.desc
+                      _app.rsaPublicKey = apiRes.data.public_attrs.rpub
+                      _app.defaultReturnUrl = apiRes.data.public_attrs.rurl
+                      _app.defaultCancelUrl = apiRes.data.public_attrs.curl
+                      _app.idSources = apiRes.data.public_attrs.sources
+                      _app.domains = apiRes.data.domains != null ? apiRes.data.domains.join(", ") : ""
+                      _app.tags = apiRes.data.public_attrs.tags != null ? apiRes.data.public_attrs.tags.join(", ") : ""
+                      vue.app = _app
+                    }
+                  },
+                  (err) => {
+                    vue.errorMsg = "Error calling API getting application info: " + err
+                  })
+            } else {
+              vue.errorMsg = apiRes.status + ": " + apiRes.message
+            }
+          },
+          (err) => {
+            vue.errorMsg = "Error calling API getting Exter info: " + err
+          })
+    },
     doCancel() {
       router.push(router.resolve({name: "MyApps"}).location)
     },
     doSubmit(e) {
       e.preventDefault()
+      this.foundStatus = -1
+      const vue = this
       let data = {
-        is_active: this.app.isActive,
-        id: this.app.id, description: this.app.description,
-        default_return_url: this.app.defaultReturnUrl,
-        default_cancel_url: this.app.defaultCancelUrl,
-        rsa_public_key: this.app.rsaPublicKey,
-        tags: this.app.tags,
-        id_sources: this.app.idSources,
+        is_active: vue.app.isActive,
+        id: vue.app.id, description: vue.app.description,
+        default_return_url: vue.app.defaultReturnUrl,
+        default_cancel_url: vue.app.defaultCancelUrl,
+        rsa_public_key: vue.app.rsaPublicKey,
+        domains: vue.app.domains,
+        tags: vue.app.tags,
+        id_sources: vue.app.idSources,
       }
-      clientUtils.apiDoPut(
-          clientUtils.apiMyApp + "/" + this.$route.params.id, data,
+      const apiUrl = clientUtils.apiMyApp.replaceAll(':app', this.$route.params.id)
+      clientUtils.apiDoPut(apiUrl, data,
           (apiRes) => {
             if (apiRes.status != 200) {
-              this.errorMsg = apiRes.status + ": " + apiRes.message
+              vue.errorMsg = apiRes.status + ": " + apiRes.message
+              vue.foundStatus = 1
             } else {
-              this.$router.push({
+              vue.$router.push({
                 name: "MyApps",
-                params: {flashMsg: "Application [" + this.app.id + "] has been updated successfully."},
+                params: {flashMsg: "Application [" + vue.app.id + "] has been updated successfully."},
               })
             }
           },
           (err) => {
-            this.errorMsg = err
+            vue.errorMsg = err
+            vue.foundStatus = 1
           }
       )
     },

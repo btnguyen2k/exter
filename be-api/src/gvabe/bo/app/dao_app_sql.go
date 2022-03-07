@@ -1,7 +1,10 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/btnguyen2k/prom"
+	"main/src/gvabe/bo"
 
 	"github.com/btnguyen2k/henge"
 
@@ -9,14 +12,36 @@ import (
 )
 
 const (
-	SqlCol_App_UserId = "zuid"
+	SqlColAppUserId = "zuid"
 )
 
 // NewAppDaoSql is helper method to create SQL-implementation of AppDao.
 func NewAppDaoSql(sqlc *prom.SqlConnect, tableName string) AppDao {
 	dao := &AppDaoSql{}
-	dao.UniversalDao = henge.NewUniversalDaoSql(sqlc, tableName, true, map[string]string{SqlCol_App_UserId: FieldApp_OwnerId})
+	dao.UniversalDao = henge.NewUniversalDaoSql(sqlc, tableName, true, map[string]string{SqlColAppUserId: FieldAppOwnerId})
 	return dao
+}
+
+// InitAppTableSql is helper function to initialize SQL-based table to store application data.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitAppTableSql(sqlc *prom.SqlConnect, tableName string) error {
+	switch sqlc.GetDbFlavor() {
+	case prom.FlavorPgSql:
+		return henge.InitPgsqlTable(sqlc, tableName, map[string]string{SqlColAppUserId: "VARCHAR(32)"})
+	case prom.FlavorMsSql:
+		return henge.InitMssqlTable(sqlc, tableName, map[string]string{SqlColAppUserId: "NVARCHAR(32)"})
+	case prom.FlavorMySql:
+		return henge.InitMysqlTable(sqlc, tableName, map[string]string{SqlColAppUserId: "VARCHAR(32)"})
+	case prom.FlavorOracle:
+		return henge.InitOracleTable(sqlc, tableName, map[string]string{SqlColAppUserId: "NVARCHAR2(32)"})
+	case prom.FlavorSqlite:
+		return henge.InitSqliteTable(sqlc, tableName, map[string]string{SqlColAppUserId: "VARCHAR(32)"})
+	case prom.FlavorCosmosDb:
+		return henge.InitCosmosdbCollection(sqlc, tableName, &henge.CosmosdbCollectionSpec{Pk: bo.CosmosdbPkName})
+	}
+	return fmt.Errorf("unsupported database type %v", sqlc.GetDbFlavor())
 }
 
 // AppDaoSql is SQL-implementation of AppDao.

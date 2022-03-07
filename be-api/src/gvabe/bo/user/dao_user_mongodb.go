@@ -15,6 +15,14 @@ func NewUserDaoMongo(mc *prom.MongoConnect, collectionName string) UserDao {
 	return dao
 }
 
+// InitUserTableMongo is helper function to initialize MongoDB table (collection) to store users.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitUserTableMongo(mc *prom.MongoConnect, collectionName string) error {
+	return henge.InitMongoCollection(mc, collectionName)
+}
+
 // UserDaoMongo is MongoDB-implementation of UserDao.
 type UserDaoMongo struct {
 	henge.UniversalDao

@@ -14,6 +14,15 @@ func NewSessionDaoAwsDynamodb(dync *prom.AwsDynamodbConnect, tableName string) S
 	return dao
 }
 
+// InitSessionTableAwsDynamodb is helper function to initialize AWS DynamoDB table(s) to store sessions.
+// This function also creates table indexes if needed.
+//
+// Available since v0.7.0.
+func InitSessionTableAwsDynamodb(adc *prom.AwsDynamodbConnect, tableName string) error {
+	spec := &henge.DynamodbTablesSpec{MainTableRcu: 1, MainTableWcu: 1}
+	return henge.InitDynamodbTables(adc, tableName, spec)
+}
+
 // SessionDaoAwsDynamodb is AWS DynamoDB-implementation of SessionDao.
 type SessionDaoAwsDynamodb struct {
 	henge.UniversalDao
@@ -31,7 +40,7 @@ func (dao *SessionDaoAwsDynamodb) Get(id string) (*Session, error) {
 	return NewSessionFromUbo(ubo), err
 }
 
-// Update implements SessionDao.Save.
+// Save implements SessionDao.Save.
 func (dao *SessionDaoAwsDynamodb) Save(sess *Session) (bool, error) {
 	ubo := sess.sync().UniversalBo
 	if dao.spec != nil && dao.spec.PkPrefix != "" {

@@ -7,28 +7,29 @@
             <CCard class="p-4">
               <CCardBody>
                 <h1>Login</h1>
-                <p v-if="errorMsg!=''" class="alert alert-danger">{{ errorMsg }}</p>
-                <CForm method="post">
+                <CAlert v-if="errorMsg!=''" color="danger">{{ errorMsg }}</CAlert>
+                <CAlert v-if="initStatus==0" color="info">Please wait...</CAlert>
+                <CForm method="post" v-if="initStatus>0">
                   <p v-if="infoMsg!=''" class="text-muted">{{ infoMsg }}</p>
-                  <CButton v-if="sources.facebook" id="loginFb" type="button" name="facebook"
+                  <CButton v-if="sources.facebook && waitCounter<0" id="loginFb" type="button" name="facebook"
                            color="facebook" class="mb-1" block
                            @click="doLoginFacebook">
                     <CIcon name="cib-facebook"/>
                     Login with Facebook
                   </CButton>
-                  <CButton v-if="sources.github" id="loginGithub" type="button" name="github"
+                  <CButton v-if="sources.github && waitCounter<0" id="loginGithub" type="button" name="github"
                            color="github" class="mb-1" block
                            @click="doLoginGitHub">
                     <CIcon name="cib-github"/>
                     Login with GitHub
                   </CButton>
-                  <CButton v-if="sources.google" id="loginGoogle" type="button" name="google"
+                  <CButton v-if="sources.google && waitCounter<0" id="loginGoogle" type="button" name="google"
                            color="light" class="mb-1" block
                            @click="doLoginGoogle">
                     <CIcon name="cib-google"/>
                     Login with Google
                   </CButton>
-                  <CButton v-if="sources.linkedin" id="loginLinkedIn" type="button" name="linkedin"
+                  <CButton v-if="sources.linkedin && waitCounter<0" id="loginLinkedIn" type="button" name="linkedin"
                            color="linkedin" class="mb-1" block
                            @click="doLoginLinkedIn">
                     <CIcon name="cib-linkedin"/>
@@ -42,10 +43,10 @@
                 </CForm>
               </CCardBody>
             </CCard>
-            <CCard v-if="app!=null && app.config!=null" color="primary" text-color="white"
+            <CCard v-if="app!=null && app.public_attrs!=null" color="primary" text-color="white"
                    class="text-center py-5 d-md-down-none" style="width:44%" body-wrapper>
               <h2>{{ app.id }}</h2>
-              <p>{{ app.config.desc }}</p>
+              <p>{{ app.public_attrs.desc }}</p>
             </CCard>
           </CCardGroup>
         </CCol>
@@ -58,88 +59,64 @@
 import clientUtils from "@/utils/api_client"
 import utils from "@/utils/app_utils"
 import appConfig from "@/utils/app_config"
-import router from "@/router";
+import router from "@/router"
 
 const defaultInfoMsg = "Please sign in to continue"
 const waitInfoMsg = "Please wait..."
 const waitLoginInfoMsg = "Logging in, please wait..."
 const invalidReturnUrlErrMsg = "Error: invalid return url"
 
+const initStatusExterInfoFetched = 1
+const initStatusAppInfoFetched = 2
+const initStatusGoogleSDKInited = 4
+const initStatusFacebookSDKInited = 8
+
 export default {
   name: 'Login',
   computed: {
+    appId() {
+      return this.$route.query.app ? this.$route.query.app : appConfig.APP_ID
+    },
     returnUrl() {
       let appId = this.$route.query.app ? this.$route.query.app : appConfig.APP_ID
       let urlDashboard = this.$router.resolve({name: 'Dashboard'}).href
       let returnUrl = this.$route.query.returnUrl ? this.$route.query.returnUrl : ''
-      return returnUrl != '' ? returnUrl : (this.app.config ? this.app.config.rurl : (appId == appConfig.APP_ID ? urlDashboard : ''))
+      return returnUrl != '' ? returnUrl : (this.app.public_attrs ? this.app.public_attrs.rurl : (appId == appConfig.APP_ID ? urlDashboard : ''))
     },
     cancelUrl() {
       let urlCancelUrl = this.$route.query.cancelUrl ? this.$route.query.cancelUrl : ''
-      return urlCancelUrl != '' ? urlCancelUrl : (this.app.config ? this.app.config.curl : '')
+      return urlCancelUrl != '' ? urlCancelUrl : (this.app.public_attrs ? this.app.public_attrs.curl : '')
+    },
+    exterInfoInited() {
+      return this.initStatus >=0 && this.initStatus | initStatusExterInfoFetched != 0
+    },
+    googleSDKInited() {
+      return this.initStatus >=0 && this.initStatus | initStatusGoogleSDKInited != 0
+    },
+    facebookSDKInited() {
+      return this.initStatus >=0 && this.initStatus | initStatusFacebookSDKInited != 0
     },
   },
   data() {
-    this.infoMsg = waitInfoMsg
-    let appId = this.$route.query.app ? this.$route.query.app : appConfig.APP_ID
-    clientUtils.apiDoGet(clientUtils.apiApp + "/" + appId,
-        (apiRes) => {
-          if (apiRes.status != 200) {
-            this._resetOnError(apiRes.message)
-            return
-          }
-          this.app = apiRes.data
-          this.appInited = true
-          if (!this.app.config.actv) {
-            this._resetOnError("App [" + appId + "] is not active")
-            return
-          }
-          let appISources = this.app.config.sources
-          let iSources = {}
-          clientUtils.apiDoGet(clientUtils.apiInfo,
-              (apiRes) => {
-                if (apiRes.status != 200) {
-                  this._resetOnError(apiRes.message)
-                  return
-                }
-                this.githubClientId = apiRes.data.github_client_id
-                this.googleClientId = apiRes.data.google_client_id
-                this.facebookAppId = apiRes.data.facebook_app_id
-                this.linkedinAppId = apiRes.data.linkedin_client_id
-
-                apiRes.data.login_channels.every(function (e) {
-                  iSources[e] = appISources[e]
-                  return true
-                })
-                this.sources = iSources
-                this.exterInfoInited = true
-                this.infoMsg = defaultInfoMsg
-              },
-              (err) => {
-                this.errorMsg = err
-              })
-        },
-        (err) => {
-          this.errorMsg = err
-        })
     return {
-      exterInfoInited: false,
-      appInited: false,
+      // -1: error
+      // 0: nothing done,
+      // 1st bit (1): Exter info fetched,
+      // 2nd bit (2): app info fetched,
+      // 3rd bit (4): Google SDK inited,
+      // 4rd bit (8): Facebook SDK inited,
+      initStatus: 0,
 
       githubClientId: '',
-      //https://docs.github.com/en/developers/apps/scopes-for-oauth-apps
-      githubAuthScope: 'user:email',
+      githubAuthScope: 'user:email', // https://docs.github.com/en/developers/apps/scopes-for-oauth-apps
 
-      googleInited: false,
       googleAuthScope: 'email profile openid',
       googleClientId: '',
 
-      facebookInited: false,
       facebookAppId: '',
 
       linkedinAppId: '',
-      //https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
-      linkedinAuthScope: 'r_liteprofile,r_emailaddress',
+      linkedinAuthScope: 'r_liteprofile,r_emailaddress', // https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 
       errorMsg: '',
       infoMsg: defaultInfoMsg,
@@ -151,6 +128,11 @@ export default {
     }
   },
   mounted() {
+    this.initStatus = 0
+    this._loadExterAndAppInfo()
+    this._loadGoogleSDK()
+    this._loadFacebookSDK()
+
     const callbackAction = this.$route.query.cba
     switch (callbackAction) {
       case 'gh':
@@ -160,51 +142,104 @@ export default {
         this._doLoginLinkedInCallback()
         break
     }
-
-    const vue = this
-
-    const googleScriptSrc = 'https://apis.google.com/js/platform.js'
-    vue.$loadScript(googleScriptSrc)
-        .then(() => {
-          gapi.load('auth2', () => {
-            vue.googleInited = true
-          })
-        })
-        .catch(() => {
-          vue.$unloadScript(googleScriptSrc)
-          const msg = 'Error loading GoogleApi SDK'
-          vue.errorMsg += '<br>' + msg
-          console.error(msg)
-        })
-
-    window.fbAsyncInit = function () {
-      if (!vue.exterInfoInited) {
-        setTimeout(() => {
-          window.fbAsyncInit()
-        }, 1000)
-        return
-      }
-      FB.init({
-        appId: vue.facebookAppId,
-        cookie: true,
-        xfbml: false,
-        version: 'v8.0'
-      });
-      vue.facebookInited = true
-      FB.AppEvents.logPageView();
-    }
-    const facebookScriptSrc = 'https://connect.facebook.net/en_US/sdk.js'
-    vue.$loadScript(facebookScriptSrc)
-        .then(() => {
-        })
-        .catch(() => {
-          vue.$unloadScript(facebookScriptSrc)
-          const msg = 'Error loading Facebook SDK'
-          vue.errorMsg += '<br>' + msg
-          console.error(msg)
-        })
   },
   methods: {
+    _loadAppInfo(appId) {
+      const vue = this
+      clientUtils.apiDoGet(clientUtils.apiApp.replaceAll(':app', appId),
+          (apiRes) => {
+            if (apiRes.status != 200) {
+              vue._resetOnError(apiRes.message)
+            } else if (!apiRes.data.public_attrs.actv) {
+              vue._resetOnError("App [" + appId + "] is not active")
+            } else {
+              vue.app = apiRes.data
+              vue.initStatus |= initStatusAppInfoFetched
+              vue._loadExterInfo()
+            }
+          },
+          (err) => {
+            vue._resetOnError(err)
+          }
+      )
+    },
+    _loadExterInfo() {
+      const vue = this
+      let appISources = vue.app.public_attrs.sources
+      let iSources = {}
+      clientUtils.apiDoGet(clientUtils.apiInfo,
+          (apiRes) => {
+            if (apiRes.status != 200) {
+              vue._resetOnError(apiRes.message)
+              return
+            }
+            vue.githubClientId = apiRes.data.github_client_id
+            vue.googleClientId = apiRes.data.google_client_id
+            vue.facebookAppId = apiRes.data.facebook_app_id
+            vue.linkedinAppId = apiRes.data.linkedin_client_id
+
+            apiRes.data.login_channels.every(function (e) {
+              iSources[e] = appISources[e]
+              return true
+            })
+            vue.sources = iSources
+            vue.initStatus |= initStatusExterInfoFetched
+          },
+          (err) => {
+            vue._resetOnError(err)
+          })
+    },
+    _loadExterAndAppInfo() {
+      this._loadAppInfo(this.appId)
+    },
+    _loadGoogleSDK() {
+      const vue = this
+      const googleScriptSrc = 'https://apis.google.com/js/platform.js'
+      vue.$loadScript(googleScriptSrc)
+          .then(() => {
+            gapi.load('auth2', () => {
+              vue.initStatus |= initStatusGoogleSDKInited
+            })
+          })
+          .catch(() => {
+            vue.$unloadScript(googleScriptSrc)
+            const msg = 'Error loading GoogleApi SDK'
+            this._resetOnError(msg)
+            console.error(msg)
+          })
+    },
+    _loadFacebookSDK() {
+      const vue = this
+      window.fbAsyncInit = function () {
+        if (!vue.exterInfoInited) {
+          // console.log("Waiting for Exter info...")
+          setTimeout(() => {
+            window.fbAsyncInit()
+          }, 500)
+          return
+        }
+        // console.log("Initializing Fb SDK...")
+        FB.init({
+          appId: vue.facebookAppId,
+          cookie: true,
+          xfbml: false,
+          version: 'v8.0'
+        });
+        vue.initStatus |= initStatusFacebookSDKInited
+        FB.AppEvents.logPageView()
+      }
+      const facebookScriptSrc = 'https://connect.facebook.net/en_US/sdk.js'
+      vue.$loadScript(facebookScriptSrc)
+          .then(() => {
+            // console.log("Fb SDK loaded.")
+          })
+          .catch(() => {
+            vue.$unloadScript(facebookScriptSrc)
+            const msg = 'Error loading Facebook SDK'
+            vue._resetOnError(msg)
+            console.error(msg)
+          })
+    },
     _doLoginGitHubCallback() {
       const savedState = utils.localStorageGet('ghoa_state')
       utils.localStorageSet("ghoa_state", null)
@@ -262,15 +297,14 @@ export default {
       const code = this.$route.query.code
       if (savedState == '' || savedState == null || urlState != savedState || code == '' || code == null) {
         //login failed
-        this._resetOnError('LinkedIn login failed.')
+        this._resetOnError('LinkedIn login failed.', true)
         if (this.$route.query.app == '' || this.$route.query.app == null || this.$route.query.returnUrl == '' || this.$route.query.returnUrl == null) {
           this.$router.push({
             name: "Login",
             query: {returnUrl: savedReturnUrl, app: savedApp, cba: "ln"}
           })
         }
-      } else {
-        if (this.$route.query.app == '' || this.$route.query.app == null) {
+      } else if (this.$route.query.app == '' || this.$route.query.app == null) {
           //redirect back to the normal login flow
           utils.localStorageSet('lnoa_state', savedState)
           utils.localStorageSet('lnoa_app', savedApp)
@@ -288,7 +322,6 @@ export default {
           }
           this._doLogin(data)
         }
-      }
     },
     doLoginLinkedIn(e) {
       e.preventDefault()
@@ -305,7 +338,7 @@ export default {
     },
     doLoginFacebook(e) {
       e.preventDefault()
-      if (!this.facebookInited) {
+      if (!this.facebookSDKInited) {
         alert('Please wait, Facebook SDK is being loaded.')
       } else {
         const vue = this
@@ -324,7 +357,7 @@ export default {
     },
     doLoginGoogle(e) {
       e.preventDefault()
-      if (!this.googleInited) {
+      if (!this.googleSDKInited) {
         alert('Please wait, Google SDK is being loaded.')
       } else {
         this.infoMsg = waitInfoMsg
@@ -374,7 +407,7 @@ export default {
           })
     },
     _doSaveLoginSessionAndLogin(token, returnUrl) {
-      this.waitCounter = -1
+      // this.waitCounter = -1
       if (returnUrl == null || returnUrl == "" || returnUrl == '#') {
         if (this.app.id != appConfig.APP_ID) {
           this.errorMsg = invalidReturnUrlErrMsg
@@ -403,7 +436,7 @@ export default {
           clientUtils.apiLogin, data,
           (apiRes) => {
             if (apiRes.status != 200) {
-              this._resetOnError(apiRes.status + ": " + apiRes.message)
+              this._resetOnError(apiRes.status + ": " + apiRes.message, true)
             } else {
               const jwt = utils.parseJwt(apiRes.data)
               if (jwt.payloadObj.type == "pre_login") {
@@ -414,11 +447,12 @@ export default {
             }
           },
           (err) => {
-            this._resetOnError(err)
+            this._resetOnError(err, true)
           }
       )
     },
-    _resetOnError(err) {
+    _resetOnError(err, preserveInitStatus) {
+      this.initStatus = preserveInitStatus ? this.initStatus : -1
       this.errorMsg = err
       this.infoMsg = defaultInfoMsg
       this.waitCounter = -1

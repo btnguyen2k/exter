@@ -17,6 +17,7 @@ export default [
                 name: 'My Apps',
                 to: {name: "MyApps"},
                 icon: 'cilApplications',
+                exact: false, //[extract=false] to make this item "active" on child-action (create/edit/delete)
             },
         ]
     }

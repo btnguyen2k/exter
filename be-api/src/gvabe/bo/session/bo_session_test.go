@@ -2,114 +2,215 @@ package session
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/btnguyen2k/henge"
+	"main/src/gvabe/bo"
 )
 
+var allTimeRoundingSettings = []henge.TimestampRoundingSetting{
+	henge.TimestampRoundingSettingNone,
+	henge.TimestampRoundingSettingNanosecond,
+	henge.TimestampRoundingSettingMicrosecond,
+	henge.TimestampRoundingSettingMillisecond,
+	henge.TimestampRoundingSettingSecond,
+}
+
 func TestNewSession(t *testing.T) {
-	name := "TestNewSession"
-	now := time.Now()
+	testName := "TestNewSession"
 
-	session := NewSession(1357, "", "login", "google", "test", "btnguyen2k", "My session data", now.Add(5*time.Minute))
-	if session == nil {
-		t.Fatalf("%s failed: nil", name)
+	_appVersion := uint64(1337)
+	_sid := "1"
+	_stype := "login"
+	_idSrc := "google"
+	_appId := "test"
+	_userId := "btnguyen2k"
+	_sdata := "My sess data"
+	_delta := 5 * time.Minute
+	sess := NewSession(_appVersion, "", _stype, _idSrc, _appId, _userId, _sdata, time.Now().Add(_delta))
+	if sess == nil {
+		t.Fatalf("%s failed: nil", testName)
 	}
-	if session.GetId() == "" {
-		t.Fatalf("%s failed: empty id", name)
+	if sess.GetId() == "" {
+		t.Fatalf("%s failed: empty id", testName)
 	}
 
-	session = NewSession(1357, "1", "login", "google", "test", "btnguyen2k", "My session data", now.Add(5*time.Minute))
-	if session == nil {
-		t.Fatalf("%s failed: nil", name)
-	}
-	if tagVersion := session.GetTagVersion(); tagVersion != 1357 {
-		t.Fatalf("%s failed: expected app-version to be %#v but received %#v", name, 1357, tagVersion)
-	}
-	if id := session.GetId(); id != "1" {
-		t.Fatalf("%s failed: id to be %#v but received %#v", name, "id", id)
-	}
-	if sessionType := session.GetSessionType(); sessionType != "login" {
-		t.Fatalf("%s failed: expected session-type to be %#v but received %#v", name, "login", sessionType)
-	}
-	if idSource := session.GetIdSource(); idSource != "google" {
-		t.Fatalf("%s failed: expected id-source to be %#v but received %#v", name, "test", idSource)
-	}
-	if appId := session.GetAppId(); appId != "test" {
-		t.Fatalf("%s failed: expected app-id to be %#v but received %#v", name, "test", appId)
-	}
-	if userId := session.GetUserId(); userId != "btnguyen2k" {
-		t.Fatalf("%s failed: expected user-id to be %#v but received %#v", name, "btnguyen2k", userId)
-	}
-	if data := session.GetSessionData(); data != "My session data" {
-		t.Fatalf("%s failed: expected session-data to be %#v but received %#v", name, "My session data", data)
+	for _, timeRoundingSetting := range allTimeRoundingSettings {
+		t.Run(fmt.Sprintf("%#v", timeRoundingSetting), func(t *testing.T) {
+			teardownTest := setupTest(t, testName, func(t *testing.T, testName string) {
+				bo.UboTimestampRounding = timeRoundingSetting
+			}, nil)
+			defer teardownTest(t)
+
+			_now := time.Now()
+			sess := NewSession(_appVersion, _sid, _stype, _idSrc, _appId, _userId, _sdata, _now.Add(_delta))
+			if sess == nil {
+				t.Fatalf("%s failed: nil", testName)
+			}
+			if f, v, expected := "app-version", sess.GetTagVersion(), _appVersion; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "id", sess.GetId(), _sid; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "sess-type", sess.GetSessionType(), _stype; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "id-source", sess.GetIdSource(), _idSrc; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "app-id", sess.GetAppId(), _appId; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "user-id", sess.GetUserId(), _userId; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "expiry", sess.GetExpiry(), sess.RoundTimestamp(_now.Add(_delta)); v.UnixNano() != expected.UnixNano() {
+				t.Fatalf("%s failed: expected %s to be %s but received %s", testName, f, expected, v)
+			}
+			if f, v, expected := "sess-data", sess.GetSessionData(), _sdata; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+		})
 	}
 }
 
 func TestNewSessionFromUbo(t *testing.T) {
-	name := "TestNewSessionFromUbo"
+	testName := "TestNewSessionFromUbo"
 	if sess := NewSessionFromUbo(nil); sess != nil {
-		t.Fatalf("%s failed: expected nil but received %#v", name, sess)
+		t.Fatalf("%s failed: expected nil but received %#v", testName, sess)
 	}
 
-	ubo := henge.NewUniversalBo("id", 0)
+	_appVersion := uint64(1337)
+	_sid := "1"
+	_stype := "login"
+	_idSrc := "google"
+	_appId := "test"
+	_userId := "btnguyen2k"
+	_sdata := "My session data"
+	_delta := 5 * time.Minute
+	ubo := henge.NewUniversalBo(_sid, _appVersion)
 	if sess := NewSessionFromUbo(ubo); sess == nil {
-		t.Fatalf("%s failed: nil", name)
+		t.Fatalf("%s failed: nil", testName)
 	}
 
 	ubo.SetDataJson("invalid json string")
-	if sess := NewSessionFromUbo(ubo); sess != nil {
-		t.Fatalf("%s failed: expected nil but received %#v", name, sess)
+	if sess := NewSessionFromUbo(ubo); sess == nil {
+		t.Fatalf("%s failed: nil", testName)
+	}
+
+	for _, timeRoundingSetting := range allTimeRoundingSettings {
+		t.Run(fmt.Sprintf("%#v", timeRoundingSetting), func(t *testing.T) {
+			teardownTest := setupTest(t, testName, func(t *testing.T, testName string) {
+				bo.UboTimestampRounding = timeRoundingSetting
+			}, nil)
+			defer teardownTest(t)
+
+			_now := time.Now()
+			ubo.SetExtraAttr(FieldSessionExpiry, _now.Add(_delta))
+			ubo.SetExtraAttr(FieldSessionSessionType, _stype)
+			ubo.SetExtraAttr(FieldSessionIdSource, _idSrc)
+			ubo.SetExtraAttr(FieldSessionAppId, _appId)
+			ubo.SetExtraAttr(FieldSessionUserId, _userId)
+			ubo.SetDataAttr(AttrSessionData, _sdata)
+			sess := NewSessionFromUbo(ubo)
+			if sess == nil {
+				t.Fatalf("%s failed: nil", testName)
+			}
+			if f, v, expected := "app-version", sess.GetTagVersion(), _appVersion; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "id", sess.GetId(), _sid; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "session-type", sess.GetSessionType(), _stype; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "id-source", sess.GetIdSource(), _idSrc; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "app-id", sess.GetAppId(), _appId; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "user-id", sess.GetUserId(), _userId; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "expiry", sess.GetExpiry(), sess.RoundTimestamp(_now.Add(_delta)); v.UnixNano() != expected.UnixNano() {
+				t.Fatalf("%s failed: expected %s to be %s but received %s", testName, f, expected, v)
+			}
+			if f, v, expected := "session-data", sess.GetSessionData(), _sdata; v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+		})
 	}
 }
 
 func TestSession_json(t *testing.T) {
-	name := "TestSession_json"
-	now := time.Now()
-	sess1 := NewSession(1357, "1", "login", "google", "test", "btnguyen2k", "My session data", now.Add(5*time.Minute))
+	testName := "TestSession_json"
 
-	js1, _ := json.Marshal(sess1)
+	for _, timeRoundingSetting := range allTimeRoundingSettings {
+		t.Run(fmt.Sprintf("%#v", timeRoundingSetting), func(t *testing.T) {
+			teardownTest := setupTest(t, testName, func(t *testing.T, testName string) {
+				bo.UboTimestampRounding = timeRoundingSetting
+			}, nil)
+			defer teardownTest(t)
 
-	var sess2 *Session
-	err := json.Unmarshal(js1, &sess2)
-	if err != nil {
-		t.Fatalf("%s failed: %e", name, err)
-	}
-	if sess1.GetId() != sess2.GetId() {
-		t.Fatalf("%s failed [Id]: expected %#v but received %#v", name, sess1.GetId(), sess2.GetId())
-	}
-	if sess1.GetTagVersion() != sess2.GetTagVersion() {
-		t.Fatalf("%s failed [AppVersion]: expected %#v but received %#v", name, sess1.GetTagVersion(), sess2.GetTagVersion())
-	}
-	if sess1.GetIdSource() != sess2.GetIdSource() {
-		t.Fatalf("%s failed [IdSource]: expected %#v but received %#v", name, sess1.GetIdSource(), sess2.GetIdSource())
-	}
-	if sess1.GetUserId() != sess2.GetUserId() {
-		t.Fatalf("%s failed [UserId]: expected %#v but received %#v", name, sess1.GetUserId(), sess2.GetUserId())
-	}
-	if sess1.GetAppId() != sess2.GetAppId() {
-		t.Fatalf("%s failed [AppId]: expected %#v but received %#v", name, sess1.GetAppId(), sess2.GetAppId())
-	}
-	if sess1.GetSessionType() != sess2.GetSessionType() {
-		t.Fatalf("%s failed [SessionType]: expected %#v but received %#v", name, sess1.GetSessionType(), sess2.GetSessionType())
-	}
-	if sess1.GetSessionData() != sess2.GetSessionData() {
-		t.Fatalf("%s failed [SessionData]: expected %#v but received %#v", name, sess1.GetSessionData(), sess2.GetSessionData())
-	}
-	if sess1.GetExpiry().Format(henge.TimeLayout) != sess2.GetExpiry().Format(henge.TimeLayout) {
-		t.Fatalf("%s failed [Expiry]: expected %#v but received %#v", name, sess1.GetExpiry(), sess2.GetExpiry())
-	}
-	if sess1.GetChecksum() != sess2.GetChecksum() {
-		t.Fatalf("%s failed [Checksum]: expected %#v but received %#v", name, sess1.GetChecksum(), sess2.GetChecksum())
+			_now := time.Now()
+			_delta := 5 * time.Minute
+			_appVersion := uint64(1337)
+			_sid := "1"
+			_stype := "login"
+			_idSrc := "google"
+			_appId := "test"
+			_userId := "btnguyen2k"
+			_sdata := "My session data"
+			sess1 := NewSession(_appVersion, _sid, _stype, _idSrc, _appId, _userId, _sdata, _now.Add(_delta))
+
+			js1, _ := json.Marshal(sess1)
+
+			var sess2 *Session
+			err := json.Unmarshal(js1, &sess2)
+			if err != nil {
+				t.Fatalf("%s failed: %e", testName, err)
+			}
+			if f, v, expected := "app-version", sess2.GetTagVersion(), sess1.GetTagVersion(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "id", sess2.GetId(), sess1.GetId(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "id-source", sess2.GetIdSource(), sess1.GetIdSource(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "user-id", sess2.GetUserId(), sess1.GetUserId(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "app-id", sess2.GetAppId(), sess1.GetAppId(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "session-type", sess2.GetSessionType(), sess1.GetSessionType(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "session-data", sess2.GetSessionData(), sess1.GetSessionData(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+			if f, v, expected := "expiry", sess2.GetExpiry(), sess1.GetExpiry(); v.UnixNano() != expected.UnixNano() {
+				t.Fatalf("%s failed: expected %s to be %s but received %s", testName, f, expected, v)
+			}
+			if f, v, expected := "checksum", sess2.GetChecksum(), sess1.GetChecksum(); v != expected {
+				t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
+			}
+		})
 	}
 }
 
 func TestSession_IsExpired(t *testing.T) {
-	name := "TestSession_IsExpired"
+	testName := "TestSession_IsExpired"
 	now := time.Now()
 	sess := NewSession(1357, "1", "login", "google", "test", "btnguyen2k", "My session data", now.Add(-5*time.Minute))
 	if !sess.IsExpired() {
-		t.Fatalf("%s failed: session should already expire", name)
+		t.Fatalf("%s failed: session should already expire", testName)
 	}
 }

@@ -8,8 +8,6 @@ import (
 
 	"github.com/btnguyen2k/henge"
 	"github.com/btnguyen2k/prom"
-
-	"main/src/gvabe/bo"
 )
 
 func _createCosmosdbConnect(t *testing.T, testName string) *prom.SqlConnect {
@@ -38,24 +36,34 @@ func _createCosmosdbConnect(t *testing.T, testName string) *prom.SqlConnect {
 
 const tableNameCosmosdb = "exter_test_user"
 
-func TestNewUserDaoCosmosdb(t *testing.T) {
-	name := "TestNewUserDaoCosmosdb"
-	sqlc := _createCosmosdbConnect(t, name)
-	userDao := NewUserDaoCosmosdb(sqlc, tableNameCosmosdb)
-	if userDao == nil {
-		t.Fatalf("%s failed: nil", name)
+var setupTestCosmosdb = func(t *testing.T, testName string) {
+	testSqlc = _createCosmosdbConnect(t, testName)
+	testSqlc.GetDB().Exec(fmt.Sprintf("DROP COLLECTION IF EXISTS %s", tableNameCosmosdb))
+	err := InitUserTableCosmosdb(testSqlc, tableNameCosmosdb)
+	if err != nil {
+		t.Fatalf("%s failed: %s", testName, err)
 	}
 }
 
-func _initUserDaoCosmosdb(t *testing.T, testName string, sqlc *prom.SqlConnect) UserDao {
-	if _, err := sqlc.GetDB().Exec(fmt.Sprintf("DROP COLLECTION IF EXISTS %s", tableNameCosmosdb)); err != nil {
-		t.Fatalf("%s failed: %s", testName+"/DROP COLLECTION", err)
+var teardownTestCosmosdb = func(t *testing.T, testName string) {
+	if testSqlc != nil {
+		defer func() {
+			defer func() { testSqlc = nil }()
+			testSqlc.Close()
+		}()
 	}
-	err := henge.InitCosmosdbCollection(sqlc, tableNameCosmosdb, &henge.CosmosdbCollectionSpec{Pk: bo.CosmosdbPkName})
-	if err != nil {
-		t.Fatalf("%s failed: %s", testName+"/InitCosmosdbCollection", err)
+}
+
+/*----------------------------------------------------------------------*/
+
+func TestNewUserDaoCosmosdb(t *testing.T) {
+	testName := "TestNewUserDaoCosmosdb"
+	teardownTest := setupTest(t, testName, setupTestCosmosdb, teardownTestCosmosdb)
+	defer teardownTest(t)
+	userDao := NewUserDaoCosmosdb(testSqlc, tableNameCosmosdb)
+	if userDao == nil {
+		t.Fatalf("%s failed: nil", testName)
 	}
-	return NewUserDaoCosmosdb(sqlc, tableNameCosmosdb)
 }
 
 func _ensureCosmosdbNumRows(t *testing.T, testName string, sqlc *prom.SqlConnect, numRows int) {
@@ -69,120 +77,36 @@ func _ensureCosmosdbNumRows(t *testing.T, testName string, sqlc *prom.SqlConnect
 }
 
 func TestUserDaoCosmosdb_Create(t *testing.T) {
-	name := "TestUserDaoCosmosdb_Create"
-	sqlc := _createCosmosdbConnect(t, name)
-	defer sqlc.Close()
-	userDao := _initUserDaoCosmosdb(t, name, sqlc)
-
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	_ensureCosmosdbNumRows(t, name, sqlc, 1)
+	testName := "TestUserDaoCosmosdb_Create"
+	teardownTest := setupTest(t, testName, setupTestCosmosdb, teardownTestCosmosdb)
+	defer teardownTest(t)
+	userDao := NewUserDaoCosmosdb(testSqlc, tableNameCosmosdb)
+	doTestUserDao_Create(t, testName, userDao)
+	_ensureCosmosdbNumRows(t, testName, testSqlc, 1)
 }
 
 func TestUserDaoCosmosdb_Get(t *testing.T) {
-	name := "TestUserDaoCosmosdb_Get"
-	sqlc := _createCosmosdbConnect(t, name)
-	defer sqlc.Close()
-	userDao := _initUserDaoCosmosdb(t, name, sqlc)
-
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-	if u, err := userDao.Get("not_found"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u != nil {
-		t.Fatalf("%s failed: user %s should not exist", name, "not_found")
-	}
-
-	if u, err := userDao.Get("btnguyen2k"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u == nil {
-		t.Fatalf("%s failed: nil", name)
-	} else {
-		if v := u.GetId(); v != "btnguyen2k" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
-		}
-		if v := u.GetTagVersion(); v != 1357 {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
-		}
-		if v := u.GetDisplayName(); v != "Thanh Nguyen" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "Thanh Nguyen", v)
-		}
-		if v := u.GetAesKey(); v != "aeskey" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "aeskey", v)
-		}
-	}
+	testName := "TestUserDaoCosmosdb_Get"
+	teardownTest := setupTest(t, testName, setupTestCosmosdb, teardownTestCosmosdb)
+	defer teardownTest(t)
+	userDao := NewUserDaoCosmosdb(testSqlc, tableNameCosmosdb)
+	doTestUserDao_Get(t, testName, userDao)
 }
 
 func TestUserDaoCosmosdb_Delete(t *testing.T) {
-	name := "TestUserDaoCosmosdb_Delete"
-	sqlc := _createCosmosdbConnect(t, name)
-	defer sqlc.Close()
-	userDao := _initUserDaoCosmosdb(t, name, sqlc)
-
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	ok, err := userDao.Create(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	ok, err = userDao.Delete(u)
-	if err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if !ok {
-		t.Fatalf("%s failed: cannot delete user [%s]", name, u.GetId())
-	}
-
-	u, err = userDao.Get("btnguyen2k")
-	if app, err := userDao.Get("exter"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if app != nil {
-		t.Fatalf("%s failed: user %s should not exist", name, "userDao")
-	}
-
-	_ensureCosmosdbNumRows(t, name, sqlc, 0)
+	testName := "TestUserDaoCosmosdb_Delete"
+	teardownTest := setupTest(t, testName, setupTestCosmosdb, teardownTestCosmosdb)
+	defer teardownTest(t)
+	userDao := NewUserDaoCosmosdb(testSqlc, tableNameCosmosdb)
+	doTestUserDao_Delete(t, testName, userDao)
+	_ensureCosmosdbNumRows(t, testName, testSqlc, 0)
 }
 
 func TestUserDaoCosmosdb_Update(t *testing.T) {
-	name := "TestUserDaoCosmosdb_Update"
-	sqlc := _createCosmosdbConnect(t, name)
-	defer sqlc.Close()
-	userDao := _initUserDaoCosmosdb(t, name, sqlc)
-
-	u := NewUser(1357, "btnguyen2k").SetDisplayName("Thanh Nguyen").SetAesKey("aeskey")
-	userDao.Create(u)
-
-	u.SetDisplayName("nbthanh")
-	u.SetAesKey("newaeskey")
-	ok, err := userDao.Update(u)
-	if err != nil || !ok {
-		t.Fatalf("%s failed: %#v / %s", name, ok, err)
-	}
-
-	if u, err := userDao.Get("btnguyen2k"); err != nil {
-		t.Fatalf("%s failed: %s", name, err)
-	} else if u == nil {
-		t.Fatalf("%s failed: nil", name)
-	} else {
-		if v := u.GetId(); v != "btnguyen2k" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "btnguyen2k", v)
-		}
-		if v := u.GetTagVersion(); v != 1357 {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, 1357, v)
-		}
-		if v := u.GetDisplayName(); v != "nbthanh" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "nbthanh", v)
-		}
-		if v := u.GetAesKey(); v != "newaeskey" {
-			t.Fatalf("%s failed: expected [%#v] but received [%#v]", name, "newaeskey", v)
-		}
-	}
-
-	_ensureCosmosdbNumRows(t, name, sqlc, 1)
+	testName := "TestUserDaoCosmosdb_Update"
+	teardownTest := setupTest(t, testName, setupTestCosmosdb, teardownTestCosmosdb)
+	defer teardownTest(t)
+	userDao := NewUserDaoCosmosdb(testSqlc, tableNameCosmosdb)
+	doTestUserDao_Update(t, testName, userDao)
+	_ensureCosmosdbNumRows(t, testName, testSqlc, 1)
 }

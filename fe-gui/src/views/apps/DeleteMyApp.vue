@@ -87,13 +87,13 @@ export default {
           this.found = apiRes.status == 200
           if (apiRes.status == 200) {
             app.id = apiRes.data.id
-            app.isActive = apiRes.data.config.actv
-            app.description = apiRes.data.config.desc
-            app.rsaPublicKey = apiRes.data.config.rpub
-            app.defaultReturnUrl = apiRes.data.config.rurl
-            app.defaultCancelUrl = apiRes.data.config.curl
-            app.idSources = apiRes.data.config.sources
-            app.tags = apiRes.data.config.tags != null ? apiRes.data.config.tags.join(", ") : ""
+            app.isActive = apiRes.data.public_attrs.actv
+            app.description = apiRes.data.public_attrs.desc
+            app.rsaPublicKey = apiRes.data.public_attrs.rpub
+            app.defaultReturnUrl = apiRes.data.public_attrs.rurl
+            app.defaultCancelUrl = apiRes.data.public_attrs.curl
+            app.idSources = apiRes.data.public_attrs.sources
+            app.tags = apiRes.data.public_attrs.tags != null ? apiRes.data.public_attrs.tags.join(", ") : ""
 
             clientUtils.apiDoGet(clientUtils.apiInfo,
                 (apiRes) => {
