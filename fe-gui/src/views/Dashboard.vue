@@ -124,25 +124,6 @@ export default {
     CChartLineSimple,
   },
   mounted: function () {
-    this._updateSystemInfo()
-    this.$nextTick(function () {
-      intervalUpdateSystemInfo = window.setInterval(() => this._updateSystemInfo(), 10000);
-    })
-  },
-  destroyed: function () {
-    if (intervalUpdateSystemInfo) {
-      window.clearInterval(intervalUpdateSystemInfo)
-      intervalUpdateSystemInfo = null
-    }
-  },
-  data() {
-    let systemInfo = {
-      cpu: {cores: -1, load: -1.0, history_load: []},
-      memory: {free: 0, freeGb: 0.0, history_freeGb: []},
-      app_memory: {usedMb: 0.0, history_usedMb: []},
-      go_routines: {num: 0, history: []},
-    }
-
     let myAppList = {data: []}
     let session = appUtils.loadLoginSession()
     if (session != null) {
@@ -159,12 +140,29 @@ export default {
           })
     }
 
+    this._updateSystemInfo()
+    this.$nextTick(function () {
+      intervalUpdateSystemInfo = window.setInterval(() => this._updateSystemInfo(), 10000);
+    })
+  },
+  destroyed: function () {
+    if (intervalUpdateSystemInfo) {
+      window.clearInterval(intervalUpdateSystemInfo)
+      intervalUpdateSystemInfo = null
+    }
+  },
+  data() {
     return {
       isCollapsedMyApps: true,
       isCollapsedGroups: true,
       isCollapsedUsers: true,
-      systemInfo: systemInfo,
-      myAppList: myAppList,
+      systemInfo: {
+        cpu: {cores: -1, load: -1.0, history_load: []},
+        memory: {free: 0, freeGb: 0.0, history_freeGb: []},
+        app_memory: {usedMb: 0.0, history_usedMb: []},
+        go_routines: {num: 0, history: []},
+      },
+      myAppList: {data: []},
     }
   },
   methods: {
