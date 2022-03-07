@@ -1,6 +1,6 @@
 # Exter release notes
 
-## 2022-02-xx - v0.7.0
+## 2022-03-07 - v0.7.0
 
 - AB#45: support multi-domains for registered apps.
 - Build with Go v1.17

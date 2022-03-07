@@ -124,13 +124,12 @@ export default {
     CChartLineSimple,
   },
   mounted: function () {
-    let myAppList = {data: []}
     let session = appUtils.loadLoginSession()
     if (session != null) {
       clientUtils.apiDoGet(clientUtils.apiMyAppList + "?token=" + session.token,
           (apiRes) => {
             if (apiRes.status == 200) {
-              myAppList.data = apiRes.data
+              this.myAppList.data = apiRes.data
             } else {
               console.error("Getting my app list was unsuccessful: " + JSON.stringify(apiRes))
             }

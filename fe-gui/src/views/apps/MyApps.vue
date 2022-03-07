@@ -54,42 +54,42 @@
 </template>
 
 <script>
-    import clientUtils from "@/utils/api_client"
-    import appUtils from "@/utils/app_utils"
+import clientUtils from "@/utils/api_client"
+import appUtils from "@/utils/app_utils"
 
-    export default {
-        name: 'MyApps',
-        data: () => {
-            let myAppList = {data: []}
-            let session = appUtils.loadLoginSession()
-            if (session != null) {
-                clientUtils.apiDoGet(clientUtils.apiMyAppList + "?token=" + session.token,
-                    (apiRes) => {
-                        if (apiRes.status == 200) {
-                            myAppList.data = apiRes.data
-                        } else {
-                            console.error("Getting my app list was unsuccessful: " + JSON.stringify(apiRes))
-                        }
-                    },
-                    (err) => {
-                        console.error("Error getting my app list: " + err)
-                    })
-            }
-            return {
-                myAppList: myAppList,
-            }
-        },
-        props: ["flashMsg"],
-        methods: {
-            clickRegisterApp(e) {
-                this.$router.push({name: "RegisterApp"})
-            },
-            clickEditMyApp(id) {
-                this.$router.push({name: "EditMyApp", params: {id: id.toString()}})
-            },
-            clickDeleteMyApp(id) {
-                this.$router.push({name: "DeleteMyApp", params: {id: id.toString()}})
-            },
+export default {
+    name: 'MyApps',
+    data: () => {
+        let myAppList = {data: []}
+        let session = appUtils.loadLoginSession()
+        if (session != null) {
+            clientUtils.apiDoGet(clientUtils.apiMyAppList + "?token=" + session.token,
+                (apiRes) => {
+                    if (apiRes.status == 200) {
+                        myAppList.data = apiRes.data
+                    } else {
+                        console.error("Getting my app list was unsuccessful: " + JSON.stringify(apiRes))
+                    }
+                },
+                (err) => {
+                    console.error("Error getting my app list: " + err)
+                })
         }
+        return {
+            myAppList: myAppList,
+        }
+    },
+    props: ["flashMsg"],
+    methods: {
+        clickRegisterApp(e) {
+            this.$router.push({name: "RegisterApp"})
+        },
+        clickEditMyApp(id) {
+            this.$router.push({name: "EditMyApp", params: {id: id.toString()}})
+        },
+        clickDeleteMyApp(id) {
+            this.$router.push({name: "DeleteMyApp", params: {id: id.toString()}})
+        },
     }
+}
 </script>
