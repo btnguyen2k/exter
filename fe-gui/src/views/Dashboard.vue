@@ -116,10 +116,24 @@ import {CChartLineSimple} from './charts/index.js'
 import clientUtils from "@/utils/api_client"
 import appUtils from "@/utils/app_utils"
 
+var intervalUpdateSystemInfo
+
 export default {
   name: 'Dashboard',
   components: {
     CChartLineSimple,
+  },
+  mounted: function () {
+    this._updateSystemInfo()
+    this.$nextTick(function () {
+      intervalUpdateSystemInfo = window.setInterval(() => this._updateSystemInfo(), 10000);
+    })
+  },
+  destroyed: function () {
+    if (intervalUpdateSystemInfo) {
+      window.clearInterval(intervalUpdateSystemInfo)
+      intervalUpdateSystemInfo = null
+    }
   },
   data() {
     let systemInfo = {
@@ -152,12 +166,6 @@ export default {
       systemInfo: systemInfo,
       myAppList: myAppList,
     }
-  },
-  mounted: function () {
-    this._updateSystemInfo()
-    this.$nextTick(function () {
-      window.setInterval(() => this._updateSystemInfo(), 10000);
-    })
   },
   methods: {
     _updateSystemInfo() {
