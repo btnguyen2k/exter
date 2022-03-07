@@ -78,8 +78,7 @@ func TestNewAppFromUbo(t *testing.T) {
 	if app == nil {
 		t.Fatalf("%s failed: nil", testName)
 	}
-
-	_domains = append(_domains, "default_return_url", "default_cancel_url")
+	
 	if f, v, expected := "app-version", app.GetTagVersion(), _appVersion; v != expected {
 		t.Fatalf("%s failed: expected %s to be %#v but received %#v", testName, f, expected, v)
 	}
