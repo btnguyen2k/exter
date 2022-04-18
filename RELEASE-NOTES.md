@@ -1,5 +1,9 @@
 # Exter release notes
 
+## 2022-05-xx - v0.7.1
+
+- AB#46: support i18n (FE).
+
 ## 2022-03-07 - v0.7.0
 
 - AB#45: support multi-domains for registered apps.
