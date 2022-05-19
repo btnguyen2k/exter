@@ -59,7 +59,6 @@
 import clientUtils from "@/utils/api_client"
 import utils from "@/utils/app_utils"
 import appConfig from "@/utils/app_config"
-import router from "@/router"
 
 const initStatusExterInfoFetched = 1
 const initStatusAppInfoFetched = 2
