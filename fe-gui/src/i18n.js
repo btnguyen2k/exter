@@ -13,6 +13,12 @@ const messages = {
         //     '<br/><br/>You can also access the frontend via <a href="/doc/" style="color: yellowgreen">this link</a>.',
 
         message: {
+            home: 'Home',
+            dashboard: 'Dashboard',
+            myapps: 'My Apps',
+            settings: 'Settings',
+            profile: 'Profile',
+
             cancel: 'Cancel',
 
             wait: 'Please wait...',
@@ -50,6 +56,12 @@ const messages = {
         //     '<br/><br/>Bạn có thể truy cập vào trang frontend bằng <a href="/doc/" style="color: yellowgreen">đường dẫn này</a>.',
 
         message: {
+            home: 'Trang nhà',
+            dashboard: 'Bảng thông tin',
+            myapps: 'Ứng dụng',
+            settings: 'Cài đặt',
+            profile: 'Cá nhân',
+
             cancel: 'Huỷ bỏ',
 
             wait: 'Vui lòng giờ giây lát...',
