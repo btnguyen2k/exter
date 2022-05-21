@@ -19,6 +19,7 @@ const messages = {
             settings: 'Settings',
             profile: 'Profile',
 
+            actions: 'Actions',
             cancel: 'Cancel',
 
             wait: 'Please wait...',
@@ -44,6 +45,11 @@ const messages = {
 
             error_loading_gapisdk: 'Error while loading GoogleAPI SDK',
             error_loading_fbsdk: 'Error while loading Facebook SDK',
+
+            app_id: 'Id',
+            app_desc: 'Descriptions',
+            app_id_src: 'Id sources',
+            app_tags: 'Tags',
         }
     },
     vi: {
@@ -62,6 +68,7 @@ const messages = {
             settings: 'Cài đặt',
             profile: 'Cá nhân',
 
+            actions: 'Hành động',
             cancel: 'Huỷ bỏ',
 
             wait: 'Vui lòng giờ giây lát...',
@@ -87,6 +94,11 @@ const messages = {
 
             error_loading_gapisdk: 'Có lỗi khi tải GoogleAPI SDK',
             error_loading_fbsdk: 'Có lỗi khi tải Facebook SDK',
+
+            app_id: 'Id',
+            app_desc: 'Mô tả',
+            app_id_src: 'Nguồn đăng nhập',
+            app_tags: 'Thẻ',
         }
     }
 }
