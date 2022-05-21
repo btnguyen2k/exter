@@ -20,7 +20,7 @@
             </CHeaderNavItem>
             <CHeaderNavItem class="px-3">
                 <CHeaderNavLink :to="{name:'MyApps'}" exact>
-                  {{ $t('message.myapps') }}
+                  {{ $t('message.my_apps') }}
                 </CHeaderNavLink>
             </CHeaderNavItem>
         </CHeaderNav>

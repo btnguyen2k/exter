@@ -91,7 +91,7 @@ function configRoutes() {
                 },
                 {
                     path: 'myapps',
-                    meta: {label: i18n.t('message.myapps')},
+                    meta: {label: i18n.t('message.my_apps')},
                     component: {
                         render(c) {
                             return c('router-view')

@@ -15,7 +15,8 @@ const messages = {
         message: {
             home: 'Home',
             dashboard: 'Dashboard',
-            myapps: 'My Apps',
+            my_apps: 'My Apps',
+            my_app_list: 'My app list',
             settings: 'Settings',
             profile: 'Profile',
 
@@ -46,6 +47,7 @@ const messages = {
             error_loading_gapisdk: 'Error while loading GoogleAPI SDK',
             error_loading_fbsdk: 'Error while loading Facebook SDK',
 
+            register_app: 'Register New App',
             app_id: 'Id',
             app_desc: 'Descriptions',
             app_id_src: 'Id sources',
@@ -64,7 +66,8 @@ const messages = {
         message: {
             home: 'Trang nhà',
             dashboard: 'Bảng thông tin',
-            myapps: 'Ứng dụng',
+            my_apps: 'Ứng dụng',
+            my_app_list: 'Danh sách ứng dụng',
             settings: 'Cài đặt',
             profile: 'Cá nhân',
 
@@ -95,6 +98,7 @@ const messages = {
             error_loading_gapisdk: 'Có lỗi khi tải GoogleAPI SDK',
             error_loading_fbsdk: 'Có lỗi khi tải Facebook SDK',
 
+            register_app: 'Đăng Ký Ứng Dụng',
             app_id: 'Id',
             app_desc: 'Mô tả',
             app_id_src: 'Nguồn đăng nhập',

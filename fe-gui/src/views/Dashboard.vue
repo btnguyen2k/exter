@@ -55,7 +55,7 @@
       <CCol sm="12">
         <CCard accent-color="info">
           <CCardHeader>
-            <strong>{{ $t('message.myapps') }} ({{ myAppList.data.length }})</strong>
+            <strong>{{ $t('message.my_apps') }} ({{ myAppList.data.length }})</strong>
             <div class="card-header-actions">
               <CLink class="card-header-action btn-minimize" @click="clickRegisterApp"><!-- title/label not working yet -->
                 <CIcon name="cil-library-add"/>
@@ -98,12 +98,11 @@
                 </template>
                 <template #actions="{item}">
                   <td nowrap="nowrap" style="vertical-align: middle">
-                    <CLink @click="clickEditMyApp(item.id)" label="Edit" class="btn-sm btn-primary">
+                    <CLink @click="clickEditMyApp(item.id)" class="btn-sm btn-primary">
                       <CIcon name="cil-pencil"/>
                     </CLink>
                     &nbsp;
-                    <CLink @click="clickDeleteMyApp(item.id)" label="Delete"
-                           class="btn-sm btn-danger">
+                    <CLink @click="clickDeleteMyApp(item.id)" class="btn-sm btn-danger">
                       <CIcon name="cil-trash"/>
                     </CLink>
                   </td>

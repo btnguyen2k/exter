@@ -16,7 +16,7 @@ export default [
             },
             {
                 _name: 'CSidebarNavItem',
-                name: i18n.t('message.myapps'),
+                name: i18n.t('message.my_apps'),
                 to: {name: "MyApps"},
                 icon: 'cilApplications',
                 exact: false, //[extract=false] to make this item "active" on child-action (create/edit/delete)
