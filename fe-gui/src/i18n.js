@@ -22,6 +22,8 @@ const messages = {
 
             actions: 'Actions',
             cancel: 'Cancel',
+            save: 'Save',
+            back: 'Back',
 
             wait: 'Please wait...',
             wait_login: 'Logging in, please wait...{counter}',
@@ -49,9 +51,29 @@ const messages = {
 
             register_app: 'Register New App',
             app_id: 'Id',
-            app_desc: 'Descriptions',
-            app_id_src: 'Id sources',
+            app_id_placeholder: "Application's id, must be unique",
+            app_id_rule: "Application's id must not be empty, unique and follow format [0-9a-z_]+.",
+            app_active: 'Active',
+            app_desc: 'Description',
+            app_desc_placeholder: "Application's short description",
+            app_default_return_url: 'Default return URL',
+            app_default_return_url_placeholder: 'User is redirected to this URL after successful authentication.',
+            app_default_return_url_rule: 'URL must be in format https://... or http://...',
+            app_default_cancel_url: 'Default cancel URL',
+            app_default_cancel_url_placeholder: 'User is redirected to this URL when authentication is cancelled.',
+            app_default_cancel_url_rule: 'URL must be in format https://... or http://...',
+            app_domains: 'Whitelist domains',
+            app_domains_placeholder: 'Exter only redirects users to these whitelist domains. Domains separated by spaces, commas or semi-colons.',
+            app_auth_provider: 'Authentication provider',
             app_tags: 'Tags',
+            app_tags_placeholder: 'Tags separated by commas or semi-colons.',
+            app_rsa_pubkey: 'RSA public key',
+            app_rsa_pubkey_placeholder: "Application's RSA public key in PEM format.",
+
+            auth_provider_facebook: 'Facebook',
+            auth_provider_github: 'GitHub',
+            auth_provider_google: 'Google',
+            auth_provider_linkedin: 'LinkedIn',
         }
     },
     vi: {
@@ -73,6 +95,8 @@ const messages = {
 
             actions: 'Hành động',
             cancel: 'Huỷ bỏ',
+            save: 'Lưu',
+            back: 'Quay lại',
 
             wait: 'Vui lòng giờ giây lát...',
             wait_login: 'Đang đăng nhập, vui lòng chờ giây lát...{counter}',
@@ -99,10 +123,30 @@ const messages = {
             error_loading_fbsdk: 'Có lỗi khi tải Facebook SDK',
 
             register_app: 'Đăng Ký Ứng Dụng',
-            app_id: 'Id',
+            app_id: 'Định danh',
+            app_id_placeholder: "Định danh ứng dụng, không được trùng lắp",
+            app_id_rule: "Định danh ứng dụng không được rỗng hoặc trùng lắp, và phải theo định dạng [0-9a-z_]+.",
+            app_active: 'Có hiệu lực',
             app_desc: 'Mô tả',
-            app_id_src: 'Nguồn đăng nhập',
+            app_desc_placeholder: 'Thông tin ngắn gọn về ứng dụng',
+            app_default_return_url: 'URL xác thực',
+            app_default_return_url_placeholder: 'URL được gọi sau khi xác thực thành công.',
+            app_default_return_url_rule: 'URL xác thực phải ở dạng https://... hoặc http://...',
+            app_default_cancel_url: 'URL huỷ',
+            app_default_cancel_url_placeholder: 'URL được gọi khi user huỷ quá trình xác thực.',
+            app_default_cancel_url_rule: 'URL huỷ phải ở dạng https://... hoặc http://...',
+            app_domains: 'Danh sách tên miền',
+            app_domains_placeholder: 'Exter chỉ gọi URL nằm trong danh sách tên miền. Các tên miền phân cách nhau bằng khoảng trắng, dấu phảy (,) hoặc chấm phảy (;).',
+            app_auth_provider: 'Nguồn đăng nhập',
             app_tags: 'Thẻ',
+            app_tags_placeholder: 'Các thẻ phân cách nhau bằng dấu phảy (,) hoặc chấm phảy (;).',
+            app_rsa_pubkey: 'Mã công khai RSA',
+            app_rsa_pubkey_placeholder: 'Mã công khai RSA của ứng dụng ở định dạng PEM.',
+
+            auth_provider_facebook: 'Facebook',
+            auth_provider_github: 'GitHub',
+            auth_provider_google: 'Google',
+            auth_provider_linkedin: 'LinkedIn',
         }
     }
 }

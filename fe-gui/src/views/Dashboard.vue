@@ -72,7 +72,7 @@
                               {label:'',key:'active'},
                               {label:$t('message.app_id'),key:'id'},
                               {label:$t('message.app_desc'),key:'description'},
-                              {label:$t('message.app_id_src'),key:'sources'},
+                              {label:$t('message.app_auth_provider'),key:'sources'},
                               {label:$t('message.app_tags'),key:'tags'},
                               {label:$t('message.actions'),key:'actions'}
                           ]">
