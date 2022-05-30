@@ -97,7 +97,8 @@ export default {
             app.defaultReturnUrl = apiRes.data.public_attrs.rurl
             app.defaultCancelUrl = apiRes.data.public_attrs.curl
             app.idSources = apiRes.data.public_attrs.sources
-            app.tags = apiRes.data.public_attrs.tags != null ? apiRes.data.public_attrs.tags.join(", ") : ""
+            // app.tags = apiRes.data.public_attrs.tags != null ? apiRes.data.public_attrs.tags.join(", ") : ""
+            app.tags = JSON.stringify(apiRes.data.public_attrs.tags)
             app.domains = JSON.stringify(apiRes.data.domains)
             clientUtils.apiDoGet(clientUtils.apiInfo,
                 (apiRes) => {
@@ -132,7 +133,7 @@ export default {
     doSubmit(e) {
       e.preventDefault()
       clientUtils.apiDoDelete(
-          clientUtils.apiMyApp + "/" + this.$route.params.id,
+          clientUtils.apiMyApp.replaceAll(':app', this.$route.params.id),
           (apiRes) => {
             if (apiRes.status != 200) {
               this.errorMsg = apiRes.status + ": " + apiRes.message
