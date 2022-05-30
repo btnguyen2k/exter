@@ -50,6 +50,7 @@ const messages = {
             error_loading_fbsdk: 'Error while loading Facebook SDK',
 
             register_app: 'Register New App',
+            app_registered_successful: 'Application "{id}" has been registered successfully.',
             app_id: 'Id',
             app_id_placeholder: "Application's id, must be unique",
             app_id_rule: "Application's id must not be empty, unique and follow format [0-9a-z_]+.",
@@ -123,6 +124,7 @@ const messages = {
             error_loading_fbsdk: 'Có lỗi khi tải Facebook SDK',
 
             register_app: 'Đăng Ký Ứng Dụng',
+            app_registered_successful: 'Ứng dụng "{id}" đã được đăng ký thành công.',
             app_id: 'Định danh',
             app_id_placeholder: "Định danh ứng dụng, không được trùng lắp",
             app_id_rule: "Định danh ứng dụng không được rỗng hoặc trùng lắp, và phải theo định dạng [0-9a-z_]+.",

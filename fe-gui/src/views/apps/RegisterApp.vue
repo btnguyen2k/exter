@@ -134,7 +134,7 @@ export default {
             } else {
               this.$router.push({
                 name: "MyApps",
-                params: {flashMsg: "Application [" + this.form.id + "] has been registered successfully."},
+                params: {flashMsg: this.$i18n.t('message.app_registered_successful', {id: this.form.id})},
               })
             }
           },
