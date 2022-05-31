@@ -56,6 +56,9 @@ const messages = {
             delete_my_app: 'Delete App',
             app_deleted_successful: 'Application "{id}" has been deleted successfully.',
 
+            edit_my_app: 'Edit App',
+            app_updated_successful: 'Application "{id}" has been updated successfully.',
+
             app_id: 'Id',
             app_id_placeholder: "Application's id, must be unique",
             app_id_rule: "Application's id must not be empty, unique and follow format [0-9a-z_]+.",
@@ -134,6 +137,9 @@ const messages = {
 
             delete_my_app: 'Xoá Ứng Dụng',
             app_deleted_successful: 'Ứng dụng "{id}" đã được xoá thành công.',
+
+            edit_my_app: 'Cập Nhật Ứng Dụng',
+            app_edit_successful: 'Ứng dụng "{id}" đã được cập nhật thành công.',
 
             app_id: 'Định danh',
             app_id_placeholder: "Định danh ứng dụng, không được trùng lắp",

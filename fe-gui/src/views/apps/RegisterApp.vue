@@ -90,11 +90,11 @@ export default {
             })
             vue.loginChannelList = loginChannelList
           } else {
-            console.error("Calling api "+clientUtils.apiInfo+" was unsuccessful: " + apiRes)
+            vue.errorMsg = "Calling api "+clientUtils.apiInfo+" was unsuccessful: " + apiRes
           }
         },
         (err) => {
-          console.error("Error calling api "+clientUtils.apiInfo+": " + err)
+          vue.errorMsg = "Error calling api "+clientUtils.apiInfo+": " + err
         })
   },
   data() {
