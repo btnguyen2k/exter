@@ -3,67 +3,67 @@
     <CRow>
       <CCol sm="12">
         <CCard accent-color="info">
-          <CCardHeader>Edit Application</CCardHeader>
+          <CCardHeader>{{ $t('message.edit_my_app') }}</CCardHeader>
           <CForm @submit.prevent="doSubmit" method="post">
             <CCardBody v-if="foundStatus<0">
-              <CAlert color="info">Please wait...</CAlert>
+              <CAlert color="info">{{ $t('message.wait') }}</CAlert>
             </CCardBody>
             <CCardBody v-if="foundStatus==0">
-              <CAlert color="danger">Application [{{ this.$route.params.id }}] not found</CAlert>
+              <CAlert color="danger">{{ $t('message.error_app_not_exist', {app: this.$route.params.id}) }}</CAlert>
             </CCardBody>
             <CCardBody v-if="foundStatus>0">
               <CAlert v-if="errorMsg" color="danger">{{ errorMsg }}</CAlert>
-              <CInput horizontal type="text" v-model="app.id" label="Id"
-                      placeholder="Application's unique id"
+              <CInput horizontal type="text" v-model="app.id" :label="$t('message.app_id')"
+                      :placeholder="$t('message.app_id_placeholder')"
                       readonly="readonly"
               />
               <div class="form-group form-row">
                 <CCol :sm="{offset:3,size:9}" class="form-inline">
-                  <CInputCheckbox inline label="Active" :checked.sync="app.isActive"
+                  <CInputCheckbox inline :label="$t('message.app_active')" :checked.sync="app.isActive"
                   />
                 </CCol>
               </div>
               <div class="form-group form-row">
                 <CCol tag="label" sm="3" class="col-form-label">
-                  Login channels
+                  {{ $t('message.app_auth_provider') }}
                 </CCol>
                 <CCol sm="9" class="form-inline">
-                  <CInputCheckbox inline v-for="option in loginChannelList" :label="option"
+                  <CInputCheckbox inline v-for="option in loginChannelList" :label="$t('message.auth_provider_'+option)"
                                   :value="option" :checked.sync="app.idSources[option]"
                   />
                 </CCol>
               </div>
-              <CInput horizontal type="text" v-model="app.description" label="Description"
-                      placeholder="Application's description"
+              <CInput horizontal type="text" v-model="app.description" :label="$t('message.app_desc')"
+                      :placeholder="$t('message.app_desc_placeholder')"
               />
-              <CInput horizontal type="text" v-model="app.defaultReturnUrl" label="Default return URL"
-                      placeholder="http://..."
+              <CInput horizontal type="text" v-model="app.defaultReturnUrl" :label="$t('message.app_default_return_url')"
+                      :placeholder="$t('message.app_default_return_url_placeholder')"
                       :is-valid="validatorUrl"
-                      invalid-feedback="Return url must be a http or https link."
+                      :invalid-feedback="$t('message.app_default_return_url_rule')"
               />
-              <CInput horizontal type="text" v-model="app.defaultCancelUrl" label="Default cancel URL"
-                      placeholder="http://..."
+              <CInput horizontal type="text" v-model="app.defaultCancelUrl" :label="$t('message.app_default_cancel_url')"
+                      :placeholder="$t('message.app_default_cancel_url_placeholder')"
                       :is-valid="validatorUrl"
-                      invalid-feedback="Cancel url must be a http or https link."
+                      :invalid-feedback="$t('message.app_default_cancel_url_rule')"
               />
-              <CInput horizontal type="text" v-model="app.domains" label="Whitelist domains"
-                      placeholder="Exter redirects users to only these whitelist domains. Domains separated by spaces, commas or semi-colons"
+              <CInput horizontal type="text" v-model="app.domains" :label="$t('message.app_domains')"
+                      :placeholder="$t('message.app_domains_placeholder')"
               />
-              <CInput horizontal type="text" v-model="app.tags" label="Tags"
-                      placeholder="Tags separated by comma"
+              <CInput horizontal type="text" v-model="app.tags" :label="$t('message.app_tags')"
+                      :placeholder="$t('message.app_tags_placeholder')"
               />
-              <CTextarea horizontal type="text" v-model="app.rsaPublicKey" label="RSA public key"
-                         rows="6" placeholder="RSA public key in PEM format"
+              <CTextarea horizontal type="text" v-model="app.rsaPublicKey" :label="$t('message.app_rsa_pubkey')"
+                         rows="6" :placeholder="$t('message.app_rsa_pubkey_placeholder')"
               />
             </CCardBody>
             <CCardFooter>
               <CButton v-if="foundStatus>0" type="submit" color="primary" style="width: 96px">
                 <CIcon name="cil-save"/>
-                Save
+                {{ $t('message.save') }}
               </CButton>
               <CButton type="button" color="info" class="ml-2" style="width: 96px" @click="doCancel">
                 <CIcon name="cil-arrow-circle-left"/>
-                Back
+                {{ $t('message.back') }}
               </CButton>
             </CCardFooter>
           </CForm>
@@ -109,23 +109,24 @@ export default {
                 _loginChannels.push(e)
                 return true
               })
-              vue.loadLoginChannels = _loginChannels
+              vue.loginChannelList = _loginChannels
 
               const apiUrl = clientUtils.apiMyApp.replaceAll(':app', appId)
               clientUtils.apiDoGet(apiUrl,
                   (apiRes) => {
                     vue.foundStatus = apiRes.status == 200 ? 1 : 0
                     if (vue.foundStatus == 1) {
-                      let _app = {}
-                      _app.id = apiRes.data.id
-                      _app.isActive = apiRes.data.public_attrs.actv
-                      _app.description = apiRes.data.public_attrs.desc
-                      _app.rsaPublicKey = apiRes.data.public_attrs.rpub
-                      _app.defaultReturnUrl = apiRes.data.public_attrs.rurl
-                      _app.defaultCancelUrl = apiRes.data.public_attrs.curl
-                      _app.idSources = apiRes.data.public_attrs.sources
-                      _app.domains = apiRes.data.domains != null ? apiRes.data.domains.join(", ") : ""
-                      _app.tags = apiRes.data.public_attrs.tags != null ? apiRes.data.public_attrs.tags.join(", ") : ""
+                      let _app = {
+                        id: apiRes.data.id,
+                        isActive: apiRes.data.public_attrs.actv,
+                        description: apiRes.data.public_attrs.desc,
+                        rsaPublicKey: apiRes.data.public_attrs.rpub,
+                        defaultReturnUrl: apiRes.data.public_attrs.rurl,
+                        defaultCancelUrl: apiRes.data.public_attrs.curl,
+                        idSources: apiRes.data.public_attrs.sources,
+                        domains: apiRes.data.domains != null ? apiRes.data.domains.join(", ") : "",
+                        tags: apiRes.data.public_attrs.tags != null ? apiRes.data.public_attrs.tags.join(", ") : ""
+                      }
                       vue.app = _app
                     }
                   },
@@ -166,7 +167,7 @@ export default {
             } else {
               vue.$router.push({
                 name: "MyApps",
-                params: {flashMsg: "Application [" + vue.app.id + "] has been updated successfully."},
+                params: {flashMsg: this.$i18n.t('message.app_updated_successful', {id: vue.app.id})},
               })
             }
           },

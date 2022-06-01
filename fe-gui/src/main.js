@@ -1,5 +1,6 @@
 import Vue from 'vue'
 import App from './App'
+import i18n from './i18n'
 import router from './router'
 import CoreuiVue from '@coreui/vue'
 import {iconsSet as icons} from './assets/icons/icons.js'
@@ -17,4 +18,5 @@ new Vue({
     components: {
         App
     },
+    i18n
 })

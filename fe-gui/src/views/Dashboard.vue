@@ -55,13 +55,12 @@
       <CCol sm="12">
         <CCard accent-color="info">
           <CCardHeader>
-            <strong>Applications ({{ myAppList.data.length }})</strong>
+            <strong>{{ $t('message.my_apps') }} ({{ myAppList.data.length }})</strong>
             <div class="card-header-actions">
-              <CLink class="card-header-action btn-minimize" @click="clickRegisterApp">
+              <CLink class="card-header-action btn-minimize" @click="clickRegisterApp"><!-- title/label not working yet -->
                 <CIcon name="cil-library-add"/>
               </CLink>
-              <CLink class="card-header-action btn-minimize"
-                     @click="isCollapsedMyApps = !isCollapsedMyApps">
+              <CLink class="card-header-action btn-minimize" @click="isCollapsedMyApps = !isCollapsedMyApps"><!-- title/label not working yet -->
                 <CIcon :name="`cil-chevron-${isCollapsedMyApps ? 'bottom' : 'top'}`"/>
               </CLink>
             </div>
@@ -69,7 +68,14 @@
           <CCollapse :show="isCollapsedMyApps" :duration="400">
             <CCardBody>
               <CDataTable :items="myAppList.data"
-                          :fields="[{label:'',key:'active'},'id','description','sources','tags','actions']">
+                          :fields="[
+                              {label:'',key:'active'},
+                              {label:$t('message.app_id'),key:'id'},
+                              {label:$t('message.app_desc'),key:'description'},
+                              {label:$t('message.app_auth_provider'),key:'sources'},
+                              {label:$t('message.app_tags'),key:'tags'},
+                              {label:$t('message.actions'),key:'actions'}
+                          ]">
                 <template #active="{item}">
                   <td style="vertical-align: middle">
                     <CIcon name="cil-check" :style="`color: ${item.public_attrs.actv?'green':'grey'}`"/>
@@ -92,12 +98,11 @@
                 </template>
                 <template #actions="{item}">
                   <td nowrap="nowrap" style="vertical-align: middle">
-                    <CLink @click="clickEditMyApp(item.id)" label="Edit" class="btn-sm btn-primary">
+                    <CLink @click="clickEditMyApp(item.id)" class="btn-sm btn-primary">
                       <CIcon name="cil-pencil"/>
                     </CLink>
                     &nbsp;
-                    <CLink @click="clickDeleteMyApp(item.id)" label="Delete"
-                           class="btn-sm btn-danger">
+                    <CLink @click="clickDeleteMyApp(item.id)" class="btn-sm btn-danger">
                       <CIcon name="cil-trash"/>
                     </CLink>
                   </td>

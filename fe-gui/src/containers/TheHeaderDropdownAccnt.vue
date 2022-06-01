@@ -7,58 +7,58 @@
         </div>
       </CHeaderNavLink>
     </template>
+<!--    <CDropdownHeader tag="div" class="text-center" color="light">-->
+<!--      <strong>Account</strong>-->
+<!--    </CDropdownHeader>-->
+<!--    <CDropdownItem @click="funcNotImplemented">-->
+<!--      <CIcon name="cil-bell"/>-->
+<!--      Updates-->
+<!--      <CBadge color="info" class="ml-auto">{{ itemsCount }}</CBadge>-->
+<!--    </CDropdownItem>-->
+<!--    <CDropdownItem @click="funcNotImplemented">-->
+<!--      <CIcon name="cil-envelope-open"/>-->
+<!--      Messages-->
+<!--      <CBadge color="success" class="ml-auto">{{ itemsCount }}</CBadge>-->
+<!--    </CDropdownItem>-->
+<!--    <CDropdownItem @click="funcNotImplemented">-->
+<!--      <CIcon name="cil-task"/>-->
+<!--      Tasks-->
+<!--      <CBadge color="danger" class="ml-auto">{{ itemsCount }}</CBadge>-->
+<!--    </CDropdownItem>-->
+<!--    <CDropdownItem @click="funcNotImplemented">-->
+<!--      <CIcon name="cil-comment-square"/>-->
+<!--      Comments-->
+<!--      <CBadge color="warning" class="ml-auto">{{ itemsCount }}</CBadge>-->
+<!--    </CDropdownItem>-->
     <CDropdownHeader tag="div" class="text-center" color="light">
-      <strong>Account</strong>
-    </CDropdownHeader>
-    <CDropdownItem @click="funcNotImplemented">
-      <CIcon name="cil-bell"/>
-      Updates
-      <CBadge color="info" class="ml-auto">{{ itemsCount }}</CBadge>
-    </CDropdownItem>
-    <CDropdownItem @click="funcNotImplemented">
-      <CIcon name="cil-envelope-open"/>
-      Messages
-      <CBadge color="success" class="ml-auto">{{ itemsCount }}</CBadge>
-    </CDropdownItem>
-    <CDropdownItem @click="funcNotImplemented">
-      <CIcon name="cil-task"/>
-      Tasks
-      <CBadge color="danger" class="ml-auto">{{ itemsCount }}</CBadge>
-    </CDropdownItem>
-    <CDropdownItem @click="funcNotImplemented">
-      <CIcon name="cil-comment-square"/>
-      Comments
-      <CBadge color="warning" class="ml-auto">{{ itemsCount }}</CBadge>
-    </CDropdownItem>
-    <CDropdownHeader tag="div" class="text-center" color="light">
-      <strong>Settings</strong>
+      <strong>{{ $t('message.settings') }}</strong>
     </CDropdownHeader>
     <CDropdownItem @click="funcNotImplemented">
       <CIcon name="cil-user"/>
-      Profile
+      {{ $t('message.profile') }}
     </CDropdownItem>
     <CDropdownItem @click="funcNotImplemented">
       <CIcon name="cil-settings"/>
-      Settings
+      {{ $t('message.settings') }}
     </CDropdownItem>
-    <CDropdownItem @click="funcNotImplemented">
-      <CIcon name="cil-dollar"/>
-      Payments
-      <CBadge color="secondary" class="ml-auto">{{ itemsCount }}</CBadge>
-    </CDropdownItem>
-    <CDropdownItem @click="funcNotImplemented">
-      <CIcon name="cil-file"/>
-      Projects
-      <CBadge color="primary" class="ml-auto">{{ itemsCount }}</CBadge>
-    </CDropdownItem>
+<!--    <CDropdownItem @click="funcNotImplemented">-->
+<!--      <CIcon name="cil-dollar"/>-->
+<!--      Payments-->
+<!--      <CBadge color="secondary" class="ml-auto">{{ itemsCount }}</CBadge>-->
+<!--    </CDropdownItem>-->
+<!--    <CDropdownItem @click="funcNotImplemented">-->
+<!--      <CIcon name="cil-file"/>-->
+<!--      Projects-->
+<!--      <CBadge color="primary" class="ml-auto">{{ itemsCount }}</CBadge>-->
+<!--    </CDropdownItem>-->
     <CDropdownDivider/>
-    <CDropdownItem @click="funcNotImplemented">
-      <CIcon name="cil-shield-alt"/>
-      Lock Account
-    </CDropdownItem>
+<!--    <CDropdownItem @click="funcNotImplemented">-->
+<!--      <CIcon name="cil-shield-alt"/>-->
+<!--      Lock Account-->
+<!--    </CDropdownItem>-->
     <CDropdownItem @click="doLogout">
       <CIcon name="cil-lock-locked"/>
-      Logout
+      {{ $t('message.logout') }}
     </CDropdownItem>
   </CDropdown>
 </template>

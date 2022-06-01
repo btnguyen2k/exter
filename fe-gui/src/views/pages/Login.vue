@@ -8,38 +8,39 @@
               <CCardBody>
                 <h1>Login</h1>
                 <CAlert v-if="errorMsg!=''" color="danger">{{ errorMsg }}</CAlert>
-                <CAlert v-if="initStatus==0" color="info">Please wait...</CAlert>
+                <CAlert v-if="initStatus==0" color="info">{{ $t('message.wait') }}</CAlert>
                 <CForm method="post" v-if="initStatus>0">
                   <p v-if="infoMsg!=''" class="text-muted">{{ infoMsg }}</p>
                   <CButton v-if="sources.facebook && waitCounter<0" id="loginFb" type="button" name="facebook"
                            color="facebook" class="mb-1" block
                            @click="doLoginFacebook">
                     <CIcon name="cib-facebook"/>
-                    Login with Facebook
+                    {{ $t('message.login_facebook') }}
                   </CButton>
                   <CButton v-if="sources.github && waitCounter<0" id="loginGithub" type="button" name="github"
                            color="github" class="mb-1" block
                            @click="doLoginGitHub">
                     <CIcon name="cib-github"/>
-                    Login with GitHub
+                    {{ $t('message.login_github') }}
                   </CButton>
                   <CButton v-if="sources.google && waitCounter<0" id="loginGoogle" type="button" name="google"
                            color="light" class="mb-1" block
                            @click="doLoginGoogle">
                     <CIcon name="cib-google"/>
-                    Login with Google
+                    {{ $t('message.login_google') }}
                   </CButton>
                   <CButton v-if="sources.linkedin && waitCounter<0" id="loginLinkedIn" type="button" name="linkedin"
                            color="linkedin" class="mb-1" block
                            @click="doLoginLinkedIn">
                     <CIcon name="cib-linkedin"/>
-                    Login with LinkedIn
+                    {{ $t('message.login_linkedin') }}
                   </CButton>
                   <CRow v-if="cancelUrl!=''">
                     <CCol col="12" class="text-right">
-                      <CButton color="link" class="px-0" :href="cancelUrl">Cancel</CButton>
+                      <CButton color="link" class="px-0" :href="cancelUrl">{{ $t('message.cancel') }}</CButton>
                     </CCol>
                   </CRow>
+                  <CSelect horizontal class="py-2" :label="$t('message.language')" :value.sync="$i18n.locale" :options="languageOptions"/>
                 </CForm>
               </CCardBody>
             </CCard>
@@ -59,12 +60,6 @@
 import clientUtils from "@/utils/api_client"
 import utils from "@/utils/app_utils"
 import appConfig from "@/utils/app_config"
-import router from "@/router"
-
-const defaultInfoMsg = "Please sign in to continue"
-const waitInfoMsg = "Please wait..."
-const waitLoginInfoMsg = "Logging in, please wait..."
-const invalidReturnUrlErrMsg = "Error: invalid return url"
 
 const initStatusExterInfoFetched = 1
 const initStatusAppInfoFetched = 2
@@ -88,13 +83,20 @@ export default {
       return urlCancelUrl != '' ? urlCancelUrl : (this.app.public_attrs ? this.app.public_attrs.curl : '')
     },
     exterInfoInited() {
-      return this.initStatus >=0 && this.initStatus | initStatusExterInfoFetched != 0
+      return (this.initStatus > 0) && ((this.initStatus | initStatusExterInfoFetched) != 0)
     },
     googleSDKInited() {
-      return this.initStatus >=0 && this.initStatus | initStatusGoogleSDKInited != 0
+      return (this.initStatus > 0) && ((this.initStatus | initStatusGoogleSDKInited) != 0)
     },
     facebookSDKInited() {
-      return this.initStatus >=0 && this.initStatus | initStatusFacebookSDKInited != 0
+      return (this.initStatus > 0) && ((this.initStatus | initStatusFacebookSDKInited) != 0)
+    },
+    languageOptions() {
+      let result = []
+      this.$i18n.availableLocales.forEach(locale => {
+        result.push({value: locale, label: this.$i18n.messages[locale]._name})
+      })
+      return result
     },
   },
   data() {
@@ -119,7 +121,7 @@ export default {
       linkedinAuthScope: 'r_liteprofile,r_emailaddress', // https://docs.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin
 
       errorMsg: '',
-      infoMsg: defaultInfoMsg,
+      infoMsg: this.$i18n.t('message.login_msg'),
 
       app: {},
       sources: {},
@@ -148,10 +150,12 @@ export default {
       const vue = this
       clientUtils.apiDoGet(clientUtils.apiApp.replaceAll(':app', appId),
           (apiRes) => {
-            if (apiRes.status != 200) {
+            if (apiRes.status == 404) {
+              vue._resetOnError(vue.$i18n.t('message.error_app_not_exist', {app: appId}))
+            } else if (apiRes.status != 200) {
               vue._resetOnError(apiRes.message)
             } else if (!apiRes.data.public_attrs.actv) {
-              vue._resetOnError("App [" + appId + "] is not active")
+              vue._resetOnError(vue.$i18n.t('message.error_app_not_active', {app: appId}))
             } else {
               vue.app = apiRes.data
               vue.initStatus |= initStatusAppInfoFetched
@@ -203,7 +207,7 @@ export default {
           })
           .catch(() => {
             vue.$unloadScript(googleScriptSrc)
-            const msg = 'Error loading GoogleApi SDK'
+            const msg = vue.$i18n.t('message.error_loading_gapisdk')
             this._resetOnError(msg)
             console.error(msg)
           })
@@ -212,13 +216,13 @@ export default {
       const vue = this
       window.fbAsyncInit = function () {
         if (!vue.exterInfoInited) {
-          // console.log("Waiting for Exter info...")
+          // console.log("[DEBUG] Waiting for Exter info...")
           setTimeout(() => {
             window.fbAsyncInit()
           }, 500)
           return
         }
-        // console.log("Initializing Fb SDK...")
+        // console.log("[DEBUG] Initializing Fb SDK..."+vue.initStatus)
         FB.init({
           appId: vue.facebookAppId,
           cookie: true,
@@ -231,11 +235,11 @@ export default {
       const facebookScriptSrc = 'https://connect.facebook.net/en_US/sdk.js'
       vue.$loadScript(facebookScriptSrc)
           .then(() => {
-            // console.log("Fb SDK loaded.")
+            // console.log("[DEBUG] Fb SDK loaded.")
           })
           .catch(() => {
             vue.$unloadScript(facebookScriptSrc)
-            const msg = 'Error loading Facebook SDK'
+            const msg = vue.$i18n.t('message.error_loading_fbsdk')
             vue._resetOnError(msg)
             console.error(msg)
           })
@@ -251,7 +255,7 @@ export default {
       const code = this.$route.query.code
       if (savedState == "" || savedState == null || urlState != savedState || code == "" || code == null) {
         //login failed
-        this._resetOnError('GitHub login failed.')
+        this._resetOnError(this.$i18n.t('message.error_login_failed_github'), true)
         if (this.$route.query.app == "" || this.$route.query.app == null || this.$route.query.returnUrl == "" || this.$route.query.returnUrl == null) {
           this.$router.push({
             name: "Login",
@@ -297,7 +301,7 @@ export default {
       const code = this.$route.query.code
       if (savedState == '' || savedState == null || urlState != savedState || code == '' || code == null) {
         //login failed
-        this._resetOnError('LinkedIn login failed.', true)
+        this._resetOnError(this.$i18n.t('message.error_login_failed_linkedin'), true)
         if (this.$route.query.app == '' || this.$route.query.app == null || this.$route.query.returnUrl == '' || this.$route.query.returnUrl == null) {
           this.$router.push({
             name: "Login",
@@ -338,8 +342,9 @@ export default {
     },
     doLoginFacebook(e) {
       e.preventDefault()
+      this._resetOnError('', true) //since FB popups auth window, clear any existing error message
       if (!this.facebookSDKInited) {
-        alert('Please wait, Facebook SDK is being loaded.')
+        alert(this.$i18n.t('message.wait_fbsdk'))
       } else {
         const vue = this
         FB.login(function (response) {
@@ -357,17 +362,18 @@ export default {
     },
     doLoginGoogle(e) {
       e.preventDefault()
+      this._resetOnError('', true) //since Google popups auth window, clear any existing error message
       if (!this.googleSDKInited) {
-        alert('Please wait, Google SDK is being loaded.')
+        alert(this.$i18n.t('message.wait_googlesdk'))
       } else {
-        this.infoMsg = waitInfoMsg
+        const vue = this
         gapi.auth2.authorize({
           client_id: this.googleClientId,
           scope: this.googleAuthScope,
           response_type: "code",
           prompt: "consent",
         }, (resp) => {
-          this.infoMsg = defaultInfoMsg
+          // this.infoMsg = defaultInfoMsg
           if (!resp.error) {
             const data = {
               app: this.app.id,
@@ -410,20 +416,23 @@ export default {
       // this.waitCounter = -1
       if (returnUrl == null || returnUrl == "" || returnUrl == '#') {
         if (this.app.id != appConfig.APP_ID) {
-          this.errorMsg = invalidReturnUrlErrMsg
+          this.errorMsg = this.$i18n.t('message.error_invalid_return_url')
           return
-        } else {
-          returnUrl = this.$router.resolve({name: 'Dashboard'}).href
         }
+        returnUrl = this.$router.resolve({name: 'Dashboard'}).href
       }
+
+      // generate and save session token
       const jwt = utils.parseJwt(token)
       utils.saveLoginSession({uid: jwt.payloadObj.uid, name: jwt.payloadObj.name, token: token})
+
+      // redirect to next url
       window.location.href = returnUrl
     },
     _doWaitMessage() {
       if (this.waitCounter >= 0) {
         this.waitCounter++
-        this.infoMsg = waitLoginInfoMsg + " " + this.waitCounter
+        this.infoMsg = this.$i18n.t('message.wait_login', {counter: this.waitCounter})
         setTimeout(() => {
           this._doWaitMessage()
         }, 2000)
@@ -454,7 +463,7 @@ export default {
     _resetOnError(err, preserveInitStatus) {
       this.initStatus = preserveInitStatus ? this.initStatus : -1
       this.errorMsg = err
-      this.infoMsg = defaultInfoMsg
+      this.infoMsg = this.$i18n.t('message.login_msg')
       this.waitCounter = -1
     },
   }

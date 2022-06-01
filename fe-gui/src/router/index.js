@@ -74,22 +74,24 @@ router.beforeEach((to, from, next) => {
 
 export default router
 
+import i18n from '../i18n'
+
 function configRoutes() {
     return [
         {
             path: '/',
             redirect: {name: "Dashboard"},
-            name: 'Home',
+            name: 'Home', meta: {label: i18n.t('message.home')},
             component: TheContainer,
             children: [
                 {
                     path: 'dashboard',
-                    name: 'Dashboard',
+                    name: 'Dashboard', meta: {label: i18n.t('message.dashboard')},
                     component: Dashboard
                 },
                 {
                     path: 'myapps',
-                    meta: {label: 'My Apps'},
+                    meta: {label: i18n.t('message.my_apps')},
                     component: {
                         render(c) {
                             return c('router-view')
@@ -98,27 +100,23 @@ function configRoutes() {
                     children: [
                         {
                             path: '',
-                            meta: {label: 'App List'},
-                            name: 'MyApps',
+                            name: 'MyApps', meta: {label: i18n.t('message.my_app_list')},
                             component: MyApps,
                             props: true, //for passing flash message
                         },
                         {
                             path: '_register',
-                            meta: {label: 'Register New App'},
-                            name: 'RegisterApp',
+                            name: 'RegisterApp', meta: {label: i18n.t('message.register_app')},
                             component: RegisterApp,
                         },
                         {
                             path: '_edit/:id',
-                            meta: {label: 'Edit My App'},
-                            name: 'EditMyApp',
+                            name: 'EditMyApp', meta: {label: i18n.t('message.edit_my_app')},
                             component: EditMyApp,
                         },
                         {
                             path: '_delete/:id',
-                            meta: {label: 'Delete My App'},
-                            name: 'DeleteMyApp',
+                            name: 'DeleteMyApp', meta: {label: i18n.t('message.delete_my_app')},
                             component: DeleteMyApp,
                         },
                     ]

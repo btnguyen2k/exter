@@ -3,63 +3,62 @@
     <CRow>
       <CCol sm="12">
         <CCard>
-          <CCardHeader>Register New App</CCardHeader>
+          <CCardHeader>{{ $t('message.register_app') }}</CCardHeader>
           <CForm @submit.prevent="doSubmit" method="post">
             <CCardBody>
               <p v-if="errorMsg!=''" class="alert alert-danger">{{ errorMsg }}</p>
-              <CInput horizontal type="text" v-model="form.id" label="Id"
-                      placeholder="Application's unique id"
+              <CInput horizontal type="text" v-model="form.id" :label="$t('message.app_id')"
+                      :placeholder="$t('message.app_id_placeholder')"
                       :is-valid="validatorAppId"
-                      invalid-feedback="Enter application's id, format [0-9a-z_]+, must be unique."
+                      :invalid-feedback="$t('message.app_id_rule')"
                       valid-feedback=""
               />
               <div class="form-group form-row">
                 <CCol :sm="{offset:3,size:9}" class="form-inline">
-                  <CInputCheckbox inline label="Active" :checked.sync="form.isActive"
-                  />
+                  <CInputCheckbox inline :label="$t('message.app_active')" :checked.sync="form.isActive"/>
                 </CCol>
               </div>
               <div class="form-group form-row">
                 <CCol tag="label" sm="3" class="col-form-label">
-                  Login channels
+                  {{ $t('message.app_auth_provider') }}
                 </CCol>
                 <CCol sm="9" class="form-inline">
-                  <CInputCheckbox inline v-for="option in loginChannelList" :label="option"
+                  <CInputCheckbox inline v-for="(option, _) in loginChannelList" :label="$t('message.auth_provider_'+option)"
                                   :value="option" :checked.sync="form.idSources[option]"
                   />
                 </CCol>
               </div>
-              <CInput horizontal type="text" v-model="form.description" label="Description"
-                      placeholder="Application's description"
+              <CInput horizontal type="text" v-model="form.description" :label="$t('message.app_desc')"
+                      :placeholder="$t('message.app_desc_placeholder')"
               />
-              <CInput horizontal type="text" v-model="form.defaultReturnUrl" label="Default return url"
-                      placeholder="http://..."
+              <CInput horizontal type="text" v-model="form.defaultReturnUrl" :label="$t('message.app_default_return_url')"
+                      :placeholder="$t('message.app_default_return_url_placeholder')"
                       :is-valid="validatorUrl"
-                      invalid-feedback="Return url must be a http or https link."
+                      :invalid-feedback="$t('message.app_default_return_url_rule')"
               />
-              <CInput horizontal type="text" v-model="form.defaultCancelUrl" label="Default cancel url"
-                      placeholder="http://..."
+              <CInput horizontal type="text" v-model="form.defaultCancelUrl" :label="$t('message.app_default_cancel_url')"
+                      :placeholder="$t('message.app_default_cancel_url_placeholder')"
                       :is-valid="validatorUrl"
-                      invalid-feedback="Cancel url must be a http or https link."
+                      :invalid-feedback="$t('message.app_default_cancel_url_rule')"
               />
-              <CInput horizontal type="text" v-model="form.domains" label="Whitelist domains"
-                      placeholder="Exter redirects users to only these whitelist domains. Domains separated by spaces, commas or semi-colons"
+              <CInput horizontal type="text" v-model="form.domains" :label="$t('message.app_domains')"
+                      :placeholder="$t('message.app_domains_placeholder')"
               />
-              <CInput horizontal type="text" v-model="form.tags" label="Tags"
-                      placeholder="Tags separated by commas or semi-colons"
+              <CInput horizontal type="text" v-model="form.tags" :label="$t('message.app_tags')"
+                      :placeholder="$t('message.app_tags_placeholder')"
               />
-              <CTextarea horizontal type="text" v-model="form.rsaPublicKey" label="RSA public key"
-                         rows="6" placeholder="RSA public key in PEM format"
+              <CTextarea horizontal type="text" v-model="form.rsaPublicKey" :label="$t('message.app_rsa_pubkey')"
+                         rows="6" :placeholder="$t('message.app_rsa_pubkey_placeholder')"
               />
             </CCardBody>
             <CCardFooter>
               <CButton type="submit" color="primary" style="width: 96px">
                 <CIcon name="cil-save"/>
-                Save
+                {{ $t('message.save') }}
               </CButton>
               <CButton type="button" color="info" class="ml-2" style="width: 96px" @click="doCancel">
                 <CIcon name="cil-arrow-circle-left"/>
-                Back
+                {{ $t('message.back') }}
               </CButton>
             </CCardFooter>
           </CForm>
@@ -91,11 +90,11 @@ export default {
             })
             vue.loginChannelList = loginChannelList
           } else {
-            console.error("Calling api "+clientUtils.apiInfo+" was unsuccessful: " + apiRes)
+            vue.errorMsg = "Calling api "+clientUtils.apiInfo+" was unsuccessful: " + apiRes
           }
         },
         (err) => {
-          console.error("Error calling api "+clientUtils.apiInfo+": " + err)
+          vue.errorMsg = "Error calling api "+clientUtils.apiInfo+": " + err
         })
   },
   data() {
@@ -135,7 +134,7 @@ export default {
             } else {
               this.$router.push({
                 name: "MyApps",
-                params: {flashMsg: "Application [" + this.form.id + "] has been registered successfully."},
+                params: {flashMsg: this.$i18n.t('message.app_registered_successful', {id: this.form.id})},
               })
             }
           },
