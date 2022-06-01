@@ -34,6 +34,7 @@
     "@coreui/vue-chartjs": "^1.0.2",
     "axios": "^0.21.1",
     "crypto-js": "^4.0.0",
+    "eventsource": "^1.1.1",
     "jose-jwe-jws": "^0.2.2",
     "jsrsasign": "^8.0.12",
     "minimist": "^1.2.6",
