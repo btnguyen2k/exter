@@ -1,6 +1,6 @@
 # Exter release notes
 
-## 2022-05-xx - v0.7.1
+## 2022-05-31 - v0.7.1
 
 - AB#46: support i18n (FE).
 
