@@ -1,6 +1,7 @@
 //#GovueAdmin-Customized
 import Vue from 'vue'
 import VueI18n from 'vue-i18n'
+import utils from "@/utils/app_utils"
 
 const messages = {
     en: {
@@ -13,6 +14,8 @@ const messages = {
         //     '<br/><br/>You can also access the frontend via <a href="/doc/" style="color: yellowgreen">this link</a>.',
 
         message: {
+            language: 'Language',
+
             home: 'Home',
             dashboard: 'Dashboard',
             my_apps: 'My Apps',
@@ -95,6 +98,8 @@ const messages = {
         //     '<br/><br/>Bạn có thể truy cập vào trang frontend bằng <a href="/doc/" style="color: yellowgreen">đường dẫn này</a>.',
 
         message: {
+            language: 'Ngôn ngữ',
+
             home: 'Trang nhà',
             dashboard: 'Bảng thông tin',
             my_apps: 'Ứng dụng',
@@ -171,9 +176,23 @@ const messages = {
 
 Vue.use(VueI18n)
 
-const i18n = new VueI18n({
-    locale: 'en',
-    messages: messages
-})
-
+let savedLocale = utils.localStorageGet('_l')
+savedLocale = savedLocale ? (messages[savedLocale] ? savedLocale : 'en') : 'en'
+// let i18n = new VueI18n({
+//     locale: savedLocale,
+//     messages: messages
+// })
+const i18n = new Proxy(new VueI18n({
+        locale: savedLocale,
+        messages: messages
+    }), {
+        set: function(target, property, value) {
+            if ( property == 'locale' ) {
+                utils.localStorageSet('_l', value)
+            }
+            target[property] = value
+            return true
+        }
+    }
+)
 export default i18n

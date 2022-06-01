@@ -40,6 +40,7 @@
                       <CButton color="link" class="px-0" :href="cancelUrl">{{ $t('message.cancel') }}</CButton>
                     </CCol>
                   </CRow>
+                  <CSelect horizontal class="py-2" :label="$t('message.language')" :value.sync="$i18n.locale" :options="languageOptions"/>
                 </CForm>
               </CCardBody>
             </CCard>
@@ -89,6 +90,13 @@ export default {
     },
     facebookSDKInited() {
       return (this.initStatus > 0) && ((this.initStatus | initStatusFacebookSDKInited) != 0)
+    },
+    languageOptions() {
+      let result = []
+      this.$i18n.availableLocales.forEach(locale => {
+        result.push({value: locale, label: this.$i18n.messages[locale]._name})
+      })
+      return result
     },
   },
   data() {
@@ -413,8 +421,12 @@ export default {
         }
         returnUrl = this.$router.resolve({name: 'Dashboard'}).href
       }
+
+      // generate and save session token
       const jwt = utils.parseJwt(token)
       utils.saveLoginSession({uid: jwt.payloadObj.uid, name: jwt.payloadObj.name, token: token})
+
+      // redirect to next url
       window.location.href = returnUrl
     },
     _doWaitMessage() {
