@@ -2,7 +2,7 @@
 # Sample build command:
 # docker build --force-rm --squash -t exter_fe .
 
-FROM node:13.6-alpine3.11 AS builder
+FROM node:12.22-alpine3.15 AS builder
 RUN mkdir /build
 COPY . /build
 RUN cd /build && rm -rf dist node_modules && npm install && npm run build

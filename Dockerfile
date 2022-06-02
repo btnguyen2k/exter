@@ -2,7 +2,7 @@
 # Sample build command:
 # docker build --rm -t exter .
 
-FROM node:13.6-alpine3.11 AS builder_fe
+FROM node:12.22-alpine3.15 AS builder_fe
 RUN apk add jq sed
 RUN mkdir /build
 COPY . /build
