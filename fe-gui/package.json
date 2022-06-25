@@ -38,7 +38,7 @@
     "ejs": "^3.1.7",
     "eventsource": "^1.1.1",
     "jose-jwe-jws": "^0.2.2",
-    "jsrsasign": "^8.0.12",
+    "jsrsasign": "^10.5.25",
     "minimist": "^1.2.6",
     "vue": "^2.6.10",
     "vue-i18n": "^8.24.5",
