@@ -21,7 +21,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/huandu/facebook/v2 v2.5.5
 	github.com/jackc/pgx/v4 v4.14.1
-	github.com/labstack/echo/v4 v4.6.3
+	github.com/labstack/echo/v4 v4.9.0
 	github.com/mattn/go-sqlite3 v1.14.10
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
