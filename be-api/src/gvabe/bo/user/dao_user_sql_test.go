@@ -85,7 +85,7 @@ type sqlDriverAndUrl struct {
 }
 
 func newSqlDriverAndUrl(driver, url string) sqlDriverAndUrl {
-	return sqlDriverAndUrl{driver: strings.Trim(driver, `"`), url: strings.Trim(url, `"`)}
+	return sqlDriverAndUrl{driver: strings.Trim(driver, `'"`), url: strings.Trim(url, `'"`)}
 }
 
 func sqlGetUrlFromEnv() map[string]sqlDriverAndUrl {

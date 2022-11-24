@@ -3,6 +3,7 @@ package user
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -11,13 +12,13 @@ import (
 )
 
 func _createCosmosdbConnect(t *testing.T, testName string) *prom.SqlConnect {
-	driver := strings.ReplaceAll(os.Getenv("COSMOSDB_DRIVER"), `"`, "")
-	url := strings.ReplaceAll(os.Getenv("COSMOSDB_URL"), `"`, "")
+	driver := strings.Trim(os.Getenv("COSMOSDB_DRIVER"), `'"`)
+	url := strings.Trim(os.Getenv("COSMOSDB_URL"), `'"`)
 	if driver == "" || url == "" {
 		t.Skipf("%s skipped", testName)
 		return nil
 	}
-	timezone := strings.ReplaceAll(os.Getenv("TIMEZONE"), `"`, "")
+	timezone := strings.Trim(os.Getenv("TIMEZONE"), `'"`)
 	if timezone == "" {
 		timezone = "UTC"
 	}
@@ -25,12 +26,19 @@ func _createCosmosdbConnect(t *testing.T, testName string) *prom.SqlConnect {
 	url = strings.ReplaceAll(url, "${loc}", urlTimezone)
 	url = strings.ReplaceAll(url, "${tz}", urlTimezone)
 	url = strings.ReplaceAll(url, "${timezone}", urlTimezone)
-	url += ";Db=exter"
+	db := "exter"
+	dbre := regexp.MustCompile(`(?i);db=(\w+)`)
+	findResult := dbre.FindAllStringSubmatch(url, -1)
+	if findResult == nil {
+		url += ";Db=" + db
+	} else {
+		db = findResult[0][1]
+	}
 	sqlc, err := henge.NewCosmosdbConnection(url, timezone, driver, 10000, nil)
 	if err != nil {
 		t.Fatalf("%s/%s failed: %s", testName, "NewCosmosdbConnection", err)
 	}
-	sqlc.GetDB().Exec("CREATE DATABASE exter WITH maxru=10000")
+	sqlc.GetDB().Exec("CREATE DATABASE IF NOT EXISTS " + db + " WITH maxru=10000")
 	return sqlc
 }
 
