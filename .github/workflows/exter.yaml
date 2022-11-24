@@ -1,3 +1,5 @@
+# GitHub Actions pipeline to build and run tests
+
 name: exter
 
 on:
@@ -210,7 +212,7 @@ jobs:
     - name: Set up NodeJS env
       uses: actions/setup-node@v3
       with:
-        node-version: "12"
+        node-version: "13"
     - name: Install go-giter8
       run: |
         # minimum go-giter8 v0.5.1 for "quiet" mode
